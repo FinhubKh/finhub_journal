@@ -1,0 +1,188 @@
+<div align="center">
+
+#  nXuu Trading Journal
+
+### *Trade Analytics & Performance Tracking*
+
+Track your performance. Sync your trades. Improve your edge.
+
+---
+
+</div>
+
+# 🚀 Quick Start
+
+Get up and running in just a few minutes.
+
+---
+
+# 👤 1. Create Your Account
+
+1. Visit the website.
+2. Click **Sign Up**.
+3. Enter your **Email** and **Password**.
+4. Click **Log In**.
+
+> 💡 **Tip:** "Remember Me" keeps your session available for one-click login while maintaining account security.
+
+---
+
+# 🔄 2. Enable Automatic MT4/MT5 Trade Sync
+
+Automatically import every closed trade directly from MetaTrader.
+
+## Step 1 — Generate Your Sync Key
+
+Navigate to:
+
+```
+Settings
+   └── MT4/MT5 Sync (EA)
+```
+
+Click **Generate** and copy your unique **Sync Key**.
+
+---
+
+## Step 2 — Configure MetaTrader Terminal
+
+Open:
+
+```
+Tools
+   └── Options
+          └── Expert Advisors
+```
+
+Enable:
+
+✅ Allow WebRequest for listed URL
+
+Add:
+
+```text
+https://jlcgfogamjjgsieatuxi.supabase.co
+```
+
+---
+
+## Step 3 — Attach the EA
+
+Attach:
+
+```
+nXuu_TradeSync
+```
+
+to **any chart**.
+
+Fill in the EA Inputs:
+
+| Setting | Value |
+|----------|-------|
+| SyncKey | Your generated Sync Key |
+| AccountLabel *(Optional)* | FTMO / Personal / Demo / etc. |
+
+Click **OK**.
+
+---
+
+## ✅ Done!
+
+Every time MT4/MT5 starts with the EA attached:
+
+- ✔ Automatically uploads all closed trades
+- ✔ Syncs new trades only
+- ✔ Never creates duplicate trades
+- ✔ Works silently in the background
+
+> 🔐 If you regenerate or revoke your Sync Key, remember to update it inside the EA settings. Previous keys become invalid immediately.
+
+---
+
+# 📊 3. Explore Your Dashboard
+
+## 📈 Overview
+
+Monitor your trading performance with:
+
+- Net Profit
+- Win Rate
+- Risk Statistics
+- Equity Curve
+- Performance by Pair
+- Performance by Trading Model
+- Session Analysis
+
+---
+
+## 📅 Calendar
+
+Visualize your:
+
+- Daily Profit/Loss
+- Winning Days
+- Losing Days
+- Monthly Performance
+
+---
+
+## 🏆 Leaderboard
+
+See how you compare with other traders.
+
+Compete using:
+
+- Profit
+- Win Rate
+- Consistency
+- Overall Ranking
+
+---
+
+## ⚙ Settings
+
+Customize your journal:
+
+- ✅ Trading Models
+- ✅ Pre-Trade Checklist
+- ✅ Display Name
+- ✅ MT4/MT5 Sync Key
+
+---
+
+# 📝 Important Notes
+
+> 🔒 **Security**
+
+For your protection, the website requires authentication after reopening.
+
+Using **Remember Me** allows quick one-click login without entering your password each visit.
+
+---
+
+> 🌙 **Theme**
+
+Dark Mode is enabled by default for a better trading experience.
+
+---
+
+# 💡 Need Help?
+
+If something isn't working:
+
+- Verify your **Sync Key**
+- Confirm the WebRequest URL is added correctly
+- Ensure the EA remains attached to a chart
+- Restart MT4/MT5 after making configuration changes
+
+---
+
+<div align="center">
+
+**nXuu Trading Journal**
+
+
+*Review. Improve. Repeat.*
+
+</div>
