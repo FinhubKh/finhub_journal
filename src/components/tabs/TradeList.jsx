@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
+import { useDialog } from '../../context/DialogContext';
 import { deleteTrade } from '../../api';
 import { fmtR, fmtDateShort } from '../../lib/format';
+import {
+  btnGhost, btnDanger, card, cardHd, cardTitle, emptyState, input, tradeResultBadge,
+} from '../../lib/ui';
 
 function fmtPnlStrict(v) {
   if (!v) return '';
@@ -11,74 +15,96 @@ function fmtPnlStrict(v) {
 
 const EMPTY_FILTERS = { result: '', session: '', model: '', account: '', from: '', to: '' };
 
+const filterSelect = `${input} py-2 text-xs sm:max-w-[140px]`;
+
 export default function TradeList() {
-  const { accountTrades, userModels, refreshTrades } = useAppData();
+  const { visibleTrades, viewMode, userModels, resolveTradeAccount, refreshTrades } = useAppData();
   const { open } = useTradeModal();
+  const { alert, confirm } = useDialog();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
 
   function setFilter(key, value) { setFilters((f) => ({ ...f, [key]: value })); }
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
   const filtered = useMemo(() => {
-    let list = accountTrades;
+    let list = visibleTrades;
     if (filters.result) list = list.filter((t) => t.result === filters.result);
     if (filters.session) list = list.filter((t) => t.session === filters.session);
     if (filters.model) list = list.filter((t) => t.model === filters.model);
-    if (filters.account) list = list.filter((t) => (t.account || '').toLowerCase() === filters.account.toLowerCase());
+    if (viewMode === 'portfolio' && filters.account) {
+      list = list.filter((t) => {
+        const acc = resolveTradeAccount(t);
+        const q = filters.account.toLowerCase();
+        return (acc?.name || t.account || '').toLowerCase().includes(q);
+      });
+    }
     if (filters.from) list = list.filter((t) => t.date >= filters.from);
     if (filters.to) list = list.filter((t) => t.date <= filters.to);
     return list;
-  }, [accountTrades, filters]);
+  }, [visibleTrades, filters, viewMode, resolveTradeAccount]);
 
-  const hasFilters = Object.values(filters).some((v) => v !== '');
-  const unannotatedCount = accountTrades.filter((t) => t.source === 'api' && !t.notes && !t.model).length;
+  const hasFilters = Object.entries(filters).some(([k, v]) => v !== '' && !(k === 'account' && viewMode !== 'portfolio'));
+  const unannotatedCount = visibleTrades.filter((t) => t.source === 'api' && !t.notes && !t.model).length;
 
   async function confirmDelete(id, e) {
     e.stopPropagation();
-    if (!confirm('Delete this trade?')) return;
+    const ok = await confirm({
+      title: 'Delete trade?',
+      message: 'This trade will be removed from your journal permanently.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     try { await deleteTrade(id); await refreshTrades(); }
-    catch (err) { alert('Could not delete trade.'); }
+    catch (err) {
+      await alert({ title: 'Error', message: 'Could not delete trade.' });
+    }
   }
 
   return (
-    <div className="card" style={{ marginTop: 14 }}>
-      <div className="card-hd">
-        <h3 className="card-title">
+    <div className={`${card} overflow-hidden`}>
+      <div className={cardHd}>
+        <h3 className={`${cardTitle} flex items-center gap-2`}>
           Trade History
-          {unannotatedCount > 0 && <span className="review-count-badge">{unannotatedCount}</span>}
+          {unannotatedCount > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              {unannotatedCount}
+            </span>
+          )}
         </h3>
-        <button className="text-btn" type="button" onClick={refreshTrades}>↻ Refresh</button>
+        <button className={btnGhost} type="button" onClick={refreshTrades}>Refresh</button>
       </div>
 
-      <div className="filter-bar">
-        <select className="filter-select" value={filters.result} onChange={(e) => setFilter('result', e.target.value)}>
+      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-100 px-4 py-3 md:px-5">
+        <select className={filterSelect} value={filters.result} onChange={(e) => setFilter('result', e.target.value)}>
           <option value="">All Results</option>
           <option value="win">Win</option>
           <option value="loss">Loss</option>
           <option value="be">BE</option>
         </select>
-        <select className="filter-select" value={filters.session} onChange={(e) => setFilter('session', e.target.value)}>
+        <select className={filterSelect} value={filters.session} onChange={(e) => setFilter('session', e.target.value)}>
           <option value="">All Sessions</option>
           <option value="asian">Asian</option>
           <option value="london">London</option>
           <option value="ny">New York</option>
         </select>
-        <select className="filter-select" value={filters.model} onChange={(e) => setFilter('model', e.target.value)}>
+        <select className={filterSelect} value={filters.model} onChange={(e) => setFilter('model', e.target.value)}>
           <option value="">All Models</option>
           {userModels.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
         </select>
-        <input className="filter-input-date" type="text" placeholder="Account..." style={{ maxWidth: 100 }}
-          value={filters.account} onChange={(e) => setFilter('account', e.target.value)} />
-        <input className="filter-input-date" type="date" title="From date" value={filters.from} onChange={(e) => setFilter('from', e.target.value)} />
-        <input className="filter-input-date" type="date" title="To date" value={filters.to} onChange={(e) => setFilter('to', e.target.value)} />
-        <button className="filter-clear-btn" type="button" onClick={clearFilters}>✕ Clear</button>
-        <span className="filter-count">{hasFilters ? `${filtered.length} of ${accountTrades.length}` : ''}</span>
+        <input className={`${input} max-w-[100px] py-2 text-xs`} type="text" placeholder="Account..."
+          value={filters.account} onChange={(e) => setFilter('account', e.target.value)}
+          disabled={viewMode !== 'portfolio'} />
+        <input className={`${input} max-w-[140px] py-2 text-xs`} type="date" title="From date" value={filters.from} onChange={(e) => setFilter('from', e.target.value)} />
+        <input className={`${input} max-w-[140px] py-2 text-xs`} type="date" title="To date" value={filters.to} onChange={(e) => setFilter('to', e.target.value)} />
+        <button className={btnGhost} type="button" onClick={clearFilters}>Clear</button>
+        {hasFilters && <span className="text-xs text-zinc-400">{filtered.length} of {visibleTrades.length}</span>}
       </div>
 
-      <div>
+      <div className="divide-y divide-zinc-100">
         {filtered.length === 0 ? (
-          <div className="empty-state">
-            {accountTrades.length === 0 ? 'No trades yet. Log your first trade above.' : 'No trades match your filters.'}
+          <div className={emptyState}>
+            {visibleTrades.length === 0 ? 'No trades yet. Log your first trade above.' : 'No trades match your filters.'}
           </div>
         ) : (
           filtered.slice(0, 100).map((t) => {
@@ -87,26 +113,40 @@ export default function TradeList() {
             const rDisplay = fmtR(t.r_value);
             const pnlDisplay = fmtPnlStrict(t.pnl_usd);
             return (
-              <div className="trade-row" key={t.id} onClick={() => open(t)}>
-                <div className="trade-row-left">
-                  <div className="trade-row-top">
-                    <span className={`trade-result ${t.result}`}>{t.result.toUpperCase()}</span>
-                    <span className="trade-date">{fmtDateShort(t.date)}</span>
-                    {isApi && <span className="trade-tag source-tag" title="Synced from MT4/5">🔒 {t.symbol || 'MT'}</span>}
-                    {needsReview && <span className="trade-tag review-tag">Needs review</span>}
-                    {t.account && <span className="trade-tag account-tag">{t.account}</span>}
-                    {t.model && <span className="trade-tag">{t.model}</span>}
-                    {t.session && <span className="trade-tag">{t.session}</span>}
+              <div
+                key={t.id}
+                className="flex cursor-pointer items-start justify-between gap-3 px-4 py-3 transition hover:bg-zinc-50 md:px-5"
+                onClick={() => open(t)}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={tradeResultBadge(t.result)}>{t.result}</span>
+                    <span className="text-xs text-zinc-500">{fmtDateShort(t.date)}</span>
+                    {isApi && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600">{t.symbol || 'MT'}</span>}
+                    {needsReview && <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">Needs review</span>}
+                    {(resolveTradeAccount(t)?.name || t.account) && (
+                      <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+                        {resolveTradeAccount(t)?.name || t.account}
+                      </span>
+                    )}
+                    {t.model && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.model}</span>}
+                    {t.session && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.session}</span>}
                   </div>
-                  {t.notes && <p className="trade-notes">{t.notes}</p>}
+                  {t.notes && <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{t.notes}</p>}
                 </div>
-                <div className="trade-row-right">
-                  <div className="trade-values">
-                    {rDisplay && <span className={`trade-r ${t.result}`}>{rDisplay}</span>}
-                    {pnlDisplay && <span className={`trade-pnl ${t.pnl_usd >= 0 ? 'win' : 'loss'}`}>{pnlDisplay}</span>}
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="text-right text-xs">
+                    {rDisplay && <div className={t.result === 'win' ? 'font-medium text-violet-600' : t.result === 'loss' ? 'font-medium text-rose-600' : 'font-medium text-amber-600'}>{rDisplay}</div>}
+                    {pnlDisplay && <div className={t.pnl_usd >= 0 ? 'text-violet-600' : 'text-rose-600'}>{pnlDisplay}</div>}
                   </div>
                   {!isApi && (
-                    <button className="delete-btn" type="button" onClick={(e) => confirmDelete(t.id, e)}>✕</button>
+                    <button
+                      className={btnDanger}
+                      type="button"
+                      onClick={(e) => confirmDelete(t.id, e)}
+                    >
+                      Delete
+                    </button>
                   )}
                 </div>
               </div>

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import { useAppData } from '../../context/AppDataContext';
+import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
+
+const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
 
 export default function EquityChart({ trades }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [mode, setMode] = useState('usd');
-  const { dark } = useAppData();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -18,8 +19,12 @@ export default function EquityChart({ trades }) {
     }
 
     const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
-    const labels = [], dataUsd = [], dataR = [];
-    let cumUsd = 0, cumR = 0;
+    const labels = [];
+    const dataUsd = [];
+    const dataR = [];
+    let cumUsd = 0;
+    let cumR = 0;
+
     sorted.forEach((t) => {
       cumUsd += t.pnl_usd || 0;
       cumR += t.r_value || 0;
@@ -29,10 +34,10 @@ export default function EquityChart({ trades }) {
     });
 
     const values = mode === 'usd' ? dataUsd : dataR;
-    const accentColor = dark ? '#4ade80' : '#5a6e42';
-    const fillColor = dark ? 'rgba(74,222,128,0.08)' : 'rgba(90,110,66,0.08)';
-    const tickColor = dark ? '#4a4a4a' : '#8a8478';
-    const gridColor = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+    const accentColor = '#7c3aed';
+    const fillColor = 'rgba(124, 58, 237, 0.06)';
+    const tickColor = '#a1a1aa';
+    const gridColor = 'rgba(0, 0, 0, 0.04)';
     const labelFmt = mode === 'usd'
       ? (v) => (v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`)
       : (v) => (v >= 0 ? `+${v.toFixed(2)}R` : `${v.toFixed(2)}R`);
@@ -47,41 +52,77 @@ export default function EquityChart({ trades }) {
           borderColor: accentColor,
           borderWidth: 2,
           pointRadius: 0,
-          pointHoverRadius: 4,
+          pointHoverRadius: 5,
           pointHoverBackgroundColor: accentColor,
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
           fill: true,
           backgroundColor: fillColor,
-          tension: 0.3,
+          tension: 0.35,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => labelFmt(ctx.raw) } } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#18181b',
+            titleFont: { family: CHART_FONT, size: 11 },
+            bodyFont: { family: CHART_FONT, size: 12, weight: '600' },
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: { label: (ctx) => labelFmt(ctx.raw) },
+          },
+        },
         scales: {
-          x: { ticks: { color: tickColor, font: { size: 9, family: 'DM Mono' }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: gridColor } },
-          y: { ticks: { color: tickColor, font: { size: 9, family: 'DM Mono' }, callback: labelFmt }, grid: { color: gridColor } },
+          x: {
+            ticks: { color: tickColor, font: { size: 10, family: CHART_FONT }, maxTicksLimit: 7, maxRotation: 0 },
+            grid: { display: false },
+            border: { display: false },
+          },
+          y: {
+            ticks: { color: tickColor, font: { size: 10, family: CHART_FONT }, callback: labelFmt, maxTicksLimit: 6 },
+            grid: { color: gridColor },
+            border: { display: false },
+          },
         },
       },
     });
 
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [trades, mode, dark]);
+  }, [trades, mode]);
 
   const empty = !trades || trades.length === 0;
+  const lastVal = empty ? null : (mode === 'usd'
+    ? trades.reduce((s, t) => s + (t.pnl_usd || 0), 0)
+    : trades.reduce((s, t) => s + (t.r_value || 0), 0));
 
   return (
-    <div className="card" style={{ marginTop: 14 }}>
-      <div className="card-hd">
-        <h3 className="card-title">Equity Curve</h3>
-        <div className="dash-chart-toggle">
-          <button className={`dash-toggle-btn ${mode === 'usd' ? 'active' : ''}`} onClick={() => setMode('usd')} type="button">$</button>
-          <button className={`dash-toggle-btn ${mode === 'r' ? 'active' : ''}`} onClick={() => setMode('r')} type="button">R</button>
+    <div className={`${card} overflow-hidden`}>
+      <div className={cardHd}>
+        <div>
+          <h3 className={cardTitle}>Equity curve</h3>
+          <p className="mt-0.5 text-xs text-zinc-500">Cumulative performance over time</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!empty && lastVal != null && (
+            <span className={`hidden text-sm font-semibold sm:inline ${lastVal >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+              {mode === 'usd'
+                ? (lastVal >= 0 ? `+$${lastVal.toFixed(2)}` : `-$${Math.abs(lastVal).toFixed(2)}`)
+                : `${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R`}
+            </span>
+          )}
+          <div className={pillToggle}>
+            <button className={pillBtn(mode === 'usd')} onClick={() => setMode('usd')} type="button">USD</button>
+            <button className={pillBtn(mode === 'r')} onClick={() => setMode('r')} type="button">R</button>
+          </div>
         </div>
       </div>
-      <div className="stats-chart-wrap">
-        <canvas ref={canvasRef} style={{ display: empty ? 'none' : 'block' }} />
-        {empty && <div className="chart-empty">No trades yet.</div>}
+      <div className={`${cardBody} relative h-[240px] sm:h-[280px]`}>
+        <canvas ref={canvasRef} className={empty ? 'hidden' : 'block h-full w-full'} />
+        {empty && <div className={emptyState}>No trades to chart yet.</div>}
       </div>
     </div>
   );

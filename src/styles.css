@@ -3,32 +3,34 @@
    Elevated: depth, contrast, micro-polish, dark mode fixes
    ============================================================ */
 
+/* Keep legacy app styles in a layer below Tailwind utilities. */
+@layer components {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { color-scheme: light dark; }
+html { color-scheme: light; }
 body { transition: background-color 0.25s ease, color 0.25s ease; }
 .card, .modal-sheet, .auth-box { transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.2s ease, transform 0.18s ease; }
-.card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.card:hover { border-color: rgba(124,58,237,0.22); }
 button { transition: transform 0.15s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
 button:active { transform: scale(0.97); }
 
 /* ── DESIGN TOKENS ── */
 :root {
   /* Palette — deep space base + iridescent aurora accents */
-  --sand:        #eef1f7;
-  --sand2:       #e4e8f2;
-  --sand3:       #d8ddec;
+  --sand:        #f8fafc;
+  --sand2:       #f1f5f9;
+  --sand3:       #e2e8f0;
   --ink:         #0c0e16;
   --ink2:        #2a2e3f;
   --ink3:        #5a6180;
   --ink4:        #8c92ac;
   --ink5:        #c2c6da;
 
-  /* Accents — cyan / violet / magenta / blue / amber aurora spectrum */
-  --olive:       #0d9488;
-  --olive-bar:   #14b8a6;
-  --olive-bg:    rgba(20,184,166,0.12);
-  --olive-dim:   #0f766e;
+  /* Primary brand — violet (matches landing + auth) */
+  --olive:       #7c3aed;
+  --olive-bar:   #8b5cf6;
+  --olive-bg:    rgba(124,58,237,0.10);
+  --olive-dim:   #6d28d9;
   --blue:        #3b82f6;
   --blue-bar:    #3b82f6;
   --blue-bg:     rgba(59,130,246,0.12);
@@ -51,7 +53,7 @@ button:active { transform: scale(0.97); }
   --brown-bar:   #b45309;
   --brown-bg:    rgba(180,83,9,0.12);
   --gold:        #d97706;
-  --green:       #0d9488;
+  --green:       #7c3aed;
   --red:         #ff0000;
   --white:       #ffffff;
 
@@ -109,11 +111,11 @@ button:active { transform: scale(0.97); }
   --ink4:     #555555;
   --ink5:     #333333;
 
-  /* Aurora accents on dark */
-  --olive:     #4ade80;
-  --olive-bar: #4ade80;
-  --olive-bg:  rgba(74,222,128,0.10);
-  --olive-dim: #22c55e;
+  /* Violet accents on dark */
+  --olive:     #a78bfa;
+  --olive-bar: #8b5cf6;
+  --olive-bg:  rgba(139,92,246,0.12);
+  --olive-dim: #7c3aed;
 
 
   --blue:      #60a5fa;
@@ -144,7 +146,7 @@ button:active { transform: scale(0.97); }
   --shadow-md: 0 4px 16px rgba(0,0,0,0.55);
   --shadow-lg: 0 16px 48px rgba(0,0,0,0.6);
 
-  --green: #5eead4;
+  --green: #a78bfa;
   --red:   #f472b6;
   --gold:  #fbbf24;
 
@@ -198,18 +200,7 @@ button:active { transform: scale(0.97); }
   border-color: var(--glass-border);
 }
 
-.ov-tile, .card { animation: floaty 6s ease-in-out infinite; }
-.ov-tile:nth-child(2)  { animation-delay: -0.6s; }
-.ov-tile:nth-child(3)  { animation-delay: -1.2s; }
-.ov-tile:nth-child(4)  { animation-delay: -1.8s; }
-.ov-tile:nth-child(5)  { animation-delay: -2.4s; }
-.ov-tile:nth-child(6)  { animation-delay: -3.0s; }
-.ov-tile:nth-child(7)  { animation-delay: -3.6s; }
-.ov-tile:nth-child(8)  { animation-delay: -4.2s; }
-.ov-tile:nth-child(9)  { animation-delay: -4.8s; }
-@media (prefers-reduced-motion: reduce) {
-  .ov-tile, .card { animation: none; }
-}
+.ov-tile, .card { animation: none; }
 
 /* ── BASE ── */
 html, body {
@@ -231,6 +222,9 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   background: var(--bg);
   padding: 24px; z-index: 100;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .auth-box {
@@ -277,7 +271,6 @@ html, body {
 .auth-tab.active {
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow-sm);
 }
 
 .auth-btn {
@@ -286,13 +279,12 @@ html, body {
   color: #fff; background: var(--olive);
   border: none; border-radius: var(--radius-lg);
   padding: 13px; cursor: pointer;
-  box-shadow: 0 2px 8px rgba(20,184,166,0.35);
-  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
 }
-.auth-btn:hover   { opacity: 0.92; box-shadow: 0 4px 14px rgba(20,184,166,0.4); }
+.auth-btn:hover   { opacity: 0.92; }
 .auth-btn:active  { transform: scale(0.99); }
-.auth-btn:disabled{ opacity: 0.45; box-shadow: none; }
+.auth-btn:disabled{ opacity: 0.45; }
 
 .auth-link-btn {
   display: block; width: 100%; text-align: center; margin-top: 10px;
@@ -837,7 +829,7 @@ html, body {
 
 .form-input:focus {
   border-color: var(--olive);
-  box-shadow: 0 0 0 3px rgba(20,184,166,0.16);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.16);
 }
 
 .form-textarea { resize: none; line-height: 1.6; }
@@ -857,15 +849,15 @@ html, body {
 
 .result-btn.win.selected  {
   background: var(--olive-bg); border-color: var(--olive);
-  color: var(--olive); box-shadow: 0 2px 8px rgba(20,184,166,0.22);
+  color: var(--olive);
 }
 .result-btn.loss.selected {
   background: var(--rose-bg); border-color: var(--rose);
-  color: var(--rose); box-shadow: 0 2px 8px rgba(219,39,119,0.22);
+  color: var(--rose);
 }
 .result-btn.be.selected {
   background: var(--amber-bg); border-color: var(--amber);
-  color: var(--amber); box-shadow: 0 2px 8px rgba(217,119,6,0.22);
+  color: var(--amber);
 }
 
 .submit-btn {
@@ -874,13 +866,12 @@ html, body {
   color: #fff; background: var(--olive);
   border: none; border-radius: var(--radius-lg);
   padding: 13px; cursor: pointer;
-  box-shadow: 0 2px 10px rgba(20,184,166,0.3);
-  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
 }
-.submit-btn:hover   { opacity: 0.92; box-shadow: 0 4px 16px rgba(20,184,166,0.4); }
+.submit-btn:hover   { opacity: 0.92; }
 .submit-btn:active  { transform: scale(0.99); }
-.submit-btn:disabled{ opacity: 0.45; box-shadow: none; }
+.submit-btn:disabled{ opacity: 0.45; }
 
 .form-msg { padding: 0 16px 12px; font-size: 12px; min-height: 20px; }
 .form-msg.success { color: var(--green); }
@@ -1627,7 +1618,7 @@ html, body {
   background: transparent; border: none; border-radius: 4px;
   padding: 4px 9px; cursor: pointer; transition: all 0.15s;
 }
-.ov-pill.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.ov-pill.active { background: var(--surface); color: var(--text); }
 
 @media (max-width: 380px) {
   .ov-bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 70px; }
@@ -1672,7 +1663,6 @@ html, body {
 .dash-toggle-btn.active {
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow-sm);
 }
 
 /* ── Responsive: on very small screens collapse to 2x4 grid ── */
@@ -1720,14 +1710,12 @@ html, body {
 /* ── Dark mode: submit / add buttons → green ── */
 [data-theme="dark"] .submit-btn,
 [data-theme="dark"] .auth-btn {
-  background: #4ade80;
+  background: #a78bfa;
   color: #0b0b0b;
-  box-shadow: 0 2px 12px rgba(74,222,128,0.25);
 }
 [data-theme="dark"] .submit-btn:hover,
 [data-theme="dark"] .auth-btn:hover {
-  background: #22c55e;
-  box-shadow: 0 4px 18px rgba(74,222,128,0.35);
+  background: #8b5cf6;
 }
 
 /* ── Dark mode: checklist step checked state ── */
@@ -1800,9 +1788,9 @@ html, body {
 
 /* ── Dark mode: dark toggle hover ── */
 [data-theme="dark"] .dark-toggle:hover {
-  border-color: #4ade80;
-  color: #4ade80;
-  background: rgba(74,222,128,0.08);
+  border-color: #a78bfa;
+  color: #a78bfa;
+  background: rgba(139,92,246,0.08);
 }
 
 /* ── Dark mode: form inputs ── */
@@ -1812,8 +1800,8 @@ html, body {
   color: #ffffff;
 }
 [data-theme="dark"] .form-input:focus {
-  border-color: rgba(74,222,128,0.5);
-  box-shadow: 0 0 0 3px rgba(74,222,128,0.08);
+  border-color: rgba(139,92,246,0.5);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.08);
 }
 
 /* ── Dark mode: dash hero card borders ── */
@@ -1835,3 +1823,294 @@ html, body {
 [data-theme="dark"] .stats-chart-wrap canvas {
   filter: none;
 }
+
+/* ── AUTH BACK LINK ── */
+.auth-back-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text4);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.auth-back-link:hover { color: var(--olive); }
+
+/* ── Dashboard (#main-app) — flat violet light UI, matches auth + landing ── */
+#main-app {
+  font-family: var(--font-sans);
+  color: #18181b;
+  background: #fafafa;
+}
+
+#main-app nav button:active {
+  transform: none;
+}
+
+#main-app .pane-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  #main-app .pane-inner {
+    padding: 24px 24px calc(32px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+#main-app .card,
+#main-app .prog,
+#main-app .ov-tile,
+#main-app .complete-banner,
+#main-app .filter-bar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border: 1px solid #e4e4e7;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+#main-app .card:hover,
+#main-app .ov-tile:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #e4e4e7;
+}
+
+#main-app .card-hd {
+  background: #ffffff;
+  border-bottom: 1px solid #f4f4f5;
+  padding: 14px 18px;
+}
+
+#main-app .card-title,
+#main-app .page-title {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: #18181b;
+  font-style: normal;
+  letter-spacing: -0.01em;
+}
+
+#main-app .page-sub,
+#main-app .form-label,
+#main-app .settings-section-label,
+#main-app .ov-tag,
+#main-app .ov-sub,
+#main-app .ov-microlbl,
+#main-app .prog-label,
+#main-app .db-text {
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 12px;
+  color: #71717a;
+}
+
+#main-app .settings-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a1a1aa;
+  margin-bottom: 8px;
+}
+
+#main-app .form-input,
+#main-app select.form-input {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #18181b;
+}
+
+#main-app .form-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+#main-app .submit-btn,
+#main-app .add-btn {
+  background: #7c3aed;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: #fff;
+  box-shadow: none;
+}
+
+#main-app .submit-btn:hover,
+#main-app .add-btn:hover {
+  background: #6d28d9;
+  color: #fff;
+}
+
+#main-app .danger-btn {
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+#main-app .text-btn,
+#main-app .reset-btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: #7c3aed;
+}
+
+#main-app .result-btn {
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  background: #fafafa;
+  border-color: #e4e4e7;
+}
+
+#main-app .result-btn.win.selected {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+
+#main-app .ov-tile::before {
+  background: #7c3aed;
+}
+
+#main-app .ov-tile[data-tone="loss"]::before,
+#main-app .ov-tile[data-tone="dd"]::before {
+  background: #e11d48;
+}
+
+#main-app .ov-tile--hero {
+  background: #ffffff;
+}
+
+#main-app .win-col { color: #7c3aed !important; }
+#main-app .loss-col { color: #e11d48 !important; }
+
+#main-app .prog-num {
+  color: #7c3aed;
+  font-weight: 700;
+}
+
+#main-app .prog-fill {
+  background: linear-gradient(90deg, #6d28d9, #7c3aed, #8b5cf6);
+}
+
+#main-app .complete-banner {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+  box-shadow: none;
+}
+
+#main-app .ov-layout {
+  gap: 16px;
+}
+
+#main-app .ov-bento {
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#main-app .ov-col-main,
+#main-app .ov-col-side {
+  height: auto;
+}
+
+#main-app .ov-col-side > .card:first-child {
+  padding: 0;
+  max-height: none;
+}
+
+#main-app .ov-pills,
+#main-app .dash-chart-toggle {
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+  border-radius: 12px;
+}
+
+#main-app .ov-pill.active,
+#main-app .dash-toggle-btn.active {
+  background: #ffffff;
+  color: #18181b;
+}
+
+#main-app .filter-bar {
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+#main-app .trade-row {
+  border-bottom-color: #f4f4f5;
+}
+
+#main-app .trade-row:hover {
+  background: #fafafa;
+}
+
+#main-app .trade-date,
+#main-app .trade-tag {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+#main-app .trade-result {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  border-radius: 8px;
+}
+
+#main-app .trade-result.win { background: rgba(124, 58, 237, 0.1); color: #7c3aed; }
+#main-app .trade-r.win,
+#main-app .trade-pnl.win { color: #7c3aed; }
+
+#main-app .settings-row-sub,
+#main-app .empty-state,
+#main-app .form-hint {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: #71717a;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+#main-app .settings-row-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: #18181b;
+}
+
+#main-app .manage-row {
+  border-bottom-color: #f4f4f5;
+}
+
+#main-app .lb-row {
+  border-bottom-color: #f4f4f5;
+}
+
+#main-app .lb-bar {
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+}
+
+#main-app .cal-mini-cell.win { background: rgba(124, 58, 237, 0.85); }
+#main-app .cal-day.win { background: rgba(124, 58, 237, 0.12); color: #7c3aed; }
+
+} /* end @layer components */

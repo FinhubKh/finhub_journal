@@ -8,12 +8,18 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "ea:config": "node scripts/generate-ea-config.mjs"
+    "ea:config": "node scripts/generate-ea-config.mjs",
+    "api:dev": "node backend/api/server.mjs",
+    "db:check": "node scripts/db-check.mjs",
+    "functions:deploy": "node scripts/deploy-functions.mjs"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.2",
     "chart.js": "^4.5.1",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1",
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

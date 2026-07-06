@@ -20,11 +20,11 @@ create unique index if not exists trades_user_ticket_unique
 
 -- ── SYNC KEYS ─────────────────────────────────────────────────
 -- One per user. EA sends this in a header to authenticate.
--- We store only a hash — never the raw key.
 create table if not exists sync_keys (
   id         uuid default gen_random_uuid() primary key,
   user_id    uuid references auth.users on delete cascade not null unique,
   key_hash   text not null,
+  raw_key    text,
   created_at timestamptz default now()
 );
 

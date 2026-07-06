@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import {
   getSession, subscribeAuth, restoreSession, signIn as apiSignIn, signUp as apiSignUp,
   signOut as apiSignOut, setSessionFromTokens, updateUserDisplayName, requestPasswordReset,
-  quickSignIn as apiQuickSignIn, isConfigured,
+  quickSignIn as apiQuickSignIn, signInWithGoogle as apiSignInWithGoogle, isConfigured,
 } from '../api/auth';
 
 const AuthContext = createContext(null);
@@ -41,6 +41,7 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(() => apiSignOut(), []);
   const setDisplayName = useCallback((name) => updateUserDisplayName(name), []);
   const resetPassword = useCallback((email) => requestPasswordReset(email), []);
+  const signInWithGoogle = useCallback(() => apiSignInWithGoogle('/login'), []);
 
   const value = {
     session,
@@ -48,7 +49,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!session,
     ready,
     configured: isConfigured(),
-    signIn, signUp, signOut, setDisplayName, resetPassword, quickSignIn,
+    signIn, signUp, signOut, setDisplayName, resetPassword, quickSignIn, signInWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

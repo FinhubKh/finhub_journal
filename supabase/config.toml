@@ -1,0 +1,31 @@
+# FinhubKH Journal — Supabase project config
+
+project_id = "eetscgfsqppcwlrzfiqh"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+# Per-function settings (global [functions] verify_jwt is invalid in current CLI)
+[functions.sync-trades]
+verify_jwt = false
+
+[functions.metaapi-connect]
+verify_jwt = true
+
+[functions.metaapi-sync]
+verify_jwt = true
+
+[functions.metaapi-disconnect]
+verify_jwt = true

@@ -1,6 +1,6 @@
 /**
  * nXuu — API layer
- * Supabase REST data calls (trades, checklist, models, sync keys, leaderboard).
+ * Supabase REST data calls (trades, checklist, models, sync keys).
  */
 import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, getUserId, authFetch } from './auth';
 
@@ -12,6 +12,47 @@ export async function insertTrade(trade) {
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+// ── TRADING ACCOUNTS ──
+export async function fetchTradingAccounts() {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/trading_accounts?select=*&order=is_default.desc,created_at.asc`,
+    { headers: authHeaders(getToken()) },
+  );
+  if (!res.ok) {
+    if (res.status === 404) return [];
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function insertTradingAccount(account) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts`, {
+    method: 'POST',
+    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+    body: JSON.stringify({ ...account, user_id: getUserId() }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateTradingAccount(id, fields) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteTradingAccount(id) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(getToken()),
+  });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 export async function fetchAllTrades() {
@@ -172,13 +213,56 @@ export async function revokeSyncKey() {
   if (!res.ok) throw new Error(await res.text());
 }
 
-// ── LEADERBOARD ──
-export async function fetchLeaderboard() {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/rpc/get_leaderboard`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${getToken()}` },
-    body: JSON.stringify({}),
-  });
-  if (!res.ok) return [];
-  return res.json();
+/*
+ * ── METAAPI (disabled — paid cloud sync) ──
+ * Backend edge functions remain in backend/supabase/functions/ for later.
+ * Re-enable in src/lib/features.js and uncomment below.
+ *
+async function callMetaApiFunction(name, body = {}) {
+  const url = `${SUPABASE_URL}/functions/v1/${name}`;
+  let res;
+  try {
+    res = await authFetch(url, {
+      method: 'POST',
+      headers: authHeaders(getToken()),
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(
+      'Could not reach the server. Deploy edge functions (npm run functions:deploy) and check your internet connection.',
+    );
+  }
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 404) {
+    throw new Error(
+      'MetaAPI edge function is not deployed yet. Run: npm run functions:deploy',
+    );
+  }
+  if (!res.ok) throw new Error(data.error || data.message || `Request failed (${res.status})`);
+  return data;
 }
+
+export function connectMetaApi(payload) {
+  return callMetaApiFunction('metaapi-connect', payload);
+}
+
+export function addMetaApiAccount(payload) {
+  return connectMetaApi({ ...payload, sync: true });
+}
+
+export function syncMetaApi(tradingAccountId) {
+  return callMetaApiFunction('metaapi-sync', tradingAccountId ? { tradingAccountId } : {});
+}
+
+export function disconnectMetaApi(tradingAccountId) {
+  return callMetaApiFunction('metaapi-disconnect', { tradingAccountId, deleteRecord: false });
+}
+
+export function removeMetaApiAccount(tradingAccountId) {
+  return callMetaApiFunction('metaapi-disconnect', { tradingAccountId, deleteRecord: true });
+}
+
+export function syncAllMetaApi() {
+  return callMetaApiFunction('metaapi-sync', {});
+}
+*/

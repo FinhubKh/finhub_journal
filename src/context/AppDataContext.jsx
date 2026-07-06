@@ -1,27 +1,46 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { fetchAllTrades, fetchSteps, fetchModels } from '../api';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { fetchAllTrades, fetchSteps, fetchModels, fetchTradingAccounts } from '../api';
+import {
+  filterTradesForView,
+  legacyAccountNames,
+  resolveTradeAccount,
+  buildAccountLookups,
+} from '../lib/accounts';
 import { useAuth } from './AuthContext';
 
 const AppDataContext = createContext(null);
+
+const VIEW_KEY = 'nxuu_view_mode';
+const ACCOUNT_KEY = 'nxuu_active_account_id';
+const EXCLUDE_DEMO_KEY = 'nxuu_exclude_demo';
+
+function readViewMode() {
+  const v = localStorage.getItem(VIEW_KEY);
+  return v === 'account' ? 'account' : 'portfolio';
+}
+
+function readActiveAccountId() {
+  return localStorage.getItem(ACCOUNT_KEY) || '';
+}
+
+function readExcludeDemo() {
+  return localStorage.getItem(EXCLUDE_DEMO_KEY) === 'true';
+}
 
 export function AppDataProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [allTrades, setAllTrades] = useState([]);
   const [userSteps, setUserSteps] = useState([]);
   const [userModels, setUserModels] = useState([]);
-  const [activeAccount, setActiveAccount] = useState('');
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('nxuu_theme');
-    if (saved) return saved === 'dark';
-    return true;
-  });
+  const [tradingAccounts, setTradingAccounts] = useState([]);
+  const [viewMode, setViewModeState] = useState(readViewMode);
+  const [activeAccountId, setActiveAccountIdState] = useState(readActiveAccountId);
+  const [excludeDemoFromPortfolio, setExcludeDemoState] = useState(readExcludeDemo);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    localStorage.setItem('nxuu_theme', dark ? 'dark' : 'light');
-  }, [dark]);
-
-  const toggleDark = useCallback(() => setDark((d) => !d), []);
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('nxuu_theme', 'light');
+  }, []);
 
   const refreshTrades = useCallback(async () => {
     try {
@@ -40,37 +59,110 @@ export function AppDataProvider({ children }) {
     try { setUserModels(await fetchModels()); } catch (e) { setUserModels([]); }
   }, []);
 
+  const refreshTradingAccounts = useCallback(async () => {
+    try {
+      setTradingAccounts(await fetchTradingAccounts());
+    } catch (e) {
+      console.error(e);
+      setTradingAccounts([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated) {
       refreshTrades();
       refreshSteps();
       refreshModels();
+      refreshTradingAccounts();
     } else {
-      setAllTrades([]); setUserSteps([]); setUserModels([]); setActiveAccount('');
+      setAllTrades([]);
+      setUserSteps([]);
+      setUserModels([]);
+      setTradingAccounts([]);
+      setViewModeState('portfolio');
+      setActiveAccountIdState('');
     }
-  }, [isAuthenticated, refreshTrades, refreshSteps, refreshModels]);
+  }, [isAuthenticated, refreshTrades, refreshSteps, refreshModels, refreshTradingAccounts]);
 
-  // Accounts list derived from trades
-  const accounts = useMemo(
-    () => [...new Set(allTrades.map((t) => t.account).filter(Boolean))].sort(),
-    [allTrades]
+  const setViewMode = useCallback((mode) => {
+    setViewModeState(mode);
+    localStorage.setItem(VIEW_KEY, mode);
+    if (mode === 'portfolio') {
+      setActiveAccountIdState('');
+      localStorage.removeItem(ACCOUNT_KEY);
+    }
+  }, []);
+
+  const setActiveAccountId = useCallback((id) => {
+    if (!id) {
+      setViewMode('portfolio');
+      return;
+    }
+    setActiveAccountIdState(id);
+    setViewModeState('account');
+    localStorage.setItem(VIEW_KEY, 'account');
+    localStorage.setItem(ACCOUNT_KEY, id);
+  }, [setViewMode]);
+
+  const setExcludeDemoFromPortfolio = useCallback((value) => {
+    setExcludeDemoState(value);
+    localStorage.setItem(EXCLUDE_DEMO_KEY, value ? 'true' : 'false');
+  }, []);
+
+  const activeAccount = useMemo(
+    () => tradingAccounts.find((a) => a.id === activeAccountId) || null,
+    [tradingAccounts, activeAccountId],
   );
 
-  // Reset activeAccount if it no longer exists
   useEffect(() => {
-    if (activeAccount && !accounts.includes(activeAccount)) setActiveAccount('');
-  }, [accounts, activeAccount]);
+    if (viewMode === 'account' && activeAccountId && !activeAccount) {
+      setViewMode('portfolio');
+    }
+  }, [viewMode, activeAccountId, activeAccount, setViewMode]);
 
-  const accountTrades = useMemo(
-    () => (activeAccount ? allTrades.filter((t) => (t.account || '') === activeAccount) : allTrades),
-    [allTrades, activeAccount]
+  const visibleTrades = useMemo(
+    () => filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId, excludeDemoFromPortfolio),
+    [allTrades, tradingAccounts, viewMode, activeAccountId, excludeDemoFromPortfolio],
   );
+
+  const accounts = useMemo(
+    () => legacyAccountNames(tradingAccounts, allTrades),
+    [tradingAccounts, allTrades],
+  );
+
+  const lookups = useMemo(() => buildAccountLookups(tradingAccounts), [tradingAccounts]);
 
   const value = {
-    allTrades, accountTrades, accounts, activeAccount, setActiveAccount,
-    userSteps, userModels,
-    refreshTrades, refreshSteps, refreshModels,
-    dark, toggleDark,
+    allTrades,
+    visibleTrades,
+    accountTrades: visibleTrades,
+    tradingAccounts,
+    viewMode,
+    activeAccountId,
+    activeAccount,
+    excludeDemoFromPortfolio,
+    accounts,
+    lookups,
+    resolveTradeAccount: (trade) => resolveTradeAccount(trade, lookups),
+    setViewMode,
+    setActiveAccountId,
+    setExcludeDemoFromPortfolio,
+    userSteps,
+    userModels,
+    refreshTrades,
+    refreshSteps,
+    refreshModels,
+    refreshTradingAccounts,
+    setActiveAccountByName: (name) => {
+      if (!name) {
+        setViewMode('portfolio');
+        return;
+      }
+      const match = tradingAccounts.find(
+        (a) => a.name === name || a.slug === name.toLowerCase(),
+      );
+      if (match) setActiveAccountId(match.id);
+    },
   };
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

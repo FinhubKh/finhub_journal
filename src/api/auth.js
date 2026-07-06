@@ -192,8 +192,19 @@ export async function setSessionFromTokens(accessToken, refreshToken) {
   if (!user?.id) throw new Error('Invalid user from token');
   const session = { access_token: accessToken, refresh_token: refreshToken, user };
   _session = session;
-  localStorage.setItem('nxuu_session', JSON.stringify(session));
+  localStorage.removeItem('nxuu_session');
+  sessionStorage.setItem('nxuu_session', JSON.stringify(session));
   notify();
+}
+
+export function signInWithGoogle(redirectPath = '/login') {
+  if (!isConfigured()) throw new Error('Add your Supabase keys first.');
+  const redirectTo = `${window.location.origin}${redirectPath}`;
+  const params = new URLSearchParams({
+    provider: 'google',
+    redirect_to: redirectTo,
+  });
+  window.location.assign(`${SUPABASE_URL}/auth/v1/authorize?${params}`);
 }
 
 export async function requestPasswordReset(email) {

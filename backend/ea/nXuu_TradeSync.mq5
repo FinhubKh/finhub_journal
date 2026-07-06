@@ -8,10 +8,9 @@
 
 #include "nXuu_TradeSync.config.mqh"
 
-input string SyncKey      = "";  // Paste your nXuu Sync Key here (Settings > MT4/5 Sync)
+input string SyncKey      = "";  // Paste your FinhubKH Sync Key (Settings > Sync)
 input string AccountLabel = "";  // Optional: label this account (e.g. "FTMO", "Personal")
-const string EndpointURL = NXUU_ENDPOINT_URL;
-const string AnonKey     = NXUU_ANON_KEY;
+const string EndpointURL = NXUU_API_URL;
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -127,8 +126,7 @@ void SendToEndpoint(string json, int count)
    char postData[];
    StringToCharArray(json, postData, 0, StringLen(json));
 
-   string headers = "Content-Type: application/json\r\nx-sync-key: " + SyncKey +
-                     "\r\napikey: " + AnonKey + "\r\nAuthorization: Bearer " + AnonKey + "\r\n";
+   string headers = "Content-Type: application/json\r\nx-sync-key: " + SyncKey + "\r\n";
    char result[];
    string resultHeaders;
 

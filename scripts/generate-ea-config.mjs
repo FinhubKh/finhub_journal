@@ -27,23 +27,18 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
   vars[key] = val;
 }
 
-const url = vars.VITE_SUPABASE_URL?.replace(/\/$/, '');
-const key = vars.VITE_SUPABASE_ANON_KEY;
+const apiUrl = vars.EA_API_URL?.replace(/\/$/, '');
+const port = vars.EA_API_PORT || '8787';
+const endpoint = apiUrl || `http://localhost:${port}/v1/ea/sync`;
 
-if (!url || !key) {
-  console.error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in .env');
-  process.exit(1);
-}
-
-const endpoint = `${url}/functions/v1/sync-trades`;
 const outPath = resolve(root, 'backend/ea/nXuu_TradeSync.config.mqh');
 const out = `// Auto-generated from .env — run: npm run ea:config
 #ifndef NXUU_TRADESYNC_CONFIG_MQH
 #define NXUU_TRADESYNC_CONFIG_MQH
-#define NXUU_ENDPOINT_URL "${endpoint}"
-#define NXUU_ANON_KEY "${key}"
+#define NXUU_API_URL "${endpoint}"
 #endif
 `;
 
 writeFileSync(outPath, out);
 console.log(`Wrote ${outPath}`);
+console.log(`EA sync URL: ${endpoint}`);
