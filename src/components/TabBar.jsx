@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
-import { getUserEmail, getUserDisplayName } from '../lib/auth';
+import { getUserEmail, getUserDisplayName } from '../api/auth';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
@@ -19,8 +19,8 @@ export default function TabBar({ activeTab, onSwitchTab }) {
   return (
     <nav className="tab-bar" role="tablist">
       <div className="tab-bar-logo">
-        <div className="app-logo">nXuu</div>
-        <div className="app-tagline">Trading Journal</div>
+        <div className="app-logo">FinhubKH</div>
+        <div className="app-tagline">Journal</div>
       </div>
       {TABS.map((t) => (
         <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} role="tab"

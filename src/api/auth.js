@@ -4,13 +4,9 @@
  * React can subscribe to session changes via useSyncExternalStore.
  */
 
-export const SUPABASE_URL = 'https://jlcgfogamjjgsieatuxi.supabase.co';
-export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsY2dmb2dhbWpqZ3NpZWF0dXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3OTAxNTksImV4cCI6MjA5ODM2NjE1OX0.ce3FUHEm6Uor98iLCM6Y7wt-NCNsWERUOmOZQkgPflo';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured } from './env';
 
-export function isConfigured() {
-  return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
-}
+export { SUPABASE_URL, SUPABASE_ANON_KEY, isConfigured };
 
 export function authHeaders(token) {
   return {

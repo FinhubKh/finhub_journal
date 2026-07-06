@@ -1,14 +1,14 @@
-import { useAppData } from '../../context/AppDataContext';
-import { computeStats } from '../../lib/stats';
-import ChecklistCard from './ChecklistCard';
-import EquityChart from './EquityChart';
-import BreakdownCard from './BreakdownCard';
+import { useAppData } from '../context/AppDataContext';
+import { computeStats } from '../lib/stats';
+import ChecklistCard from '../components/tabs/ChecklistCard';
+import EquityChart from '../components/tabs/EquityChart';
+import BreakdownCard from '../components/tabs/BreakdownCard';
 
 function fmtPnlStrict(v) {
   return v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;
 }
 
-export default function OverviewTab() {
+export default function OverviewPage() {
   const { accountTrades } = useAppData();
   const stats = computeStats(accountTrades);
 

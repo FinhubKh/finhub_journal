@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAppData } from '../../context/AppDataContext';
-import { fetchTradesByMonth } from '../../lib/api';
+import { useAppData } from '../context/AppDataContext';
+import { fetchTradesByMonth } from '../api';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -45,7 +45,7 @@ function MiniMonth({ year, month, trades, onOpen }) {
   );
 }
 
-export default function CalendarTab() {
+export default function CalendarPage() {
   const { activeAccount } = useAppData();
   const now = new Date();
   const [view, setView] = useState('month'); // month | year

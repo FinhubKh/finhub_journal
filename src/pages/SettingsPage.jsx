@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useAppData } from '../../context/AppDataContext';
-import { getUserDisplayName, getUserEmail } from '../../lib/auth';
+import { useAuth } from '../context/AuthContext';
+import { useAppData } from '../context/AppDataContext';
+import { getUserDisplayName, getUserEmail } from '../api/auth';
 import {
   insertStep, deleteStep, insertModel, deleteModel,
   generateSyncKey, hasSyncKey, revokeSyncKey, getSyncKey,
-} from '../../lib/api';
+} from '../api';
 
-export default function SettingsTab() {
+export default function SettingsPage() {
   const { signOut, setDisplayName } = useAuth();
   const { userSteps, userModels, refreshSteps, refreshModels, allTrades, dark, toggleDark } = useAppData();
 
@@ -142,7 +142,7 @@ export default function SettingsTab() {
         <div className="settings-add-form" style={{ borderTop: '1px solid var(--border)' }}>
           <label className="form-label">Display name <span className="form-hint">(shown on leaderboard)</span></label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input className="form-input" type="text" placeholder="e.g. nXuu_Trader1" style={{ flex: 1 }}
+            <input className="form-input" type="text" placeholder="e.g. FinhubKH_Trader1" style={{ flex: 1 }}
               value={dnInput} onChange={(e) => setDnInput(e.target.value)} />
             <button className="add-btn" type="button" disabled={dnSaving} onClick={saveDisplayName}>{dnSaving ? 'Saving...' : 'Save'}</button>
           </div>
@@ -198,7 +198,7 @@ export default function SettingsTab() {
           </div>
         )}
         <div className="settings-row-sub" style={{ padding: '0 16px 16px' }}>
-          Generate a key, paste it into the nXuu EA's "Sync Key" input in MT4/5. Every time you start MT4/5 with the EA attached, your full closed trade history is sent — new trades are added, existing ones are never overwritten.
+          Generate a key, paste it into the FinhubKH EA's "Sync Key" input in MT4/5. Every time you start MT4/5 with the EA attached, your full closed trade history is sent — new trades are added, existing ones are never overwritten.
         </div>
       </div>
 

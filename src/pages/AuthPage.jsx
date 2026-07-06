@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getRemembered, clearRemembered } from '../lib/auth';
+import { getRemembered, clearRemembered } from '../api/auth';
 
-export default function AuthScreen() {
+export default function AuthPage() {
   const { signIn, signUp, resetPassword, quickSignIn, configured } = useAuth();
   const [mode, setMode] = useState('signin'); // signin | signup
   const [showReset, setShowReset] = useState(false);
@@ -74,8 +74,8 @@ export default function AuthScreen() {
   return (
     <div className="auth-screen" id="auth-screen">
       <div className="auth-box">
-        <div className="auth-logo">nXuu</div>
-        <div className="auth-tagline">Trading Journal</div>
+        <div className="auth-logo">FinhubKH</div>
+        <div className="auth-tagline">Journal</div>
 
         {!showReset && remembered && (
           <div className="auth-remember-banner">

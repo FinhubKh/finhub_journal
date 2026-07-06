@@ -1,0 +1,60 @@
+[
+    {
+        "directory": "/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal",
+        "arguments": [
+            "clang++",
+            "-xc++",
+            "-std=c++17",
+            "-D__MQL__",
+            "-D__MQL5__",
+            "-include/Users/bunkheangheng/.cursor/extensions/ngsoftware.mql-clangd-1.1.62-universal/files/mql_clangd_compat.h",
+            "-include/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/.mql-auto-forwards/nXuu_TradeSync.a7c79b9f.auto.mqh",
+            "-fms-extensions",
+            "-fms-compatibility",
+            "-ferror-limit=0",
+            "-Wno-invalid-token-paste",
+            "-Wno-unused-value",
+            "-Wno-unknown-pragmas",
+            "-Wno-writable-strings",
+            "-Xclang",
+            "-Wno-invalid-pp-directive",
+            "-Wno-unknown-directives",
+            "-Wno-language-extension-token",
+            "-I/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal",
+            "-I/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/Include",
+            "-D__MQL5_BUILD__",
+            "-c",
+            "/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/backend/ea/nXuu_TradeSync.mq5"
+        ],
+        "file": "/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/backend/ea/nXuu_TradeSync.mq5"
+    },
+    {
+        "directory": "/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal",
+        "arguments": [
+            "clang++",
+            "-xc++-header",
+            "-std=c++17",
+            "-D__MQL__",
+            "-D__MQL5__",
+            "-include/Users/bunkheangheng/.cursor/extensions/ngsoftware.mql-clangd-1.1.62-universal/files/mql_clangd_compat.h",
+            "-include/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/.mql-auto-forwards/nXuu_TradeSync.a7c79b9f.auto.mqh",
+            "-fms-extensions",
+            "-fms-compatibility",
+            "-ferror-limit=0",
+            "-Wno-invalid-token-paste",
+            "-Wno-unused-value",
+            "-Wno-unknown-pragmas",
+            "-Wno-writable-strings",
+            "-Xclang",
+            "-Wno-invalid-pp-directive",
+            "-Wno-unknown-directives",
+            "-Wno-language-extension-token",
+            "-I/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal",
+            "-I/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/Include",
+            "-D__MQL5_BUILD__",
+            "-c",
+            "/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/backend/ea/nXuu_TradeSync.config.mqh"
+        ],
+        "file": "/Users/bunkheangheng/Desktop/Project/FinHubKh/finhub_journal/backend/ea/nXuu_TradeSync.config.mqh"
+    }
+]

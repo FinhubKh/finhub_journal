@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTradeModal } from '../context/TradeModalContext';
 import { useAppData } from '../context/AppDataContext';
-import { deleteTrade, updateTradeAnnotation } from '../lib/api';
+import { deleteTrade, updateTradeAnnotation } from '../api';
 import { fmtR, fmtPnl, fmtDateLong } from '../lib/format';
 
 export default function TradeModal() {

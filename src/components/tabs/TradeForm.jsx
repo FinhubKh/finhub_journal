@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
-import { insertTrade } from '../../lib/api';
+import { insertTrade } from '../../api';
 
 const today = () => new Date().toISOString().split('T')[0];
 

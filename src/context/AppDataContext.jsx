@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { fetchAllTrades, fetchSteps, fetchModels } from '../lib/api';
+import { fetchAllTrades, fetchSteps, fetchModels } from '../api';
 import { useAuth } from './AuthContext';
 
 const AppDataContext = createContext(null);

@@ -1,0 +1,4 @@
+node_modules
+dist
+.env
+backend/ea/nXuu_TradeSync.config.mqh

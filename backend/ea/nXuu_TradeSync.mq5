@@ -6,10 +6,12 @@
 #property strict
 #property version   "1.00"
 
+#include "nXuu_TradeSync.config.mqh"
+
 input string SyncKey      = "";  // Paste your nXuu Sync Key here (Settings > MT4/5 Sync)
-input string EndpointURL  = "https://jlcgfogamjjgsieatuxi.supabase.co/functions/v1/sync-trades";
 input string AccountLabel = "";  // Optional: label this account (e.g. "FTMO", "Personal")
-string AnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsY2dmb2dhbWpqZ3NpZWF0dXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3OTAxNTksImV4cCI6MjA5ODM2NjE1OX0.ce3FUHEm6Uor98iLCM6Y7wt-NCNsWERUOmOZQkgPflo";
+const string EndpointURL = NXUU_ENDPOINT_URL;
+const string AnonKey     = NXUU_ANON_KEY;
 
 //+------------------------------------------------------------------+
 int OnInit()

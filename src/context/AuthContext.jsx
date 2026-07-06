@@ -3,7 +3,7 @@ import {
   getSession, subscribeAuth, restoreSession, signIn as apiSignIn, signUp as apiSignUp,
   signOut as apiSignOut, setSessionFromTokens, updateUserDisplayName, requestPasswordReset,
   quickSignIn as apiQuickSignIn, isConfigured,
-} from '../lib/auth';
+} from '../api/auth';
 
 const AuthContext = createContext(null);
 

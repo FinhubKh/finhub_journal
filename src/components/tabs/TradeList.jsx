@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
-import { deleteTrade } from '../../lib/api';
+import { deleteTrade } from '../../api';
 import { fmtR, fmtDateShort } from '../../lib/format';
 
 function fmtPnlStrict(v) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchLeaderboard } from '../../lib/api';
-import { getUserId } from '../../lib/auth';
+import { fetchLeaderboard } from '../api';
+import { getUserId } from '../api/auth';
 
 function Row({ r, rank, pct, myId, pnlMode }) {
   const rankClass = rank === 0 ? 'gold' : rank === 1 ? 'silver' : rank === 2 ? 'bronze' : '';
@@ -21,7 +21,7 @@ function Row({ r, rank, pct, myId, pnlMode }) {
   );
 }
 
-export default function LeaderboardTab() {
+export default function LeaderboardPage() {
   const [rows, setRows] = useState(null);
   const [loading, setLoading] = useState(true);
   const myId = getUserId();

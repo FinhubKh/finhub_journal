@@ -1,7 +1,6 @@
 /**
- * nXuu — api.js
- * All Supabase REST data calls (trades, checklist steps, entry models,
- * MT4/5 sync keys, leaderboard). Mirrors the original js/supabase.js.
+ * nXuu — API layer
+ * Supabase REST data calls (trades, checklist, models, sync keys, leaderboard).
  */
 import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, getUserId, authFetch } from './auth';
 
