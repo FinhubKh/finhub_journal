@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Deploy Supabase edge functions and set METAAPI_TOKEN secret from .env
+ * Deploy Supabase edge functions (EA sync only).
  * Usage: npm run functions:deploy
  */
 import { readFileSync, existsSync } from 'fs';
@@ -35,18 +35,10 @@ if (!projectRef) {
 
 console.log(`Deploying to project: ${projectRef}\n`);
 
-// MetaAPI functions disabled — paid service. Only deploy EA sync for now.
-// const metaapiToken = env.METAAPI_TOKEN || env.METAAPI;
-// if (metaapiToken) {
-//   console.log('Setting METAAPI_TOKEN secret...');
-//   run('supabase', ['secrets', 'set', `METAAPI_TOKEN=${metaapiToken}`, '--project-ref', projectRef]);
-// }
-
 const functions = ['sync-trades'];
-// const functions = ['sync-trades', 'metaapi-connect', 'metaapi-sync', 'metaapi-disconnect'];
 
 for (const fn of functions) {
-  console.log(`\nDeploying ${fn}...`);
+  console.log(`Deploying ${fn}...`);
   run('supabase', ['functions', 'deploy', fn, '--project-ref', projectRef]);
 }
 

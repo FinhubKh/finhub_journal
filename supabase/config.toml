@@ -20,12 +20,3 @@ port = 54323
 # Per-function settings (global [functions] verify_jwt is invalid in current CLI)
 [functions.sync-trades]
 verify_jwt = false
-
-[functions.metaapi-connect]
-verify_jwt = true
-
-[functions.metaapi-sync]
-verify_jwt = true
-
-[functions.metaapi-disconnect]
-verify_jwt = true

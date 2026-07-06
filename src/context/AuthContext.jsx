@@ -4,14 +4,31 @@ import {
   signOut as apiSignOut, setSessionFromTokens, updateUserDisplayName, requestPasswordReset,
   quickSignIn as apiQuickSignIn, signInWithGoogle as apiSignInWithGoogle, isConfigured,
 } from '../api/auth';
+import { fetchMyProfile } from '../api/profile';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(getSession());
   const [ready, setReady] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => subscribeAuth(() => setSession(getSession())), []);
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setProfile(null);
+      return;
+    }
+    let cancelled = false;
+    setProfileLoading(true);
+    fetchMyProfile()
+      .then((p) => { if (!cancelled) setProfile(p); })
+      .catch(() => { if (!cancelled) setProfile({ id: session.user.id, role: 'user' }); })
+      .finally(() => { if (!cancelled) setProfileLoading(false); });
+    return () => { cancelled = true; };
+  }, [session?.user?.id, session?.access_token]);
 
   useEffect(() => {
     (async () => {
@@ -46,10 +63,18 @@ export function AuthProvider({ children }) {
   const value = {
     session,
     user: session?.user || null,
+    profile,
+    isAdmin: profile?.role === 'admin',
+    profileLoading,
     isAuthenticated: !!session,
     ready,
     configured: isConfigured(),
     signIn, signUp, signOut, setDisplayName, resetPassword, quickSignIn, signInWithGoogle,
+    refreshProfile: async () => {
+      const p = await fetchMyProfile();
+      setProfile(p);
+      return p;
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

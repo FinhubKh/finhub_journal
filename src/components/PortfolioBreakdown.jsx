@@ -1,10 +1,8 @@
 import { useMemo } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import {
-  buildAccountLookups,
   groupTradesByAccount,
   accountTypeLabel,
-  resolveTradeAccount,
 } from '../lib/accounts';
 import { computeStats } from '../lib/stats';
 import { card, cardBody, cardHd, cardTitle } from '../lib/ui';
@@ -14,19 +12,12 @@ function fmtPnl(v) {
 }
 
 export default function PortfolioBreakdown() {
-  const { allTrades, tradingAccounts, excludeDemoFromPortfolio, setActiveAccountId } = useAppData();
+  const { allTrades, tradingAccounts, setActiveAccountId } = useAppData();
 
-  const groups = useMemo(() => {
-    const lookups = buildAccountLookups(tradingAccounts);
-    let trades = allTrades;
-    if (excludeDemoFromPortfolio) {
-      trades = trades.filter((t) => {
-        const acc = resolveTradeAccount(t, lookups);
-        return !acc || acc.account_type !== 'demo';
-      });
-    }
-    return groupTradesByAccount(trades, tradingAccounts);
-  }, [allTrades, tradingAccounts, excludeDemoFromPortfolio]);
+  const groups = useMemo(
+    () => groupTradesByAccount(allTrades, tradingAccounts),
+    [allTrades, tradingAccounts],
+  );
 
   if (groups.length <= 1) return null;
 

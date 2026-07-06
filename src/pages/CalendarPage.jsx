@@ -1,29 +1,32 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppData } from '../context/AppDataContext';
-import { fetchTradesByMonth } from '../api';
+import { fetchTradesByMonth, fetchDailyPnlByYear } from '../api';
 import { filterTradesForView } from '../lib/accounts';
+import {
+  dayHasActivity,
+  overridesToMap,
+  resolveDayPnl,
+  resolveDayTradeCount,
+  toneFromPnl,
+  tradesSumForDay,
+  monthTradeTotal,
+  yearTradeTotal,
+} from '../lib/dailyPnl';
+import DailyPnlModal from '../components/DailyPnlModal';
 import YearDropdown from '../components/YearDropdown';
-import { btnGhost, card, cardBody, dashboardPage, dashboardPageFull } from '../lib/ui';
+import { btnGhost, card, cardBody, dashboardPageWide, dashboardPageWideFull } from '../lib/ui';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TRADING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-function dayTone(dts) {
-  if (dts.length === 0) return 'none';
-  const dayPnl = dts.reduce((s, t) => s + (t.pnl_usd || 0), 0);
-  if (dayPnl > 0) return 'win';
-  if (dayPnl < 0) return 'loss';
-  return 'be';
-}
-
 function cellClass(tone, today, tall = false) {
   const base = `relative flex flex-col rounded-xl border p-2 text-xs transition ${tall ? 'min-h-[88px] h-full' : 'min-h-[72px]'}`;
   if (tone === 'win') return `${base} border-violet-200 bg-violet-50 ${today ? 'ring-2 ring-violet-400' : ''}`;
   if (tone === 'loss') return `${base} border-rose-200 bg-rose-50 ${today ? 'ring-2 ring-rose-400' : ''}`;
   if (tone === 'be') return `${base} border-amber-200 bg-amber-50 ${today ? 'ring-2 ring-amber-400' : ''}`;
-  return `${base} border-zinc-100 bg-white ${today ? 'ring-2 ring-violet-300' : ''}`;
+  return `${base} border-zinc-100 bg-white hover:border-violet-200 hover:bg-violet-50/50 ${today ? 'ring-2 ring-violet-300' : ''}`;
 }
 
 function miniCellClass(tone, today) {
@@ -43,27 +46,28 @@ function dateString(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function summarizeWeek(days, tradeMap) {
+function summarizeWeek(days, tradeMap, overrideMap, useOverrides) {
   let weekPnl = 0;
   let weekTrades = 0;
   days.forEach((ds) => {
     if (!ds) return;
     const dts = tradeMap[ds] || [];
-    weekTrades += dts.length;
-    weekPnl += dts.reduce((s, t) => s + (t.pnl_usd || 0), 0);
+    const override = useOverrides ? overrideMap[ds] : null;
+    weekTrades += resolveDayTradeCount(dts, override);
+    weekPnl += resolveDayPnl(dts, override);
   });
-  return { weekPnl, weekTrades };
+  return { weekPnl, weekTrades, weekActive: days.some((ds) => ds && dayHasActivity(tradeMap[ds] || [], useOverrides ? overrideMap[ds] : null)) };
 }
 
-function buildMonthWeeks(year, month, tradeMap) {
+function buildMonthWeeks(year, month, tradeMap, overrideMap, useOverrides) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const weeks = [];
   let currentWeek = [null, null, null, null, null];
 
   function flushWeek() {
     if (!currentWeek.some(Boolean)) return;
-    const { weekPnl, weekTrades } = summarizeWeek(currentWeek, tradeMap);
-    weeks.push({ days: [...currentWeek], weekPnl, weekTrades, index: weeks.length + 1 });
+    const { weekPnl, weekTrades, weekActive } = summarizeWeek(currentWeek, tradeMap, overrideMap, useOverrides);
+    weeks.push({ days: [...currentWeek], weekPnl, weekTrades, weekActive, index: weeks.length + 1 });
     currentWeek = [null, null, null, null, null];
   }
 
@@ -88,6 +92,17 @@ function weekRangeLabel(days) {
   return start === end ? `Day ${start}` : `${start}–${end}`;
 }
 
+function monthTotalPnl(trades, overrideMap, useOverrides) {
+  const tradeMap = {};
+  trades.forEach((t) => { (tradeMap[t.date] ||= []).push(t); });
+  const dates = new Set([...Object.keys(tradeMap), ...(useOverrides ? Object.keys(overrideMap) : [])]);
+  let total = 0;
+  dates.forEach((ds) => {
+    total += resolveDayPnl(tradeMap[ds] || [], useOverrides ? overrideMap[ds] : null);
+  });
+  return total;
+}
+
 function StatCard({ value, label, valueClass = 'text-zinc-900' }) {
   return (
     <div className={`${card} p-4 text-center`}>
@@ -104,26 +119,31 @@ function Legend() {
       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" />Loss</span>
       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" />BE</span>
       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border border-zinc-300 bg-white" />No trade</span>
+      <span className="flex items-center gap-1.5"><span className="text-[10px] font-bold text-violet-600">M</span>Manual PnL</span>
     </div>
   );
 }
 
-function MonthPickerCard({ year, month, trades, onSelect }) {
+function MonthPickerCard({ year, month, trades, overrideMap, useOverrides, onSelect }) {
   const tradeMap = {};
   trades.forEach((t) => { (tradeMap[t.date] ||= []).push(t); });
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date().toISOString().split('T')[0];
-  const totalPnl = trades.reduce((s, t) => s + (t.pnl_usd || 0), 0);
-  const hasTrades = trades.length > 0;
+  const totalPnl = monthTotalPnl(trades, overrideMap, useOverrides);
+  const totalTrades = monthTradeTotal(trades, overrideMap, useOverrides, year, month);
+  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-${String(month).padStart(2, '0')}`)));
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(<div className="h-5 w-5" key={`e${i}`} />);
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const dts = tradeMap[ds] || [];
+    const override = useOverrides ? overrideMap[ds] : null;
+    const dayPnl = resolveDayPnl(dts, override);
+    const tone = toneFromPnl(dayPnl, dayHasActivity(dts, override));
     cells.push(
-      <div className={miniCellClass(dayTone(dts), ds === today)} key={ds} title={dts.length ? `${dts.length} trade(s)` : ''}>
+      <div className={miniCellClass(tone, ds === today)} key={ds} title={dayHasActivity(dts, override) ? fmtPnl(dayPnl) : ''}>
         {d}
       </div>
     );
@@ -137,10 +157,10 @@ function MonthPickerCard({ year, month, trades, onSelect }) {
     >
       <div className="mb-1 flex items-start justify-between gap-2">
         <div className="text-sm font-semibold text-zinc-900">{MONTHS_SHORT[month - 1]}</div>
-        {hasTrades && (
+        {hasActivity && (
           <div className="text-right text-[10px] leading-tight">
             <div className={totalPnl >= 0 ? 'font-semibold text-violet-600' : 'font-semibold text-rose-600'}>{fmtPnl(totalPnl)}</div>
-            <div className="text-zinc-400">{trades.length} trade{trades.length !== 1 ? 's' : ''}</div>
+            <div className="text-zinc-400">{totalTrades} trade{totalTrades !== 1 ? 's' : ''}</div>
           </div>
         )}
       </div>
@@ -152,12 +172,14 @@ function MonthPickerCard({ year, month, trades, onSelect }) {
   );
 }
 
-function YearView({ year, yearTrades, loading, onYearChange, onSelectMonth }) {
+function YearView({ year, yearTrades, overrideMap, useOverrides, loading, onYearChange, onSelectMonth }) {
   const allTrades = useMemo(() => Object.values(yearTrades).flat(), [yearTrades]);
-  const totalPnl = allTrades.reduce((s, t) => s + (t.pnl_usd || 0), 0);
+  const totalPnl = monthTotalPnl(allTrades, overrideMap, useOverrides);
+  const totalTrades = yearTradeTotal(allTrades, overrideMap, useOverrides, year);
   const wins = allTrades.filter((t) => t.result === 'win').length;
   const wr = allTrades.length > 0 ? Math.round((wins / allTrades.length) * 100) : 0;
   const currentYear = new Date().getFullYear();
+  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-`)));
 
   return (
     <div className="space-y-4">
@@ -169,17 +191,17 @@ function YearView({ year, yearTrades, loading, onYearChange, onSelectMonth }) {
               Go to {currentYear}
             </button>
           )}
-          <p className="w-full text-sm text-zinc-500">Select a month to view daily trades</p>
+          <p className="w-full text-sm text-zinc-500">Select a month to view and edit daily PnL</p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard
-          value={allTrades.length > 0 ? fmtPnl(totalPnl) : '—'}
+          value={hasActivity ? fmtPnl(totalPnl) : '—'}
           label="Yearly PnL"
           valueClass={totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
         />
-        <StatCard value={allTrades.length || '—'} label="Trades" />
+        <StatCard value={hasActivity ? totalTrades : '—'} label="Trades" />
         <StatCard value={allTrades.length > 0 ? `${wr}%` : '—'} label="Win Rate" />
       </div>
 
@@ -193,6 +215,8 @@ function YearView({ year, yearTrades, loading, onYearChange, onSelectMonth }) {
               year={year}
               month={i + 1}
               trades={yearTrades[i + 1] || []}
+              overrideMap={overrideMap}
+              useOverrides={useOverrides}
               onSelect={onSelectMonth}
             />
           ))}
@@ -204,20 +228,35 @@ function YearView({ year, yearTrades, loading, onYearChange, onSelectMonth }) {
   );
 }
 
-function MonthDetailView({ year, month, monthTrades, loading, onBack, onPrevMonth, onNextMonth }) {
-  const totalPnl = monthTrades.reduce((s, t) => s + (t.pnl_usd || 0), 0);
+function MonthDetailView({
+  year,
+  month,
+  monthTrades,
+  overrideMap,
+  useOverrides,
+  loading,
+  onBack,
+  onPrevMonth,
+  onNextMonth,
+  onEditDay,
+}) {
+  const totalPnl = monthTotalPnl(monthTrades, overrideMap, useOverrides);
+  const totalTrades = monthTradeTotal(monthTrades, overrideMap, useOverrides, year, month);
   const wins = monthTrades.filter((t) => t.result === 'win').length;
   const wr = monthTrades.length > 0 ? Math.round((wins / monthTrades.length) * 100) : 0;
-
   const today = new Date().toISOString().split('T')[0];
+  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-${String(month).padStart(2, '0')}`)));
 
   const { weeks, tradeMap } = useMemo(() => {
     const map = {};
     monthTrades.forEach((t) => { (map[t.date] ||= []).push(t); });
-    return { weeks: buildMonthWeeks(year, month, map), tradeMap: map };
-  }, [year, month, monthTrades]);
+    return {
+      weeks: buildMonthWeeks(year, month, map, overrideMap, useOverrides),
+      tradeMap: map,
+    };
+  }, [year, month, monthTrades, overrideMap, useOverrides]);
 
-  const bestWeekPnl = weeks.reduce((best, w) => (w.weekTrades > 0 && w.weekPnl > best ? w.weekPnl : best), -Infinity);
+  const bestWeekPnl = weeks.reduce((best, w) => (w.weekActive && w.weekPnl > best ? w.weekPnl : best), -Infinity);
   const bestWeek = bestWeekPnl === -Infinity ? null : weeks.find((w) => w.weekPnl === bestWeekPnl);
 
   return (
@@ -235,11 +274,11 @@ function MonthDetailView({ year, month, monthTrades, loading, onBack, onPrevMont
 
       <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          value={monthTrades.length > 0 ? fmtPnl(totalPnl) : '—'}
+          value={hasActivity ? fmtPnl(totalPnl) : '—'}
           label="Monthly PnL"
           valueClass={totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
         />
-        <StatCard value={monthTrades.length || '—'} label="Trades" />
+        <StatCard value={hasActivity ? totalTrades : '—'} label="Trades" />
         <StatCard value={monthTrades.length > 0 ? `${wr}%` : '—'} label="Win Rate" />
         <StatCard
           value={bestWeek ? fmtPnl(bestWeek.weekPnl) : '—'}
@@ -247,6 +286,10 @@ function MonthDetailView({ year, month, monthTrades, loading, onBack, onPrevMont
           valueClass={bestWeek && bestWeek.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
         />
       </div>
+
+      {useOverrides && (
+        <p className="shrink-0 text-xs text-zinc-500">Click any day to set or edit manual PnL.</p>
+      )}
 
       {loading ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400`}>Loading...</div>
@@ -266,32 +309,63 @@ function MonthDetailView({ year, month, monthTrades, loading, onBack, onPrevMont
                   {week.days.map((ds, idx) => {
                     if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-50/80" />;
                     const dts = tradeMap[ds] || [];
-                    const dayPnl = dts.reduce((s, t) => s + (t.pnl_usd || 0), 0);
-                    const count = dts.length;
-                    const tone = dayTone(dts);
+                    const override = useOverrides ? overrideMap[ds] : null;
+                    const dayPnl = resolveDayPnl(dts, override);
+                    const count = resolveDayTradeCount(dts, override);
+                    const active = dayHasActivity(dts, override);
+                    const tone = toneFromPnl(dayPnl, active);
                     const dayNum = parseInt(ds.split('-')[2], 10);
-                    return (
-                      <div className={cellClass(tone, ds === today, true)} key={ds}>
-                        <span className="text-xs font-medium text-zinc-700">{dayNum}</span>
-                        {count > 0 && (
+                    const manual = Boolean(override);
+
+                    const inner = (
+                      <>
+                        <span className="flex w-full items-start justify-between gap-1">
+                          <span className="text-xs font-medium text-zinc-700">{dayNum}</span>
+                          {manual && <span className="text-[9px] font-bold text-violet-600">M</span>}
+                        </span>
+                        {active && (
                           <span className={`mt-auto text-[10px] font-semibold ${dayPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
                             {fmtPnl(dayPnl)}
                           </span>
                         )}
-                        {count > 0 && <span className="text-[9px] text-zinc-400">{count}t</span>}
+                        {active && (
+                          <span className="text-[9px] text-zinc-400">{count}t</span>
+                        )}
+                        {!active && useOverrides && (
+                          <span className="mt-auto text-[9px] text-zinc-400">Tap to add</span>
+                        )}
+                      </>
+                    );
+
+                    if (useOverrides) {
+                      return (
+                        <button
+                          type="button"
+                          className={`${cellClass(tone, ds === today, true)} cursor-pointer text-left`}
+                          key={ds}
+                          onClick={() => onEditDay(ds, dts, override)}
+                        >
+                          {inner}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <div className={cellClass(tone, ds === today, true)} key={ds}>
+                        {inner}
                       </div>
                     );
                   })}
                   <div className={`flex h-full flex-col items-center justify-center rounded-xl border p-2 text-center ${
-                    week.weekTrades === 0
+                    !week.weekActive
                       ? 'border-zinc-100 bg-zinc-50'
                       : week.weekPnl >= 0
                         ? 'border-violet-200 bg-violet-50'
                         : 'border-rose-200 bg-rose-50'
                   }`}>
                     <span className="text-[10px] font-medium text-zinc-500">{weekRangeLabel(week.days)}</span>
-                    <span className={`mt-1 text-sm font-bold ${week.weekTrades === 0 ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
-                      {week.weekTrades > 0 ? fmtPnl(week.weekPnl) : '—'}
+                    <span className={`mt-1 text-sm font-bold ${!week.weekActive ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+                      {week.weekActive ? fmtPnl(week.weekPnl) : '—'}
                     </span>
                     {week.weekTrades > 0 && (
                       <span className="mt-0.5 text-[9px] text-zinc-400">{week.weekTrades} trade{week.weekTrades !== 1 ? 's' : ''}</span>
@@ -312,62 +386,72 @@ function MonthDetailView({ year, month, monthTrades, loading, onBack, onPrevMont
 }
 
 export default function CalendarPage() {
-  const {
-    tradingAccounts,
-    viewMode,
-    activeAccountId,
-    excludeDemoFromPortfolio,
-  } = useAppData();
+  const { tradingAccounts, viewMode, activeAccountId, refreshTrades } = useAppData();
+  const useOverrides = viewMode === 'portfolio';
   const now = new Date();
   const [screen, setScreen] = useState('year');
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [monthTrades, setMonthTrades] = useState([]);
   const [yearTrades, setYearTrades] = useState({});
+  const [dailyOverrides, setDailyOverrides] = useState({});
   const [loadingYear, setLoadingYear] = useState(true);
   const [loadingMonth, setLoadingMonth] = useState(false);
+  const [editDay, setEditDay] = useState(null);
+
+  const loadDailyOverrides = useCallback(async (y) => {
+    try {
+      const rows = await fetchDailyPnlByYear(y);
+      setDailyOverrides(overridesToMap(rows));
+    } catch {
+      setDailyOverrides({});
+    }
+  }, []);
 
   const loadYear = useCallback(async () => {
     setLoadingYear(true);
     try {
       const results = await Promise.all(
-        Array.from({ length: 12 }, (_, i) => fetchTradesByMonth(year, i + 1))
+        Array.from({ length: 12 }, (_, i) => fetchTradesByMonth(year, i + 1)),
       );
       const map = {};
       results.forEach((data, i) => {
-        map[i + 1] = filterTradesForView(
-          data,
-          tradingAccounts,
-          viewMode,
-          activeAccountId,
-          excludeDemoFromPortfolio,
-        );
+        map[i + 1] = filterTradesForView(data, tradingAccounts, viewMode, activeAccountId);
       });
       setYearTrades(map);
-    } catch (e) { setYearTrades({}); }
-    finally { setLoadingYear(false); }
-  }, [year, tradingAccounts, viewMode, activeAccountId, excludeDemoFromPortfolio]);
+      await loadDailyOverrides(year);
+    } catch {
+      setYearTrades({});
+    } finally {
+      setLoadingYear(false);
+    }
+  }, [year, tradingAccounts, viewMode, activeAccountId, loadDailyOverrides]);
 
   const loadMonth = useCallback(async (y, m) => {
     setLoadingMonth(true);
     try {
       const data = await fetchTradesByMonth(y, m);
-      setMonthTrades(filterTradesForView(
-        data,
-        tradingAccounts,
-        viewMode,
-        activeAccountId,
-        excludeDemoFromPortfolio,
-      ));
-    } catch (e) { setMonthTrades([]); }
-    finally { setLoadingMonth(false); }
-  }, [tradingAccounts, viewMode, activeAccountId, excludeDemoFromPortfolio]);
+      setMonthTrades(filterTradesForView(data, tradingAccounts, viewMode, activeAccountId));
+      await loadDailyOverrides(y);
+    } catch {
+      setMonthTrades([]);
+    } finally {
+      setLoadingMonth(false);
+    }
+  }, [tradingAccounts, viewMode, activeAccountId, loadDailyOverrides]);
 
   useEffect(() => { loadYear(); }, [loadYear]);
 
   useEffect(() => {
     if (screen === 'detail') loadMonth(year, month);
   }, [screen, year, month, loadMonth]);
+
+  async function handleDailySaved() {
+    await loadDailyOverrides(year);
+    await loadYear();
+    if (screen === 'detail') await loadMonth(year, month);
+    await refreshTrades();
+  }
 
   function openMonth(m) {
     setMonth(m);
@@ -393,11 +477,13 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className={screen === 'detail' ? dashboardPageFull : dashboardPage}>
+    <div className={screen === 'detail' ? dashboardPageWideFull : dashboardPageWide}>
       {screen === 'year' ? (
         <YearView
           year={year}
           yearTrades={yearTrades}
+          overrideMap={dailyOverrides}
+          useOverrides={useOverrides}
           loading={loadingYear}
           onYearChange={setYear}
           onSelectMonth={openMonth}
@@ -407,10 +493,29 @@ export default function CalendarPage() {
           year={year}
           month={month}
           monthTrades={monthTrades}
+          overrideMap={dailyOverrides}
+          useOverrides={useOverrides}
           loading={loadingMonth}
           onBack={goBackToYear}
           onPrevMonth={prevMonth}
           onNextMonth={nextMonth}
+          onEditDay={(date, dts, override) => setEditDay({
+            date,
+            tradesSum: tradesSumForDay(dts),
+            tradeCount: dts.length,
+            override,
+          })}
+        />
+      )}
+
+      {editDay && (
+        <DailyPnlModal
+          date={editDay.date}
+          tradesSum={editDay.tradesSum}
+          tradeCount={editDay.tradeCount}
+          override={editDay.override}
+          onClose={() => setEditDay(null)}
+          onSaved={handleDailySaved}
         />
       )}
     </div>

@@ -25,7 +25,7 @@ alter table trades
 
 alter table trades
   add constraint trades_account_id_fkey
-  foreign key (account_id) references trading_accounts(id) on delete set null;
+  foreign key (account_id) references trading_accounts(id) on delete cascade;
 
 create index if not exists trades_account_id_idx on trades(account_id);
 create index if not exists trading_accounts_user_id_idx on trading_accounts(user_id);

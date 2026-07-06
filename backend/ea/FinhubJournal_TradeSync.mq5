@@ -1,23 +1,88 @@
 //+------------------------------------------------------------------+
-//|                                            nXuu_TradeSync.mq5     |
-//| Sends full closed trade history to nXuu Trading Journal on start |
+//|                                    FinhubJournal_TradeSync.mq5    |
+//| Sends full closed trade history to FinhubKH Journal on start     |
 //| Read-only: only reads history, never places/modifies trades.     |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.00"
+#property version   "1.02"
 
-#include "nXuu_TradeSync.config.mqh"
+input string SyncKey = "";  // Paste sync key from Settings > Account (per trading account)
+const string EndpointURL  = "https://finhubjournal.vercel.app/v1/ea/sync";
 
-input string SyncKey      = "";  // Paste your FinhubKH Sync Key (Settings > Sync)
-input string AccountLabel = "";  // Optional: label this account (e.g. "FTMO", "Personal")
-const string EndpointURL = NXUU_API_URL;
+struct AccountCurrencyInfo
+  {
+   string currency;
+   bool   is_cent;
+   double pnl_divisor;
+  };
+
+//+------------------------------------------------------------------+
+void ToLower(string &s)
+  {
+   for(int i = 0; i < StringLen(s); i++)
+     {
+      ushort c = StringGetCharacter(s, i);
+      if(c >= 'A' && c <= 'Z')
+         StringSetCharacter(s, i, (ushort)(c + 32));
+     }
+  }
+
+//+------------------------------------------------------------------+
+string JsonEscape(string s)
+  {
+   StringReplace(s, "\\", "\\\\");
+   StringReplace(s, "\"", "\\\"");
+   return s;
+  }
+
+//+------------------------------------------------------------------+
+AccountCurrencyInfo GetAccountCurrencyInfo()
+  {
+   AccountCurrencyInfo info;
+   info.currency = AccountInfoString(ACCOUNT_CURRENCY);
+   info.is_cent = false;
+   info.pnl_divisor = 1.0;
+
+   string cur = info.currency;
+   ToLower(cur);
+
+   // Cent deposit currencies: USC, EUC, GBC, etc.
+   if(StringLen(cur) == 3 && StringGetCharacter(cur, 2) == 'c')
+     {
+      string prefix = StringSubstr(cur, 0, 2);
+      if(prefix == "us" || prefix == "eu" || prefix == "gb" || prefix == "au" || prefix == "ca" || prefix == "nz" || prefix == "ch")
+         info.is_cent = true;
+     }
+
+   string server = AccountInfoString(ACCOUNT_SERVER);
+   string accName = AccountInfoString(ACCOUNT_NAME);
+   string company = AccountInfoString(ACCOUNT_COMPANY);
+   string haystack = server + " " + accName + " " + company + " " + cur;
+   ToLower(haystack);
+
+   if(StringFind(haystack, "cent") >= 0 || StringFind(haystack, "cents") >= 0 || StringFind(haystack, "micro") >= 0)
+      info.is_cent = true;
+
+   if(info.is_cent)
+      info.pnl_divisor = 100.0;
+
+   return info;
+  }
+
+//+------------------------------------------------------------------+
+double NormalizePnl(double rawProfit, const AccountCurrencyInfo &info)
+  {
+   if(info.pnl_divisor > 1.0)
+      return rawProfit / info.pnl_divisor;
+   return rawProfit;
+  }
 
 //+------------------------------------------------------------------+
 int OnInit()
   {
    if(SyncKey == "")
      {
-      Alert("nXuu_TradeSync: Please set your Sync Key in EA inputs.");
+      Alert("FinhubJournal_TradeSync: Please set your Sync Key in EA inputs.");
       return(INIT_FAILED);
      }
    // Allow WebRequest must be enabled for EndpointURL's domain in
@@ -34,12 +99,23 @@ void SyncHistory()
 
    if(!HistorySelect(from, to))
      {
-      Print("nXuu_TradeSync: HistorySelect failed.");
+      Print("FinhubJournal_TradeSync: HistorySelect failed.");
       return;
      }
 
    int total = HistoryDealsTotal();
-   string json = "{\"trades\":[";
+   AccountCurrencyInfo acctInfo = GetAccountCurrencyInfo();
+   if(acctInfo.is_cent)
+      Print("FinhubJournal_TradeSync: Cent account detected (", acctInfo.currency,
+            "). PnL will be normalized to USD (divide by ", (int)acctInfo.pnl_divisor, ").");
+   else
+      Print("FinhubJournal_TradeSync: Standard account (", acctInfo.currency, ").");
+
+   string json = "{\"account_meta\":{";
+   json += "\"currency\":\"" + JsonEscape(acctInfo.currency) + "\",";
+   json += "\"is_cent\":" + (acctInfo.is_cent ? "true" : "false") + ",";
+   json += "\"pnl_divisor\":" + IntegerToString((int)acctInfo.pnl_divisor);
+   json += "},\"trades\":[";
    int    count = 0;
 
    for(int i = 0; i < total; i++)
@@ -93,6 +169,8 @@ void SyncHistory()
            }
         }
 
+      double profitUsd = NormalizePnl(profit, acctInfo);
+
       if(count > 0) json += ",";
       json += "{";
       json += "\"ticket\":" + IntegerToString(dealTicket) + ",";
@@ -101,11 +179,11 @@ void SyncHistory()
       json += "\"entry_price\":" + DoubleToString(entryPx, 5) + ",";
       json += "\"exit_price\":" + DoubleToString(exitPx, 5) + ",";
       json += "\"lot_size\":" + DoubleToString(volume, 2) + ",";
-      json += "\"pnl_usd\":" + DoubleToString(profit, 2) + ",";
+      json += "\"pnl_raw\":" + DoubleToString(profit, 2) + ",";
+      json += "\"pnl_usd\":" + DoubleToString(profitUsd, 2) + ",";
       json += "\"r_value\":" + DoubleToString(rValue, 2) + ",";
       json += "\"open_time\":\"" + TimeToISO(openTime) + "\",";
       json += "\"close_time\":\"" + TimeToISO(closeTime) + "\"";
-      if(AccountLabel != "") json += ",\"account\":\"" + AccountLabel + "\"";
       json += "}";
       count++;
      }
@@ -113,7 +191,7 @@ void SyncHistory()
 
    if(count == 0)
      {
-      Print("nXuu_TradeSync: No closed trades found.");
+      Print("FinhubJournal_TradeSync: No closed trades found.");
       return;
      }
 
@@ -134,13 +212,13 @@ void SendToEndpoint(string json, int count)
 
    if(res == -1)
      {
-      Print("nXuu_TradeSync: WebRequest failed. Error ", GetLastError(),
+      Print("FinhubJournal_TradeSync: WebRequest failed. Error ", GetLastError(),
             ". Add the endpoint URL under Tools > Options > Expert Advisors > Allow WebRequest.");
       return;
      }
 
    string response = CharArrayToString(result);
-   Print("nXuu_TradeSync: Synced ", count, " trades. Response: ", response);
+   Print("FinhubJournal_TradeSync: Synced ", count, " trades. Response: ", response);
   }
 
 //+------------------------------------------------------------------+

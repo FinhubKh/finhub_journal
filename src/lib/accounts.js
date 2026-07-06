@@ -4,6 +4,12 @@ export const ACCOUNT_TYPES = [
   { value: 'demo', label: 'Demo' },
 ];
 
+export const PNL_DENOMINATIONS = [
+  { value: 'auto', label: 'Auto-detect (EA)' },
+  { value: 'usd', label: 'Standard USD' },
+  { value: 'cent', label: 'Cent account' },
+];
+
 export const ACCOUNT_COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#dc2626'];
 
 export function normalizeSlug(name) {
@@ -12,6 +18,10 @@ export function normalizeSlug(name) {
 
 export function accountTypeLabel(type) {
   return ACCOUNT_TYPES.find((t) => t.value === type)?.label || type;
+}
+
+export function pnlDenominationLabel(value) {
+  return PNL_DENOMINATIONS.find((d) => d.value === value)?.label || value || 'Auto-detect';
 }
 
 export function buildAccountLookups(tradingAccounts) {
@@ -46,20 +56,14 @@ export function tradeMatchesAccount(trade, accountId, lookups) {
     || trade.account.trim().toLowerCase() === account.name.trim().toLowerCase();
 }
 
-export function filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId, excludeDemo) {
+export function filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId) {
   const lookups = buildAccountLookups(tradingAccounts);
 
   if (viewMode === 'account' && activeAccountId) {
     return allTrades.filter((t) => tradeMatchesAccount(t, activeAccountId, lookups));
   }
 
-  if (!excludeDemo) return allTrades;
-
-  return allTrades.filter((t) => {
-    const acc = resolveTradeAccount(t, lookups);
-    if (!acc) return true;
-    return acc.account_type !== 'demo';
-  });
+  return allTrades;
 }
 
 export function groupTradesByAccount(allTrades, tradingAccounts) {
@@ -100,11 +104,6 @@ export function legacyAccountNames(tradingAccounts, allTrades) {
     if (t.account) names.add(t.account);
   });
   return [...names].sort();
-}
-
-// MetaAPI helpers kept for future use — cloud sync is disabled in features.js
-export function isMetaApiConnected(account) {
-  return Boolean(account?.metaapi_account_id && account.connection_status === 'connected');
 }
 
 export function selectableTradingAccounts(tradingAccounts) {

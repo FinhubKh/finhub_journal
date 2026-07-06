@@ -52,6 +52,7 @@ const server = createServer(async (req, res) => {
     const result = await handleEaSync({
       syncKey: req.headers['x-sync-key'],
       trades: body.trades,
+      accountMeta: body.account_meta,
       supabaseUrl,
       serviceKey,
     });

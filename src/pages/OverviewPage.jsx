@@ -1,8 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
-import { accountTypeLabel } from '../lib/accounts';
 import { computeStats } from '../lib/stats';
-import { card, dashboardPage, sectionLabel } from '../lib/ui';
-import ChecklistCard from '../components/tabs/ChecklistCard';
+import { btnOutline, card, dashboardPageWide, sectionLabel } from '../lib/ui';
+import AccountViewDropdown from '../components/AccountViewDropdown';
 import EquityChart from '../components/tabs/EquityChart';
 import BreakdownCard from '../components/tabs/BreakdownCard';
 import PortfolioBreakdown from '../components/PortfolioBreakdown';
@@ -42,54 +42,52 @@ function HeroStat({ label, value, hint, positive }) {
   );
 }
 
-function OverviewHeader({ title, subtitle }) {
+function OverviewHeader() {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-zinc-900">Overview</h1>
         <p className="mt-1 text-sm text-zinc-500">Performance snapshot for your current view.</p>
       </div>
-      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-600">
-        {title}
-        {subtitle ? <span className="ml-1.5 font-normal text-zinc-400">· {subtitle}</span> : null}
-      </span>
+      <AccountViewDropdown variant="header" />
     </header>
   );
 }
 
-function EmptyOverview() {
+function EmptyOverview({ onOpenSetup }) {
   return (
-    <div className={`${card} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+    <div className={`${card} flex flex-col items-center justify-center px-6 py-12 text-center`}>
       <p className="text-sm font-semibold text-zinc-800">No trades in this view yet</p>
-      <p className="mt-2 max-w-sm text-sm text-zinc-500">
-        Log a trade on the Log tab, sync from MT5, or switch accounts in the sidebar to see stats here.
+      <p className="mt-2 max-w-md text-sm text-zinc-500">
+        Connect MetaTrader 5 from the MT5 Setup section, or switch accounts in the sidebar.
       </p>
+      <button className={`${btnOutline} mt-5`} type="button" onClick={onOpenSetup}>
+        Open MT5 setup guide
+      </button>
     </div>
   );
 }
 
 export default function OverviewPage() {
-  const { visibleTrades, viewMode, activeAccount, excludeDemoFromPortfolio } = useAppData();
+  const navigate = useNavigate();
+  const { visibleTrades, viewMode } = useAppData();
   const stats = computeStats(visibleTrades);
   const hasTrades = visibleTrades.length > 0;
-
-  const viewTitle = viewMode === 'portfolio' ? 'Portfolio' : activeAccount?.name || 'Portfolio';
-  const viewSubtitle = viewMode === 'portfolio'
-    ? (excludeDemoFromPortfolio ? 'demo excluded' : 'all accounts')
-    : activeAccount
-      ? accountTypeLabel(activeAccount.account_type)
-      : null;
 
   const pfNum = stats ? parseFloat(stats.pf) : NaN;
   const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || stats.pf === '∞');
 
   return (
-    <div className={dashboardPage}>
-      <OverviewHeader title={viewTitle} subtitle={viewSubtitle} />
+    <div className={dashboardPageWide}>
+      <OverviewHeader />
 
-      {!hasTrades ? (
-        <EmptyOverview />
-      ) : (
+      {!hasTrades && (
+        <div className="mb-6">
+          <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'setup' } })} />
+        </div>
+      )}
+
+      {hasTrades && (
         <div className="space-y-6">
           {/* Primary KPIs */}
           <section aria-label="Key metrics">
@@ -121,7 +119,7 @@ export default function OverviewPage() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="min-w-0 space-y-6">
               {/* Risk & expectancy */}
               <section aria-label="Risk metrics">
@@ -182,7 +180,6 @@ export default function OverviewPage() {
 
             <aside className="min-w-0 space-y-4">
               {viewMode === 'portfolio' && <PortfolioBreakdown />}
-              <ChecklistCard />
               <div className="hidden xl:block">
                 <BreakdownCard trades={visibleTrades} />
               </div>

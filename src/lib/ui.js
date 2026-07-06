@@ -52,6 +52,11 @@ export const cardBody = 'p-4 md:p-5';
 
 export const dashboardPage = 'mx-auto w-full min-w-0 max-w-6xl p-4 pb-8 md:p-6';
 
+export const dashboardPageWide = 'mx-auto w-full min-w-0 max-w-[1600px] px-4 pb-8 pt-4 md:px-8 md:pt-6';
+
+export const dashboardPageWideFull =
+  'mx-auto flex h-full min-h-[calc(100dvh-3rem)] w-full min-w-0 max-w-[1600px] flex-col px-4 pb-6 pt-4 md:px-8 md:pt-6';
+
 export const dashboardPageFull = 'flex h-full min-h-[calc(100dvh-3rem)] w-full min-w-0 flex-col p-4 pb-6 md:p-6';
 
 export const pillToggle =
@@ -73,6 +78,11 @@ export const msgError = 'text-sm text-rose-600';
 export const sectionLabel = 'mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400';
 
 export const emptyState = 'px-4 py-10 text-center text-sm text-zinc-400 md:px-5';
+
+export const tableTh =
+  'whitespace-nowrap bg-zinc-50 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500';
+export const tableTd = 'whitespace-nowrap px-4 py-3.5 text-sm text-zinc-700';
+export const tableTdRight = `${tableTd} text-right tabular-nums`;
 
 export function resultBtn(type, selected) {
   const base = 'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition active:scale-[0.98]';

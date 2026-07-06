@@ -30,16 +30,48 @@ function AuthField({ placeholder, type = 'text', value, onChange, autoComplete, 
   );
 }
 
+function AuthPasswordField({ placeholder, value, onChange, autoComplete }) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative border-b border-zinc-200 pb-2.5 focus-within:border-violet-500">
+      <input
+        className="w-full bg-transparent pr-10 text-sm text-zinc-800 outline-none placeholder:text-zinc-400"
+        type={visible ? 'text' : 'password'}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={onChange}
+      />
+      <button
+        type="button"
+        className="absolute right-0 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 transition hover:text-violet-600"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+      >
+        {visible ? iconEyeOff : iconEye}
+      </button>
+    </div>
+  );
+}
+
 const iconMail = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
     <path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
-const iconLock = (
+const iconEye = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
-    <path d="M8 11V8a4 4 0 118 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeWidth="1.6" />
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+  </svg>
+);
+const iconEyeOff = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M10.58 10.58A3 3 0 0012 15a3 3 0 002.42-4.42M9.88 5.09A10.94 10.94 0 0112 5c6.5 0 10 7 10 7a18.45 18.45 0 01-4.06 5.12M6.12 6.12A18.5 18.5 0 002 12s3.5 7 10 7a10.94 10.94 0 005.91-1.72" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 
@@ -221,13 +253,11 @@ export default function AuthPage() {
                       onChange={(e) => setSiEmail(e.target.value)}
                       icon={iconMail}
                     />
-                    <AuthField
+                    <AuthPasswordField
                       placeholder="Password"
-                      type="password"
                       autoComplete="current-password"
                       value={siPass}
                       onChange={(e) => setSiPass(e.target.value)}
-                      icon={iconLock}
                     />
                     <label className="flex items-center gap-2 text-sm text-zinc-500">
                       <input type="checkbox" className="accent-violet-600" checked={siRemember} onChange={(e) => setSiRemember(e.target.checked)} />
@@ -257,21 +287,17 @@ export default function AuthPage() {
                       onChange={(e) => setSuEmail(e.target.value)}
                       icon={iconMail}
                     />
-                    <AuthField
+                    <AuthPasswordField
                       placeholder="Password"
-                      type="password"
                       autoComplete="new-password"
                       value={suPass}
                       onChange={(e) => setSuPass(e.target.value)}
-                      icon={iconLock}
                     />
-                    <AuthField
+                    <AuthPasswordField
                       placeholder="Confirm password"
-                      type="password"
                       autoComplete="new-password"
                       value={suPass2}
                       onChange={(e) => setSuPass2(e.target.value)}
-                      icon={iconLock}
                     />
                     <div className="pt-2">
                       <button type="button" className={submitBtn} disabled={suLoading} onClick={handleSignUp}>

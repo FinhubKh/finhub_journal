@@ -13,17 +13,26 @@ function supabaseHeaders(serviceKey, extra = {}) {
   };
 }
 
-function resolveAccountId(label, tradingAccounts) {
-  if (!label?.trim()) return null;
-  const trimmed = label.trim();
-  const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const bySlug = tradingAccounts.find((a) => a.slug === slug);
-  if (bySlug) return bySlug.id;
-  const byName = tradingAccounts.find((a) => a.name.trim().toLowerCase() === trimmed.toLowerCase());
-  return byName?.id || null;
+function resolvePnlUsd(trade, accountMeta, matchedAccount) {
+  const raw = trade.pnl_raw != null ? Number(trade.pnl_raw) : null;
+  const precomputed = Number(trade.pnl_usd) || 0;
+  const denom = matchedAccount?.pnl_denomination || 'auto';
+
+  if (denom === 'cent') {
+    if (raw != null) return raw / 100;
+    return precomputed;
+  }
+  if (denom === 'usd') {
+    if (raw != null) return raw;
+    return precomputed;
+  }
+
+  const divisor = Number(accountMeta?.pnl_divisor) || 1;
+  if (raw != null && divisor > 1) return raw / divisor;
+  return precomputed;
 }
 
-export async function handleEaSync({ syncKey, trades, supabaseUrl, serviceKey }) {
+export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, serviceKey }) {
   if (!syncKey?.trim()) {
     return { status: 401, body: { error: 'Missing x-sync-key header' } };
   }
@@ -33,7 +42,7 @@ export async function handleEaSync({ syncKey, trades, supabaseUrl, serviceKey })
 
   const keyHash = sha256Hex(syncKey.trim());
   const keyRes = await fetch(
-    `${supabaseUrl}/rest/v1/sync_keys?select=user_id&key_hash=eq.${encodeURIComponent(keyHash)}&limit=1`,
+    `${supabaseUrl}/rest/v1/sync_keys?select=user_id,trading_account_id&key_hash=eq.${encodeURIComponent(keyHash)}&limit=1`,
     { headers: supabaseHeaders(serviceKey) },
   );
   if (!keyRes.ok) {
@@ -41,24 +50,31 @@ export async function handleEaSync({ syncKey, trades, supabaseUrl, serviceKey })
     return { status: 500, body: { error: text || 'Failed to verify sync key' } };
   }
   const keyRows = await keyRes.json();
-  const userId = keyRows[0]?.user_id;
-  if (!userId) {
+  const keyRow = keyRows[0];
+  const userId = keyRow?.user_id;
+  const tradingAccountId = keyRow?.trading_account_id;
+  if (!userId || !tradingAccountId) {
     return { status: 401, body: { error: 'Invalid sync key' } };
   }
 
-  const accountsRes = await fetch(
-    `${supabaseUrl}/rest/v1/trading_accounts?select=id,name,slug&user_id=eq.${encodeURIComponent(userId)}`,
+  const accountRes = await fetch(
+    `${supabaseUrl}/rest/v1/trading_accounts?select=id,name,pnl_denomination&id=eq.${encodeURIComponent(tradingAccountId)}&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
     { headers: supabaseHeaders(serviceKey) },
   );
-  if (!accountsRes.ok) {
-    const text = await accountsRes.text();
-    return { status: 500, body: { error: text || 'Failed to load trading accounts' } };
+  if (!accountRes.ok) {
+    const text = await accountRes.text();
+    return { status: 500, body: { error: text || 'Failed to load trading account' } };
   }
-  const tradingAccounts = await accountsRes.json();
+  const accountRows = await accountRes.json();
+  const matchedAccount = accountRows[0];
+  if (!matchedAccount) {
+    return { status: 401, body: { error: 'Sync key is not linked to a trading account' } };
+  }
+
+  const accountLabel = matchedAccount.name;
 
   const rows = trades.map((t) => {
-    const pnl = Number(t.pnl_usd) || 0;
-    const accountLabel = t.account?.trim() || null;
+    const pnl = resolvePnlUsd(t, accountMeta, matchedAccount);
     return {
       user_id: userId,
       source: 'api',
@@ -75,7 +91,7 @@ export async function handleEaSync({ syncKey, trades, supabaseUrl, serviceKey })
       close_time: t.close_time,
       date: (t.close_time || t.open_time || new Date().toISOString()).slice(0, 10),
       account: accountLabel,
-      account_id: resolveAccountId(accountLabel, tradingAccounts),
+      account_id: matchedAccount.id,
     };
   });
 
@@ -84,7 +100,7 @@ export async function handleEaSync({ syncKey, trades, supabaseUrl, serviceKey })
     {
       method: 'POST',
       headers: supabaseHeaders(serviceKey, {
-        Prefer: 'resolution=ignore-duplicates,return=representation',
+        Prefer: 'resolution=merge-duplicates,return=representation',
       }),
       body: JSON.stringify(rows),
     },
@@ -93,14 +109,22 @@ export async function handleEaSync({ syncKey, trades, supabaseUrl, serviceKey })
     const text = await upsertRes.text();
     return { status: 500, body: { error: text || 'Failed to save trades' } };
   }
-  const inserted = await upsertRes.json();
+  const saved = await upsertRes.json();
 
   return {
     status: 200,
     body: {
       received: trades.length,
-      inserted: inserted.length,
-      skipped: trades.length - inserted.length,
+      inserted: saved.length,
+      updated: saved.length,
+      account: accountLabel,
+      account_meta: accountMeta
+        ? {
+            currency: accountMeta.currency || null,
+            is_cent: Boolean(accountMeta.is_cent),
+            pnl_divisor: Number(accountMeta.pnl_divisor) || 1,
+          }
+        : null,
     },
   };
 }

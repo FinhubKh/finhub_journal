@@ -1,7 +1,7 @@
 // ============================================================
 // nXuu — sync-trades Edge Function
 // Receives full trade history from the MT4/5 EA, authenticates
-// via per-user sync key, upserts trades keyed by (user_id, ticket).
+// via per-account sync key, upserts trades keyed by (user_id, ticket).
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -28,10 +28,10 @@ interface IncomingTrade {
   exit_price:   number;
   lot_size:     number;
   pnl_usd:      number;
+  pnl_raw?:     number;
   r_value?:     number;
-  open_time:    string;  // ISO timestamp
-  close_time:   string;  // ISO timestamp
-  account?:     string;  // optional MT account label
+  open_time:    string;
+  close_time:   string;
 }
 
 Deno.serve(async (req) => {
@@ -49,48 +49,59 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const trades: IncomingTrade[] = body.trades || [];
+    const accountMeta = body.account_meta;
     if (!Array.isArray(trades) || trades.length === 0) {
       return new Response(JSON.stringify({ error: 'No trades provided' }), { status: 400, headers: corsHeaders });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-    // 1. Authenticate: hash the incoming key, look up matching user
     const keyHash = await sha256Hex(syncKey);
     const { data: keyRow, error: keyErr } = await supabase
       .from('sync_keys')
-      .select('user_id')
+      .select('user_id, trading_account_id')
       .eq('key_hash', keyHash)
       .single();
 
-    if (keyErr || !keyRow) {
+    if (keyErr || !keyRow?.user_id || !keyRow?.trading_account_id) {
       return new Response(JSON.stringify({ error: 'Invalid sync key' }), { status: 401, headers: corsHeaders });
     }
 
     const userId = keyRow.user_id;
+    const tradingAccountId = keyRow.trading_account_id;
 
-    const { data: tradingAccounts } = await supabase
+    const { data: matchedAccount } = await supabase
       .from('trading_accounts')
-      .select('id, name, slug')
-      .eq('user_id', userId);
+      .select('id, name, pnl_denomination')
+      .eq('id', tradingAccountId)
+      .eq('user_id', userId)
+      .single();
 
-    const accountBySlug = new Map(
-      (tradingAccounts || []).map((a: { id: string; slug: string }) => [a.slug, a.id]),
-    );
-    const accountByName = new Map(
-      (tradingAccounts || []).map((a: { id: string; name: string }) => [a.name.trim().toLowerCase(), a.id]),
-    );
-
-    function resolveAccountId(label?: string): string | null {
-      if (!label?.trim()) return null;
-      const slug = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      return accountBySlug.get(slug) || accountByName.get(label.trim().toLowerCase()) || null;
+    if (!matchedAccount) {
+      return new Response(JSON.stringify({ error: 'Sync key is not linked to a trading account' }), { status: 401, headers: corsHeaders });
     }
 
-    // 2. Map incoming trades to our schema
+    function resolvePnlUsd(t: IncomingTrade): number {
+      const raw = t.pnl_raw != null ? Number(t.pnl_raw) : null;
+      const precomputed = Number(t.pnl_usd) || 0;
+      const denom = matchedAccount.pnl_denomination || 'auto';
+
+      if (denom === 'cent') {
+        if (raw != null) return raw / 100;
+        return precomputed;
+      }
+      if (denom === 'usd') {
+        if (raw != null) return raw;
+        return precomputed;
+      }
+
+      const divisor = Number(accountMeta?.pnl_divisor) || 1;
+      if (raw != null && divisor > 1) return raw / divisor;
+      return precomputed;
+    }
+
     const rows = trades.map(t => {
-      const pnl = Number(t.pnl_usd) || 0;
-      const accountLabel = t.account?.trim() || null;
+      const pnl = resolvePnlUsd(t);
       return {
         user_id:      userId,
         source:       'api',
@@ -106,16 +117,14 @@ Deno.serve(async (req) => {
         open_time:    t.open_time,
         close_time:   t.close_time,
         date:         (t.close_time || t.open_time || new Date().toISOString()).slice(0, 10),
-        account:      accountLabel,
-        account_id:   resolveAccountId(accountLabel),
+        account:      matchedAccount.name,
+        account_id:   matchedAccount.id,
       };
     });
 
-    // 3. Upsert — only inserts new tickets, leaves existing rows (and their
-    //    annotations) completely untouched via ignoreDuplicates.
     const { data, error } = await supabase
       .from('trades')
-      .upsert(rows, { onConflict: 'user_id,ticket', ignoreDuplicates: true })
+      .upsert(rows, { onConflict: 'user_id,ticket', ignoreDuplicates: false })
       .select('id');
 
     if (error) {
@@ -125,7 +134,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       received: trades.length,
       inserted: data?.length || 0,
-      skipped:  trades.length - (data?.length || 0),
+      account: matchedAccount.name,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e) {

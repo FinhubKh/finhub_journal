@@ -8,12 +8,13 @@ const TABS = [
   { id: 'overview', label: 'Overview', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
   { id: 'log', label: 'Log', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
   { id: 'calendar', label: 'Calendar', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
+  { id: 'setup', label: 'MT5 Setup', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l1.2 2.5 2.7.4-2 1.9.5 2.7L8 7.8 5.6 9l.5-2.7-2-1.9 2.7-.4L8 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /><path d="M3 13h10M5.5 11v2M10.5 11v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
   { id: 'settings', label: 'Settings', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" /><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
 ];
 
 export default function TabBar({ activeTab, onSwitchTab }) {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
   const email = getUserEmail();
   const displayName = getUserDisplayName();
 
@@ -49,6 +50,16 @@ export default function TabBar({ activeTab, onSwitchTab }) {
 
       <div className="mt-4 space-y-2 border-t border-zinc-100 pt-4">
         <p className="hidden truncate px-2 text-xs text-zinc-400 md:block">{displayName || email}</p>
+        {isAdmin && (
+          <button
+            type="button"
+            className={`${btnGhost} w-full justify-center border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 md:justify-start`}
+            onClick={() => navigate('/admin')}
+          >
+            <span className="md:hidden" title="Admin">Adm</span>
+            <span className="hidden md:inline">Admin panel</span>
+          </button>
+        )}
         <AccountSwitcher />
         <button type="button" className={`${btnGhost} w-full justify-center bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 md:justify-start`} onClick={async () => { await signOut(); navigate('/'); }}>
           <span className="md:hidden" title="Sign out">Out</span>

@@ -6,6 +6,7 @@ import TradeModal from '../components/TradeModal';
 import OverviewPage from './OverviewPage';
 import LogPage from './LogPage';
 import CalendarPage from './CalendarPage';
+import Mt5SetupPage from './Mt5SetupPage';
 import SettingsPage from './SettingsPage';
 import { appShell } from '../lib/ui';
 
@@ -28,10 +29,15 @@ export default function DashboardPage() {
       <div className={appShell} id="main-app">
         <TabBar activeTab={activeTab} onSwitchTab={setActiveTab} />
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50">
-          <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain">
+          <div
+            className={`flex h-full min-h-0 min-w-0 flex-col ${
+              activeTab === 'log' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
+            }`}
+          >
             {activeTab === 'overview' && <OverviewPage />}
             {activeTab === 'log' && <LogPage />}
             {activeTab === 'calendar' && <CalendarPage />}
+            {activeTab === 'setup' && <Mt5SetupPage />}
             {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}
           </div>
         </main>

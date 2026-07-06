@@ -1,14 +1,9 @@
-import TradeForm from '../components/tabs/TradeForm';
 import TradeList from '../components/tabs/TradeList';
-import { dashboardPage } from '../lib/ui';
 
 export default function LogPage() {
   return (
-    <div className={dashboardPage}>
-      <div className="space-y-4">
-        <TradeForm />
-        <TradeList />
-      </div>
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[1600px] flex-col px-4 py-4 md:px-8 md:py-5">
+      <TradeList />
     </div>
   );
 }

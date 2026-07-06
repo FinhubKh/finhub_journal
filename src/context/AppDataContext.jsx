@@ -12,7 +12,6 @@ const AppDataContext = createContext(null);
 
 const VIEW_KEY = 'nxuu_view_mode';
 const ACCOUNT_KEY = 'nxuu_active_account_id';
-const EXCLUDE_DEMO_KEY = 'nxuu_exclude_demo';
 
 function readViewMode() {
   const v = localStorage.getItem(VIEW_KEY);
@@ -23,10 +22,6 @@ function readActiveAccountId() {
   return localStorage.getItem(ACCOUNT_KEY) || '';
 }
 
-function readExcludeDemo() {
-  return localStorage.getItem(EXCLUDE_DEMO_KEY) === 'true';
-}
-
 export function AppDataProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [allTrades, setAllTrades] = useState([]);
@@ -35,7 +30,6 @@ export function AppDataProvider({ children }) {
   const [tradingAccounts, setTradingAccounts] = useState([]);
   const [viewMode, setViewModeState] = useState(readViewMode);
   const [activeAccountId, setActiveAccountIdState] = useState(readActiveAccountId);
-  const [excludeDemoFromPortfolio, setExcludeDemoState] = useState(readExcludeDemo);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'light');
@@ -104,11 +98,6 @@ export function AppDataProvider({ children }) {
     localStorage.setItem(ACCOUNT_KEY, id);
   }, [setViewMode]);
 
-  const setExcludeDemoFromPortfolio = useCallback((value) => {
-    setExcludeDemoState(value);
-    localStorage.setItem(EXCLUDE_DEMO_KEY, value ? 'true' : 'false');
-  }, []);
-
   const activeAccount = useMemo(
     () => tradingAccounts.find((a) => a.id === activeAccountId) || null,
     [tradingAccounts, activeAccountId],
@@ -121,8 +110,8 @@ export function AppDataProvider({ children }) {
   }, [viewMode, activeAccountId, activeAccount, setViewMode]);
 
   const visibleTrades = useMemo(
-    () => filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId, excludeDemoFromPortfolio),
-    [allTrades, tradingAccounts, viewMode, activeAccountId, excludeDemoFromPortfolio],
+    () => filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId),
+    [allTrades, tradingAccounts, viewMode, activeAccountId],
   );
 
   const accounts = useMemo(
@@ -140,13 +129,11 @@ export function AppDataProvider({ children }) {
     viewMode,
     activeAccountId,
     activeAccount,
-    excludeDemoFromPortfolio,
     accounts,
     lookups,
     resolveTradeAccount: (trade) => resolveTradeAccount(trade, lookups),
     setViewMode,
     setActiveAccountId,
-    setExcludeDemoFromPortfolio,
     userSteps,
     userModels,
     refreshTrades,

@@ -47,12 +47,93 @@ export async function updateTradingAccount(id, fields) {
   return res.json();
 }
 
-export async function deleteTradingAccount(id) {
+export async function deleteTradingAccount(accountOrId) {
+  const id = typeof accountOrId === 'object' ? accountOrId.id : accountOrId;
+  const name = typeof accountOrId === 'object' ? accountOrId.name?.trim() : null;
+
+  const delById = await authFetch(`${SUPABASE_URL}/rest/v1/trades?account_id=eq.${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(getToken()),
+  });
+  if (!delById.ok) throw new Error(await delById.text());
+
+  if (name) {
+    const delByName = await authFetch(
+      `${SUPABASE_URL}/rest/v1/trades?account=eq.${encodeURIComponent(name)}`,
+      { method: 'DELETE', headers: authHeaders(getToken()) },
+    );
+    if (!delByName.ok) throw new Error(await delByName.text());
+  }
+
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}`, {
     method: 'DELETE',
     headers: authHeaders(getToken()),
   });
   if (!res.ok) throw new Error(await res.text());
+}
+
+function pnlResult(pnl) {
+  if (pnl > 0) return 'win';
+  if (pnl < 0) return 'loss';
+  return 'be';
+}
+
+async function fetchTradesForAccount(account) {
+  const byIdRes = await authFetch(
+    `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account_id=eq.${account.id}`,
+    { headers: authHeaders(getToken()) },
+  );
+  if (!byIdRes.ok) throw new Error(await byIdRes.text());
+
+  const trades = new Map((await byIdRes.json()).map((t) => [t.id, t]));
+
+  if (account.name?.trim()) {
+    const byNameRes = await authFetch(
+      `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account=eq.${encodeURIComponent(account.name.trim())}`,
+      { headers: authHeaders(getToken()) },
+    );
+    if (!byNameRes.ok) throw new Error(await byNameRes.text());
+    (await byNameRes.json()).forEach((t) => trades.set(t.id, t));
+  }
+
+  return [...trades.values()];
+}
+
+async function patchTradePnl(trades, factor) {
+  await Promise.all(trades.map(async (t) => {
+    const pnl = Math.round((Number(t.pnl_usd) || 0) * factor * 100) / 100;
+    const patchRes = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${t.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(getToken()),
+      body: JSON.stringify({ pnl_usd: pnl, result: pnlResult(pnl) }),
+    });
+    if (!patchRes.ok) throw new Error(await patchRes.text());
+  }));
+}
+
+/** Adjust stored PnL when switching account between cent and USD. */
+export async function recalculateTradesForDenomination(account, oldDenom, newDenom) {
+  if (!account?.id || oldDenom === newDenom) return 0;
+
+  let factor = null;
+  if (newDenom === 'cent' && oldDenom !== 'cent') factor = 0.01;
+  else if (newDenom === 'usd' && oldDenom === 'cent') factor = 100;
+  if (factor == null) return 0;
+
+  const trades = await fetchTradesForAccount(account);
+  if (trades.length === 0) return 0;
+
+  await patchTradePnl(trades, factor);
+  return trades.length;
+}
+
+/** One-time repair: divide all account trades by 100 (cent account with inflated PnL). */
+export async function repairCentAccountPnl(account) {
+  if (!account?.id) return 0;
+  const trades = await fetchTradesForAccount(account);
+  if (trades.length === 0) return 0;
+  await patchTradePnl(trades, 0.01);
+  return trades.length;
 }
 
 export async function fetchAllTrades() {
@@ -73,6 +154,48 @@ export async function fetchTradesByMonth(year, month) {
   );
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+// ── DAILY PNL ──
+export async function fetchDailyPnlByYear(year) {
+  const from = `${year}-01-01`;
+  const to = `${year}-12-31`;
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/daily_pnl?select=*&date=gte.${from}&date=lte.${to}&order=date.asc`,
+    { headers: authHeaders(getToken()) },
+  );
+  if (!res.ok) {
+    if (res.status === 404) return [];
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function upsertDailyPnl({ date, pnl_usd, trade_count, notes }) {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/daily_pnl?on_conflict=user_id,date`,
+    {
+      method: 'POST',
+      headers: { ...authHeaders(getToken()), Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({
+        user_id: getUserId(),
+        date,
+        pnl_usd,
+        trade_count: trade_count != null ? Number(trade_count) : null,
+        notes: notes?.trim() || null,
+      }),
+    },
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteDailyPnl(date) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/daily_pnl?date=eq.${date}`, {
+    method: 'DELETE',
+    headers: authHeaders(getToken()),
+  });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 export async function deleteTrade(id) {
@@ -158,7 +281,7 @@ export async function deleteModel(id) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-// ── MT4/5 SYNC KEY ──
+// ── MT4/5 SYNC KEY (per trading account) ──
 async function generateRandomKey() {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
@@ -171,98 +294,50 @@ async function sha256Hex(text) {
   return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function generateSyncKey() {
-  const rawKey = await generateRandomKey();
-  const keyHash = await sha256Hex(rawKey);
-  await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys?user_id=eq.${getUserId()}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
-  });
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys`, {
-    method: 'POST',
-    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
-    body: JSON.stringify({ user_id: getUserId(), key_hash: keyHash, raw_key: rawKey }),
-  });
+export async function listAccountSyncKeys() {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/sync_keys?select=trading_account_id,id&user_id=eq.${getUserId()}`,
+    { headers: authHeaders(getToken()) },
+  );
   if (!res.ok) throw new Error(await res.text());
-  return rawKey;
+  return res.json();
 }
 
-export async function getSyncKey() {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys?select=raw_key&user_id=eq.${getUserId()}`, {
-    headers: authHeaders(getToken()),
-  });
+export async function getAccountSyncKey(accountId) {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/sync_keys?select=raw_key&trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}&limit=1`,
+    { headers: authHeaders(getToken()) },
+  );
   if (!res.ok) return null;
   const rows = await res.json();
   return rows[0]?.raw_key || null;
 }
 
-export async function hasSyncKey() {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys?select=id&user_id=eq.${getUserId()}`, {
-    headers: authHeaders(getToken()),
-  });
-  if (!res.ok) return false;
-  const rows = await res.json();
-  return rows.length > 0;
-}
-
-export async function revokeSyncKey() {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys?user_id=eq.${getUserId()}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
+export async function generateAccountSyncKey(accountId) {
+  const rawKey = await generateRandomKey();
+  const keyHash = await sha256Hex(rawKey);
+  await authFetch(
+    `${SUPABASE_URL}/rest/v1/sync_keys?trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}`,
+    { method: 'DELETE', headers: authHeaders(getToken()) },
+  );
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys`, {
+    method: 'POST',
+    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+    body: JSON.stringify({
+      user_id: getUserId(),
+      trading_account_id: accountId,
+      key_hash: keyHash,
+      raw_key: rawKey,
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
+  return rawKey;
 }
 
-/*
- * ── METAAPI (disabled — paid cloud sync) ──
- * Backend edge functions remain in backend/supabase/functions/ for later.
- * Re-enable in src/lib/features.js and uncomment below.
- *
-async function callMetaApiFunction(name, body = {}) {
-  const url = `${SUPABASE_URL}/functions/v1/${name}`;
-  let res;
-  try {
-    res = await authFetch(url, {
-      method: 'POST',
-      headers: authHeaders(getToken()),
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new Error(
-      'Could not reach the server. Deploy edge functions (npm run functions:deploy) and check your internet connection.',
-    );
-  }
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 404) {
-    throw new Error(
-      'MetaAPI edge function is not deployed yet. Run: npm run functions:deploy',
-    );
-  }
-  if (!res.ok) throw new Error(data.error || data.message || `Request failed (${res.status})`);
-  return data;
+export async function revokeAccountSyncKey(accountId) {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/sync_keys?trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}`,
+    { method: 'DELETE', headers: authHeaders(getToken()) },
+  );
+  if (!res.ok) throw new Error(await res.text());
 }
-
-export function connectMetaApi(payload) {
-  return callMetaApiFunction('metaapi-connect', payload);
-}
-
-export function addMetaApiAccount(payload) {
-  return connectMetaApi({ ...payload, sync: true });
-}
-
-export function syncMetaApi(tradingAccountId) {
-  return callMetaApiFunction('metaapi-sync', tradingAccountId ? { tradingAccountId } : {});
-}
-
-export function disconnectMetaApi(tradingAccountId) {
-  return callMetaApiFunction('metaapi-disconnect', { tradingAccountId, deleteRecord: false });
-}
-
-export function removeMetaApiAccount(tradingAccountId) {
-  return callMetaApiFunction('metaapi-disconnect', { tradingAccountId, deleteRecord: true });
-}
-
-export function syncAllMetaApi() {
-  return callMetaApiFunction('metaapi-sync', {});
-}
-*/

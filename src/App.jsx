@@ -5,6 +5,7 @@ import { AppDataProvider } from './context/AppDataContext';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
+import AdminPage from './pages/AdminPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, ready } = useAuth();
@@ -17,6 +18,14 @@ function GuestRoute({ children }) {
   const { isAuthenticated, ready } = useAuth();
   if (!ready) return null;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { isAuthenticated, isAdmin, ready, profileLoading } = useAuth();
+  if (!ready || profileLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -52,6 +61,14 @@ export default function App() {
                     <DashboardPage />
                   </AppDataProvider>
                 </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/admin"
+              element={(
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
               )}
             />
             <Route path="/app" element={<Navigate to="/dashboard" replace />} />

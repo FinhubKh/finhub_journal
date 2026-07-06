@@ -9,8 +9,10 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "ea:config": "node scripts/generate-ea-config.mjs",
+    "ea:compile": "node scripts/generate-ea-config.mjs --compile",
     "api:dev": "node backend/api/server.mjs",
     "db:check": "node scripts/db-check.mjs",
+    "seed:admin": "node scripts/seed-admin.mjs",
     "functions:deploy": "node scripts/deploy-functions.mjs"
   },
   "dependencies": {

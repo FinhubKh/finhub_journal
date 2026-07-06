@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
 
 const NAV_LINKS = [
   { href: '#platform', label: 'Platform' },
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'How it works' },
+  { href: '#install', label: 'Install' },
   { href: '#faq', label: 'FAQ' },
 ];
 
@@ -60,10 +62,45 @@ const STEPS = [
   { n: '03', title: 'Review and improve', desc: 'Use overview, calendar, and breakdown reports to refine your edge every week.' },
 ];
 
+const INSTALL_STEPS = [
+  {
+    n: '01',
+    title: 'Download the EA',
+    desc: 'Download FinhubJournal_TradeSync.ex5 below. One file — no compile step needed.',
+  },
+  {
+    n: '02',
+    title: 'Create accounts & sync keys',
+    desc: 'Sign up, add trading accounts under Settings → Account, and generate a sync key for each MT5 account.',
+  },
+  {
+    n: '03',
+    title: 'Copy into MetaTrader',
+    desc: 'Place FinhubJournal_TradeSync.ex5 in your MT5 Experts folder (File → Open Data Folder → MQL5 → Experts).',
+  },
+  {
+    n: '04',
+    title: 'Allow WebRequest in MT5',
+    desc: 'Tools → Options → Expert Advisors → tick “Allow WebRequest for listed URL” and add the FinhubKH Journal URL shown below.',
+  },
+  {
+    n: '05',
+    title: 'Attach & paste the account sync key',
+    desc: 'Drag the EA onto any chart. Paste the sync key for that journal account into the EA — one key per MT5 terminal.',
+  },
+  {
+    n: '06',
+    title: 'Start MT5 — trades sync automatically',
+    desc: 'The EA runs once on startup and sends your closed trade history to your journal. Check the Experts tab for a success message.',
+  },
+];
+
+const EA_DOWNLOAD_URL = '/FinhubJournal_TradeSync.ex5';
+
 const FAQS = [
   { q: 'Is FinhubKH Journal free?', a: 'Yes. Create an account and start journaling at no cost. Your data is private to your account.' },
-  { q: 'How does MT5 sync work?', a: 'Generate a sync key in Settings, paste it into the FinhubKH EA, and your closed trades import when you start MT5.' },
-  { q: 'Can I use multiple accounts?', a: 'Yes. Tag trades by account and filter the entire journal by account from the sidebar.' },
+  { q: 'How does MT5 sync work?', a: 'Generate a sync key per trading account in Settings, paste it into the FinhubKH EA on that MT5 terminal, and closed trades import on startup.' },
+  { q: 'Can I use multiple accounts?', a: 'Yes. Each journal account has its own sync key. Use a different key on each MT5 terminal and filter the journal by account.' },
   { q: 'Is my data shared publicly?', a: 'No. Your trades and stats are private to your account only.' },
 ];
 
@@ -278,9 +315,6 @@ export default function LandingPage() {
         <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-fuchsia-200/30 blur-3xl" />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-28 sm:px-8 lg:grid-cols-2 lg:py-32">
           <div>
-            <p className="mb-4 inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-              The journal built for FinhubKH traders
-            </p>
             <h1 className="text-[clamp(2.25rem,5vw,3.5rem)] font-extrabold leading-[1.08] tracking-tight text-zinc-900">
               Everything you need to
               <span className="text-violet-600"> trade better.</span>
@@ -386,6 +420,89 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section id="install" className="border-y border-zinc-100 bg-white py-20">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">MT5 setup</p>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
+              Install the FinhubKH sync EA
+            </h2>
+            <p className="mt-4 text-lg text-zinc-600">
+              Free, read-only sync — the EA only reads closed trade history and never places or modifies trades.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {INSTALL_STEPS.map((s) => (
+              <article key={s.n} className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white">
+                  {s.n}
+                </div>
+                <h3 className="mt-4 text-base font-bold text-zinc-900">{s.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600">{s.desc}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-10 flex justify-center">
+            <a
+              href={EA_DOWNLOAD_URL}
+              download="FinhubJournal_TradeSync.ex5"
+              className={`${btnPrimaryLg} gap-2`}
+            >
+              Download FinhubJournal_TradeSync.ex5
+            </a>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-2">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">EA file</h3>
+              <p className="mt-2 text-sm text-zinc-600">
+                One compiled file — copy into your MT5 Experts folder:
+              </p>
+              <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-mono text-sm font-semibold text-violet-900">
+                FinhubJournal_TradeSync.ex5
+              </div>
+              <p className="mt-4 text-xs text-zinc-500">
+                The sync API URL is built in. No compile step and no extra config files.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700">Allow WebRequest URL</h3>
+              <p className="mt-2 text-sm text-zinc-600">
+                Add this exact URL in MT5 under Tools → Options → Expert Advisors:
+              </p>
+              <div className="mt-4 break-all rounded-xl border border-violet-200 bg-white px-4 py-3 font-mono text-sm text-violet-900 select-all">
+                {EA_WEBREQUEST_ORIGIN}
+              </div>
+              <p className="mt-4 text-xs text-zinc-500">
+                Sync endpoint: <span className="font-mono text-zinc-700">{EA_SYNC_ENDPOINT}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                state={{ tab: 'setup' }}
+                className={btnPrimaryLg}
+              >
+                Open MT5 setup
+              </Link>
+            ) : (
+              <Link to="/login?mode=signup" className={btnPrimaryLg}>
+                Sign up to get your Sync Key
+              </Link>
+            )}
+            <a href="#faq" className={`${btnOutline} px-8 py-3.5 text-[15px]`}>
+              Read FAQ
+            </a>
+          </div>
+        </div>
+      </section>
+
       <section className="border-y border-zinc-200 bg-zinc-900 py-20 text-white">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -456,6 +573,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap gap-5 text-sm text-zinc-500">
             <a href="#platform" className="hover:text-violet-600">Platform</a>
             <a href="#features" className="hover:text-violet-600">Features</a>
+            <a href="#install" className="hover:text-violet-600">Install</a>
             <a href="#faq" className="hover:text-violet-600">FAQ</a>
             <Link to="/login" className="hover:text-violet-600">Sign in</Link>
           </div>

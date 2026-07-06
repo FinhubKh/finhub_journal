@@ -40,7 +40,7 @@ if (role === 'service_role') {
   process.exit(1);
 }
 
-const tables = ['trades', 'checklist_steps', 'entry_models', 'trading_accounts', 'sync_keys'];
+const tables = ['profiles', 'trades', 'checklist_steps', 'entry_models', 'trading_accounts', 'sync_keys', 'daily_pnl'];
 
 console.log(`Project: ${url}`);
 console.log(`Key role: ${role}\n`);
@@ -69,6 +69,19 @@ if (rpc.ok) {
   console.log('  get_leaderboard(): ok');
 } else {
   console.log(`  get_leaderboard(): missing or error (${rpc.status})`);
+}
+
+const adminRpc = await fetch(`${url}/rest/v1/rpc/admin_platform_stats`, {
+  method: 'POST',
+  headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+  body: '{}',
+});
+if (adminRpc.status === 404) {
+  console.log('  admin_platform_stats(): missing — run backend/schema_profiles_admin.sql');
+} else if (!adminRpc.ok) {
+  console.log(`  admin_platform_stats(): ok (requires admin login to call)`);
+} else {
+  console.log('  admin_platform_stats(): ok');
 }
 
 console.log('\nDone. Sign up in the app after tables show ok.');
