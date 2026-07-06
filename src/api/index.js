@@ -113,11 +113,13 @@ async function patchTradePnl(trades, factor) {
 
 /** Adjust stored PnL when switching account between cent and USD. */
 export async function recalculateTradesForDenomination(account, oldDenom, newDenom) {
-  if (!account?.id || oldDenom === newDenom) return 0;
+  const oldNorm = oldDenom === 'cent' ? 'cent' : 'usd';
+  const newNorm = newDenom === 'cent' ? 'cent' : 'usd';
+  if (!account?.id || oldNorm === newNorm) return 0;
 
   let factor = null;
-  if (newDenom === 'cent' && oldDenom !== 'cent') factor = 0.01;
-  else if (newDenom === 'usd' && oldDenom === 'cent') factor = 100;
+  if (newNorm === 'cent' && oldNorm !== 'cent') factor = 0.01;
+  else if (newNorm === 'usd' && oldNorm === 'cent') factor = 100;
   if (factor == null) return 0;
 
   const trades = await fetchTradesForAccount(account);

@@ -4,28 +4,10 @@
 //| Read-only: only reads history, never places/modifies trades.     |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.02"
+#property version   "1.03"
 
 input string SyncKey = "";  // Paste sync key from Settings > Account (per trading account)
 const string EndpointURL  = "https://finhubjournal.vercel.app/v1/ea/sync";
-
-struct AccountCurrencyInfo
-  {
-   string currency;
-   bool   is_cent;
-   double pnl_divisor;
-  };
-
-//+------------------------------------------------------------------+
-void ToLower(string &s)
-  {
-   for(int i = 0; i < StringLen(s); i++)
-     {
-      ushort c = StringGetCharacter(s, i);
-      if(c >= 'A' && c <= 'Z')
-         StringSetCharacter(s, i, (ushort)(c + 32));
-     }
-  }
 
 //+------------------------------------------------------------------+
 string JsonEscape(string s)
@@ -33,48 +15,6 @@ string JsonEscape(string s)
    StringReplace(s, "\\", "\\\\");
    StringReplace(s, "\"", "\\\"");
    return s;
-  }
-
-//+------------------------------------------------------------------+
-AccountCurrencyInfo GetAccountCurrencyInfo()
-  {
-   AccountCurrencyInfo info;
-   info.currency = AccountInfoString(ACCOUNT_CURRENCY);
-   info.is_cent = false;
-   info.pnl_divisor = 1.0;
-
-   string cur = info.currency;
-   ToLower(cur);
-
-   // Cent deposit currencies: USC, EUC, GBC, etc.
-   if(StringLen(cur) == 3 && StringGetCharacter(cur, 2) == 'c')
-     {
-      string prefix = StringSubstr(cur, 0, 2);
-      if(prefix == "us" || prefix == "eu" || prefix == "gb" || prefix == "au" || prefix == "ca" || prefix == "nz" || prefix == "ch")
-         info.is_cent = true;
-     }
-
-   string server = AccountInfoString(ACCOUNT_SERVER);
-   string accName = AccountInfoString(ACCOUNT_NAME);
-   string company = AccountInfoString(ACCOUNT_COMPANY);
-   string haystack = server + " " + accName + " " + company + " " + cur;
-   ToLower(haystack);
-
-   if(StringFind(haystack, "cent") >= 0 || StringFind(haystack, "cents") >= 0 || StringFind(haystack, "micro") >= 0)
-      info.is_cent = true;
-
-   if(info.is_cent)
-      info.pnl_divisor = 100.0;
-
-   return info;
-  }
-
-//+------------------------------------------------------------------+
-double NormalizePnl(double rawProfit, const AccountCurrencyInfo &info)
-  {
-   if(info.pnl_divisor > 1.0)
-      return rawProfit / info.pnl_divisor;
-   return rawProfit;
   }
 
 //+------------------------------------------------------------------+
@@ -104,18 +44,7 @@ void SyncHistory()
      }
 
    int total = HistoryDealsTotal();
-   AccountCurrencyInfo acctInfo = GetAccountCurrencyInfo();
-   if(acctInfo.is_cent)
-      Print("FinhubJournal_TradeSync: Cent account detected (", acctInfo.currency,
-            "). PnL will be normalized to USD (divide by ", (int)acctInfo.pnl_divisor, ").");
-   else
-      Print("FinhubJournal_TradeSync: Standard account (", acctInfo.currency, ").");
-
-   string json = "{\"account_meta\":{";
-   json += "\"currency\":\"" + JsonEscape(acctInfo.currency) + "\",";
-   json += "\"is_cent\":" + (acctInfo.is_cent ? "true" : "false") + ",";
-   json += "\"pnl_divisor\":" + IntegerToString((int)acctInfo.pnl_divisor);
-   json += "},\"trades\":[";
+   string json = "{\"trades\":[";
    int    count = 0;
 
    for(int i = 0; i < total; i++)
@@ -123,7 +52,6 @@ void SyncHistory()
       ulong dealTicket = HistoryDealGetTicket(i);
       if(dealTicket == 0) continue;
 
-      // Only closed positions — entry deals (DEAL_ENTRY_OUT) close a position
       long entryType = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
       if(entryType != DEAL_ENTRY_OUT) continue;
 
@@ -136,9 +64,8 @@ void SyncHistory()
       double exitPx  = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
       datetime closeTime = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
       long   dealDir = HistoryDealGetInteger(dealTicket, DEAL_TYPE);
-      string direction = (dealDir == DEAL_TYPE_SELL) ? "buy" : "sell"; // closing sell deal = was a buy position
+      string direction = (dealDir == DEAL_TYPE_SELL) ? "buy" : "sell";
 
-      // Find the matching entry deal (DEAL_ENTRY_IN) for this position to get entry price/time
       double entryPx = 0; datetime openTime = closeTime; ulong entryOrderTicket = 0;
       for(int j = 0; j < total; j++)
         {
@@ -169,8 +96,6 @@ void SyncHistory()
            }
         }
 
-      double profitUsd = NormalizePnl(profit, acctInfo);
-
       if(count > 0) json += ",";
       json += "{";
       json += "\"ticket\":" + IntegerToString(dealTicket) + ",";
@@ -180,7 +105,7 @@ void SyncHistory()
       json += "\"exit_price\":" + DoubleToString(exitPx, 5) + ",";
       json += "\"lot_size\":" + DoubleToString(volume, 2) + ",";
       json += "\"pnl_raw\":" + DoubleToString(profit, 2) + ",";
-      json += "\"pnl_usd\":" + DoubleToString(profitUsd, 2) + ",";
+      json += "\"pnl_usd\":" + DoubleToString(profit, 2) + ",";
       json += "\"r_value\":" + DoubleToString(rValue, 2) + ",";
       json += "\"open_time\":\"" + TimeToISO(openTime) + "\",";
       json += "\"close_time\":\"" + TimeToISO(closeTime) + "\"";
@@ -195,6 +120,7 @@ void SyncHistory()
       return;
      }
 
+   Print("FinhubJournal_TradeSync: Syncing ", count, " trades. PnL uses your journal account currency (USD or Cent).");
    SendToEndpoint(json, count);
   }
 

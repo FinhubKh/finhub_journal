@@ -13,23 +13,19 @@ function supabaseHeaders(serviceKey, extra = {}) {
   };
 }
 
-function resolvePnlUsd(trade, accountMeta, matchedAccount) {
+function accountDenomination(matchedAccount) {
+  return matchedAccount?.pnl_denomination === 'cent' ? 'cent' : 'usd';
+}
+
+function resolvePnlUsd(trade, matchedAccount) {
   const raw = trade.pnl_raw != null ? Number(trade.pnl_raw) : null;
-  const precomputed = Number(trade.pnl_usd) || 0;
-  const denom = matchedAccount?.pnl_denomination || 'auto';
+  const fallback = Number(trade.pnl_usd) || 0;
+  const denom = accountDenomination(matchedAccount);
 
-  if (denom === 'cent') {
-    if (raw != null) return raw / 100;
-    return precomputed;
+  if (raw != null) {
+    return denom === 'cent' ? raw / 100 : raw;
   }
-  if (denom === 'usd') {
-    if (raw != null) return raw;
-    return precomputed;
-  }
-
-  const divisor = Number(accountMeta?.pnl_divisor) || 1;
-  if (raw != null && divisor > 1) return raw / divisor;
-  return precomputed;
+  return fallback;
 }
 
 export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, serviceKey }) {
@@ -74,7 +70,7 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
   const accountLabel = matchedAccount.name;
 
   const rows = trades.map((t) => {
-    const pnl = resolvePnlUsd(t, accountMeta, matchedAccount);
+    const pnl = resolvePnlUsd(t, matchedAccount);
     return {
       user_id: userId,
       source: 'api',
@@ -118,13 +114,7 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
       inserted: saved.length,
       updated: saved.length,
       account: accountLabel,
-      account_meta: accountMeta
-        ? {
-            currency: accountMeta.currency || null,
-            is_cent: Boolean(accountMeta.is_cent),
-            pnl_divisor: Number(accountMeta.pnl_divisor) || 1,
-          }
-        : null,
+      pnl_denomination: accountDenomination(matchedAccount),
     },
   };
 }

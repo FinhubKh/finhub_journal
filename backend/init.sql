@@ -65,7 +65,7 @@ create table if not exists trading_accounts (
   color               text,
   is_default          boolean not null default false,
   connection_status   text default 'manual',
-  pnl_denomination    text not null default 'auto' check (pnl_denomination in ('auto', 'usd', 'cent')),
+  pnl_denomination    text not null default 'usd' check (pnl_denomination in ('usd', 'cent')),
   created_at          timestamptz default now(),
   unique (user_id, slug)
 );

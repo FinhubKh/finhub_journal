@@ -5,10 +5,13 @@ export const ACCOUNT_TYPES = [
 ];
 
 export const PNL_DENOMINATIONS = [
-  { value: 'auto', label: 'Auto-detect (EA)' },
   { value: 'usd', label: 'Standard USD' },
   { value: 'cent', label: 'Cent account' },
 ];
+
+export function normalizePnlDenomination(value) {
+  return value === 'cent' ? 'cent' : 'usd';
+}
 
 export const ACCOUNT_COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#dc2626'];
 
@@ -21,7 +24,8 @@ export function accountTypeLabel(type) {
 }
 
 export function pnlDenominationLabel(value) {
-  return PNL_DENOMINATIONS.find((d) => d.value === value)?.label || value || 'Auto-detect';
+  const normalized = normalizePnlDenomination(value);
+  return PNL_DENOMINATIONS.find((d) => d.value === normalized)?.label || 'Standard USD';
 }
 
 export function buildAccountLookups(tradingAccounts) {

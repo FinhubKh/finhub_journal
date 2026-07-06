@@ -12,27 +12,24 @@ import {
   accountTypeLabel,
   pnlDenominationLabel,
   normalizeSlug,
+  normalizePnlDenomination,
 } from '../lib/accounts';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, cardHd, cardTitle, emptyState, input, msgError, msgSuccess,
-  tableTd, tableTdRight, tableTh,
+  tableTd, tableTh,
 } from '../lib/ui';
 
 const EMPTY_FORM = {
   name: '',
   accountType: 'live',
-  broker: '',
-  startingBalance: '',
-  pnlDenomination: 'auto',
+  pnlDenomination: 'usd',
 };
 
 function accountToForm(account) {
   return {
     name: account.name || '',
     accountType: account.account_type || 'live',
-    broker: account.broker || '',
-    startingBalance: account.starting_balance?.toString() || '',
-    pnlDenomination: account.pnl_denomination || 'auto',
+    pnlDenomination: normalizePnlDenomination(account.pnl_denomination),
   };
 }
 
@@ -57,37 +54,15 @@ function AccountFormFields({ form, setField }) {
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700">PnL mode</label>
+          <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account currency</label>
           <select className={input} value={form.pnlDenomination} onChange={(e) => setField('pnlDenomination', e.target.value)}>
             {PNL_DENOMINATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700">Broker</label>
-          <input
-            className={input}
-            placeholder="Optional"
-            value={form.broker}
-            onChange={(e) => setField('broker', e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700">Starting balance</label>
-          <input
-            className={input}
-            type="number"
-            step="0.01"
-            placeholder="Optional"
-            value={form.startingBalance}
-            onChange={(e) => setField('startingBalance', e.target.value)}
-          />
-        </div>
-      </div>
       <p className="text-xs text-zinc-500">
-        Generate a unique <strong className="font-medium text-zinc-600">MT5 sync key</strong> for this account after saving.
-        Use <strong className="font-medium text-zinc-600">Cent account</strong> PnL mode if profits sync 100x too high.
+        Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker uses cent lots (PnL syncs 100x higher on USD).
+        Generate an <strong className="font-medium text-zinc-600">MT5 sync key</strong> for this account after saving.
       </p>
     </div>
   );
@@ -123,25 +98,17 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
       setMsg({ type: 'error', text: 'Account name is required.' });
       return;
     }
-    const balanceRaw = form.startingBalance.trim();
-    const balance = balanceRaw ? parseFloat(balanceRaw) : null;
-    if (balanceRaw && (isNaN(balance) || balance <= 0)) {
-      setMsg({ type: 'error', text: 'Enter a positive starting balance or leave blank.' });
-      return;
-    }
 
     setBusy(true);
     setMsg(null);
     try {
       if (isEdit) {
-        const oldDenom = account.pnl_denomination || 'auto';
-        const newDenom = form.pnlDenomination;
+        const oldDenom = normalizePnlDenomination(account.pnl_denomination);
+        const newDenom = normalizePnlDenomination(form.pnlDenomination);
         await updateTradingAccount(account.id, {
           name,
           slug: normalizeSlug(name),
           account_type: form.accountType,
-          broker: form.broker.trim() || null,
-          starting_balance: balance,
           pnl_denomination: newDenom,
         });
         const adjusted = await recalculateTradesForDenomination(
@@ -163,8 +130,6 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
           name,
           slug: normalizeSlug(name),
           account_type: form.accountType,
-          broker: form.broker.trim() || null,
-          starting_balance: balance,
           pnl_denomination: form.pnlDenomination,
           color,
           is_default: tradingAccounts.length === 0,
@@ -421,13 +386,7 @@ function AccountTableRow({ account, hasSyncKey, onEdit, onSetDefault, onUpdated,
         </div>
       </td>
       <td className={tableTd}>{accountTypeLabel(account.account_type)}</td>
-      <td className={tableTd}>{account.broker || '—'}</td>
       <td className={tableTd}>{pnlDenominationLabel(account.pnl_denomination)}</td>
-      <td className={tableTdRight}>
-        {account.starting_balance != null
-          ? `$${Number(account.starting_balance).toLocaleString()}`
-          : '—'}
-      </td>
       <td className={tableTd}>
         {account.is_default ? (
           <span className="rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
@@ -510,14 +469,12 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse text-left">
+          <table className="w-full min-w-[760px] border-collapse text-left">
             <thead>
               <tr className="border-b border-zinc-200">
                 <th className={tableTh}>Account</th>
                 <th className={tableTh}>Type</th>
-                <th className={tableTh}>Broker</th>
-                <th className={tableTh}>PnL mode</th>
-                <th className={`${tableTh} text-right`}>Balance</th>
+                <th className={tableTh}>Currency</th>
                 <th className={tableTh}>Status</th>
                 <th className={`${tableTh} text-right`}>MT5 sync</th>
                 <th className={`${tableTh} text-right`}>Actions</th>

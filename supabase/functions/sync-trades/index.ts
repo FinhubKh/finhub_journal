@@ -49,7 +49,6 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const trades: IncomingTrade[] = body.trades || [];
-    const accountMeta = body.account_meta;
     if (!Array.isArray(trades) || trades.length === 0) {
       return new Response(JSON.stringify({ error: 'No trades provided' }), { status: 400, headers: corsHeaders });
     }
@@ -83,21 +82,13 @@ Deno.serve(async (req) => {
 
     function resolvePnlUsd(t: IncomingTrade): number {
       const raw = t.pnl_raw != null ? Number(t.pnl_raw) : null;
-      const precomputed = Number(t.pnl_usd) || 0;
-      const denom = matchedAccount.pnl_denomination || 'auto';
+      const fallback = Number(t.pnl_usd) || 0;
+      const denom = matchedAccount.pnl_denomination === 'cent' ? 'cent' : 'usd';
 
-      if (denom === 'cent') {
-        if (raw != null) return raw / 100;
-        return precomputed;
+      if (raw != null) {
+        return denom === 'cent' ? raw / 100 : raw;
       }
-      if (denom === 'usd') {
-        if (raw != null) return raw;
-        return precomputed;
-      }
-
-      const divisor = Number(accountMeta?.pnl_divisor) || 1;
-      if (raw != null && divisor > 1) return raw / divisor;
-      return precomputed;
+      return fallback;
     }
 
     const rows = trades.map(t => {
