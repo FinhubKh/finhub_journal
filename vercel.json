@@ -5,12 +5,20 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/v1/ea/sync", "destination": "/api/v1/ea/sync" },
+    { "source": "/v1/market/economic-calendar", "destination": "/api/v1/market/economic-calendar" },
+    { "source": "/v1/market/news", "destination": "/api/v1/market/news" },
     { "source": "/health", "destination": "/api/health" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/v1/ea/sync.js": {
       "maxDuration": 30
+    },
+    "api/v1/market/economic-calendar.js": {
+      "maxDuration": 15
+    },
+    "api/v1/market/news.js": {
+      "maxDuration": 15
     }
   }
 }

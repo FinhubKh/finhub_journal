@@ -13,17 +13,19 @@ import {
   updateTradingAccount,
 } from '../api';
 import TradingAccountsManager from '../components/TradingAccountsManager';
+import InstallGuideCard from '../components/InstallGuideCard';
 
 const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
-  { id: 'sync', label: 'Sync' },
+  { id: 'mt5', label: 'MT5 Setup' },
   { id: 'journal', label: 'Journal' },
   { id: 'data', label: 'Data' },
 ];
 
 const FOCUS_TO_TAB = {
   'trading-accounts': 'account',
-  sync: 'sync',
+  'mt5-setup': 'mt5',
+  setup: 'mt5',
 };
 
 function SettingsSection({ title, children, id }) {
@@ -214,7 +216,7 @@ export default function SettingsPage({ focusSection = null }) {
     <div className={dashboardPageWide}>
       <div className="mb-4">
         <h1 className="text-lg font-bold text-zinc-900">Settings</h1>
-        <p className="mt-1 text-sm text-zinc-500">Trading accounts, MT5 sync, and journal preferences.</p>
+        <p className="mt-1 text-sm text-zinc-500">Trading accounts and journal preferences.</p>
       </div>
 
       <SettingsTabBar activeTab={activeTab} onChange={setActiveTab} />
@@ -235,34 +237,8 @@ export default function SettingsPage({ focusSection = null }) {
           </>
         )}
 
-        {activeTab === 'sync' && (
-          <SettingsSection title="MT4/5 EA sync">
-            <div className={`${cardBody} space-y-3 text-sm leading-relaxed text-zinc-500`}>
-              <p>
-                The full setup walkthrough lives in the <strong className="font-medium text-zinc-700">MT5 Setup</strong> tab
-                in the sidebar — EA download, WebRequest URL, and step-by-step instructions.
-              </p>
-              <p>
-                Generate a sync key per trading account under <strong className="font-medium text-zinc-700">Account</strong> below.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={btnSecondary}
-                  type="button"
-                  onClick={() => navigate('/dashboard', { state: { tab: 'setup' } })}
-                >
-                  Open MT5 setup
-                </button>
-                <button
-                  className={btnSecondary}
-                  type="button"
-                  onClick={() => setActiveTab('account')}
-                >
-                  Go to trading accounts
-                </button>
-              </div>
-            </div>
-          </SettingsSection>
+        {activeTab === 'mt5' && (
+          <InstallGuideCard standalone />
         )}
 
         {activeTab === 'journal' && (

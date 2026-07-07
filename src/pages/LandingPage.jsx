@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
+import { ScrollReveal } from '../components/ScrollReveal';
 
 const NAV_LINKS = [
   { href: '#platform', label: 'Platform' },
@@ -283,10 +284,20 @@ function FaqItem({ q, a }) {
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
+  const [headerScrolled, setHeaderScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setHeaderScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const TICKER_ITEMS = ['MT5 auto-sync', 'Pre-trade checklist', 'Equity analytics', 'Multi-account', 'CSV export'];
 
   return (
     <div className={pageShell}>
-      <header className="absolute inset-x-0 top-0 z-20 border-b border-white/30 bg-white/70 backdrop-blur-lg">
+      <header className={`landing-header absolute inset-x-0 top-0 z-20 border-b border-white/30 bg-white/70 backdrop-blur-lg ${headerScrolled ? 'landing-header-scrolled' : ''}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <Link to="/" className="flex flex-col leading-none no-underline">
             <span className="text-sm font-bold text-zinc-900">FinhubKH</span>
@@ -311,19 +322,19 @@ export default function LandingPage() {
       </header>
 
       <section className="relative flex min-h-dvh items-center overflow-hidden border-b border-zinc-100 bg-gradient-to-b from-violet-50/80 via-white to-white">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-200/40 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-fuchsia-200/30 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-200/40 blur-3xl landing-hero-glow" />
+        <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-fuchsia-200/30 blur-3xl landing-hero-glow" style={{ animationDelay: '1.5s' }} />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-28 sm:px-8 lg:grid-cols-2 lg:py-32">
           <div>
-            <h1 className="text-[clamp(2.25rem,5vw,3.5rem)] font-extrabold leading-[1.08] tracking-tight text-zinc-900">
+            <h1 className="landing-hero-in text-[clamp(2.25rem,5vw,3.5rem)] font-extrabold leading-[1.08] tracking-tight text-zinc-900">
               Everything you need to
               <span className="text-violet-600"> trade better.</span>
             </h1>
-            <p className="mt-5 max-w-lg text-lg leading-relaxed text-zinc-600">
+            <p className="landing-hero-in landing-hero-in-d1 mt-5 max-w-lg text-lg leading-relaxed text-zinc-600">
               One platform for journaling, analytics, calendar review, and MT5 sync.
               Stop guessing. Start improving with data.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="landing-hero-in landing-hero-in-d2 mt-8 flex flex-wrap gap-3">
               {isAuthenticated ? (
                 <Link to="/dashboard" className={btnPrimaryLg}>Go to Journal</Link>
               ) : (
@@ -333,25 +344,27 @@ export default function LandingPage() {
                 </>
               )}
             </div>
-            <p className="mt-4 text-sm text-zinc-400">No credit card. Private by default.</p>
+            <p className="landing-hero-in landing-hero-in-d3 mt-4 text-sm text-zinc-400">No credit card. Private by default.</p>
           </div>
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 blur-2xl" />
+          <div className="relative landing-hero-mock landing-hero-float">
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 blur-2xl landing-hero-glow" />
             <div className="relative"><MockDashboard /></div>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-zinc-100 bg-zinc-50 py-8">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-5 text-center sm:px-8">
-          {['MT5 auto-sync', 'Pre-trade checklist', 'Equity analytics', 'Multi-account', 'CSV export'].map((t) => (
-            <span key={t} className="text-sm font-semibold text-zinc-500">{t}</span>
-          ))}
-        </div>
+      <section className="overflow-hidden border-b border-zinc-100 bg-zinc-50 py-8">
+        <ScrollReveal direction="fade" className="landing-ticker-wrap py-1">
+          <div className="landing-ticker-track">
+            {[...TICKER_ITEMS, ...TICKER_ITEMS].map((t, i) => (
+              <span key={`${t}-${i}`} className="shrink-0 px-5 text-sm font-semibold text-zinc-500">{t}</span>
+            ))}
+          </div>
+        </ScrollReveal>
       </section>
 
       <section id="platform" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-        <div className="mx-auto max-w-2xl text-center">
+        <ScrollReveal className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">Meet FinhubKH Journal</p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
             The one platform that lets you do it all
@@ -359,45 +372,51 @@ export default function LandingPage() {
           <p className="mt-4 text-lg text-zinc-600">
             All the tools you need to journal, analyze, and improve — without spreadsheets or scattered notes.
           </p>
-        </div>
+        </ScrollReveal>
         <div className="mt-12 grid gap-5 sm:grid-cols-2">
-          {PLATFORM_TOOLS.map((t) => (
-            <article key={t.title} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-violet-200 hover:shadow-md">
-              <div className="mb-3 h-1 w-10 rounded-full bg-violet-500" />
-              <h3 className="text-lg font-bold text-zinc-900">{t.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.desc}</p>
-            </article>
+          {PLATFORM_TOOLS.map((t, i) => (
+            <ScrollReveal key={t.title} delay={i * 100}>
+              <article className="h-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-lg">
+                <div className="mb-3 h-1 w-10 rounded-full bg-violet-500" />
+                <h3 className="text-lg font-bold text-zinc-900">{t.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t.desc}</p>
+              </article>
+            </ScrollReveal>
           ))}
         </div>
       </section>
 
       <section id="features" className="bg-zinc-50 py-20">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="mx-auto mb-16 max-w-2xl text-center">
+          <ScrollReveal className="mx-auto mb-16 max-w-2xl text-center">
             <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
               Built for serious review sessions
             </h2>
             <p className="mt-4 text-lg text-zinc-600">Deep dives into every part of the journal — the same tools you get inside the app.</p>
-          </div>
+          </ScrollReveal>
           <div className="space-y-24">
             {FEATURE_SECTIONS.map((f) => (
               <div key={f.id} className={`grid items-center gap-10 lg:grid-cols-2 ${f.reverse ? 'lg:[&>*:first-child]:order-2' : ''}`}>
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">{f.tag}</p>
-                  <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">{f.title}</h3>
-                  <p className="mt-4 text-base leading-relaxed text-zinc-600">{f.desc}</p>
-                  <ul className="mt-6 space-y-2">
-                    {f.bullets.map((b) => (
-                      <li key={b} className="flex items-start gap-2 text-sm text-zinc-700">
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600">
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </span>
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <FeatureMock type={f.mock} />
+                <ScrollReveal direction={f.reverse ? 'right' : 'left'}>
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">{f.tag}</p>
+                    <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-3xl">{f.title}</h3>
+                    <p className="mt-4 text-base leading-relaxed text-zinc-600">{f.desc}</p>
+                    <ul className="mt-6 space-y-2">
+                      {f.bullets.map((b) => (
+                        <li key={b} className="flex items-start gap-2 text-sm text-zinc-700">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </span>
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </ScrollReveal>
+                <ScrollReveal direction={f.reverse ? 'left' : 'right'} delay={120}>
+                  <FeatureMock type={f.mock} />
+                </ScrollReveal>
               </div>
             ))}
           </div>
@@ -405,24 +424,26 @@ export default function LandingPage() {
       </section>
 
       <section id="how-it-works" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-        <div className="mx-auto max-w-2xl text-center">
+        <ScrollReveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">How it works</h2>
           <p className="mt-4 text-lg text-zinc-600">Up and running in minutes, not hours.</p>
-        </div>
+        </ScrollReveal>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {STEPS.map((s) => (
-            <article key={s.n} className="relative rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <div className="text-4xl font-extrabold text-violet-100">{s.n}</div>
-              <h3 className="mt-2 text-lg font-bold text-zinc-900">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-600">{s.desc}</p>
-            </article>
+          {STEPS.map((s, i) => (
+            <ScrollReveal key={s.n} delay={i * 120}>
+              <article className="h-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
+                <div className="text-4xl font-extrabold text-violet-100">{s.n}</div>
+                <h3 className="mt-2 text-lg font-bold text-zinc-900">{s.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600">{s.desc}</p>
+              </article>
+            </ScrollReveal>
           ))}
         </div>
       </section>
 
       <section id="install" className="border-y border-zinc-100 bg-white py-20">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+          <ScrollReveal className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-semibold uppercase tracking-widest text-violet-600">MT5 setup</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
               Install the FinhubKH sync EA
@@ -430,21 +451,23 @@ export default function LandingPage() {
             <p className="mt-4 text-lg text-zinc-600">
               Free, read-only sync — the EA only reads closed trade history and never places or modifies trades.
             </p>
-          </div>
+          </ScrollReveal>
 
           <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {INSTALL_STEPS.map((s) => (
-              <article key={s.n} className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white">
-                  {s.n}
-                </div>
-                <h3 className="mt-4 text-base font-bold text-zinc-900">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">{s.desc}</p>
-              </article>
+            {INSTALL_STEPS.map((s, i) => (
+              <ScrollReveal key={s.n} delay={(i % 3) * 90} direction="scale">
+                <article className="h-full rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6 transition duration-300 hover:border-violet-200 hover:shadow-md">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white">
+                    {s.n}
+                  </div>
+                  <h3 className="mt-4 text-base font-bold text-zinc-900">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-600">{s.desc}</p>
+                </article>
+              </ScrollReveal>
             ))}
           </div>
 
-          <div className="mt-10 flex justify-center">
+          <ScrollReveal delay={100} className="mt-10 flex justify-center">
             <a
               href={EA_DOWNLOAD_URL}
               download="FinhubJournal_TradeSync.ex5"
@@ -452,41 +475,45 @@ export default function LandingPage() {
             >
               Download FinhubJournal_TradeSync.ex5
             </a>
-          </div>
+          </ScrollReveal>
 
           <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">EA file</h3>
-              <p className="mt-2 text-sm text-zinc-600">
-                One compiled file — copy into your MT5 Experts folder:
-              </p>
-              <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-mono text-sm font-semibold text-violet-900">
-                FinhubJournal_TradeSync.ex5
+            <ScrollReveal direction="left">
+              <div className="h-full rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">EA file</h3>
+                <p className="mt-2 text-sm text-zinc-600">
+                  One compiled file — copy into your MT5 Experts folder:
+                </p>
+                <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-mono text-sm font-semibold text-violet-900">
+                  FinhubJournal_TradeSync.ex5
+                </div>
+                <p className="mt-4 text-xs text-zinc-500">
+                  The sync API URL is built in. No compile step and no extra config files.
+                </p>
               </div>
-              <p className="mt-4 text-xs text-zinc-500">
-                The sync API URL is built in. No compile step and no extra config files.
-              </p>
-            </div>
+            </ScrollReveal>
 
-            <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700">Allow WebRequest URL</h3>
-              <p className="mt-2 text-sm text-zinc-600">
-                Add this exact URL in MT5 under Tools → Options → Expert Advisors:
-              </p>
-              <div className="mt-4 break-all rounded-xl border border-violet-200 bg-white px-4 py-3 font-mono text-sm text-violet-900 select-all">
-                {EA_WEBREQUEST_ORIGIN}
+            <ScrollReveal direction="right" delay={100}>
+              <div className="h-full rounded-2xl border border-violet-200 bg-violet-50/60 p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700">Allow WebRequest URL</h3>
+                <p className="mt-2 text-sm text-zinc-600">
+                  Add this exact URL in MT5 under Tools → Options → Expert Advisors:
+                </p>
+                <div className="mt-4 break-all rounded-xl border border-violet-200 bg-white px-4 py-3 font-mono text-sm text-violet-900 select-all">
+                  {EA_WEBREQUEST_ORIGIN}
+                </div>
+                <p className="mt-4 text-xs text-zinc-500">
+                  Sync endpoint: <span className="font-mono text-zinc-700">{EA_SYNC_ENDPOINT}</span>
+                </p>
               </div>
-              <p className="mt-4 text-xs text-zinc-500">
-                Sync endpoint: <span className="font-mono text-zinc-700">{EA_SYNC_ENDPOINT}</span>
-              </p>
-            </div>
+            </ScrollReveal>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <ScrollReveal delay={80} className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {isAuthenticated ? (
               <Link
                 to="/dashboard"
-                state={{ tab: 'setup' }}
+                state={{ tab: 'settings', section: 'mt5-setup' }}
                 className={btnPrimaryLg}
               >
                 Open MT5 setup
@@ -499,52 +526,63 @@ export default function LandingPage() {
             <a href="#faq" className={`${btnOutline} px-8 py-3.5 text-[15px]`}>
               Read FAQ
             </a>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       <section className="border-y border-zinc-200 bg-zinc-900 py-20 text-white">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-2">
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Stats that help you trade better
-              </h2>
-              <p className="mt-4 text-lg text-zinc-400">
-                Review every session, tag your setups, and track growth over time.
-                Get the insights you need to refine strategy and stay disciplined.
-              </p>
-              <div className="mt-8 grid grid-cols-2 gap-4">
-                {[
-                  { v: '58%', l: 'Avg win rate tracked' },
-                  { v: '1.7x', l: 'Profit factor visibility' },
-                  { v: 'R', l: 'Multiples on every trade' },
-                  { v: '24/7', l: 'Sync across devices' },
-                ].map((s) => (
-                  <div key={s.l} className="rounded-xl border border-zinc-700 bg-zinc-800/50 p-4">
-                    <div className="text-2xl font-bold text-violet-400">{s.v}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{s.l}</div>
-                  </div>
-                ))}
+            <ScrollReveal direction="left">
+              <div>
+                <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  Stats that help you trade better
+                </h2>
+                <p className="mt-4 text-lg text-zinc-400">
+                  Review every session, tag your setups, and track growth over time.
+                  Get the insights you need to refine strategy and stay disciplined.
+                </p>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  {[
+                    { v: '58%', l: 'Avg win rate tracked' },
+                    { v: '1.7x', l: 'Profit factor visibility' },
+                    { v: 'R', l: 'Multiples on every trade' },
+                    { v: '24/7', l: 'Sync across devices' },
+                  ].map((s, i) => (
+                    <ScrollReveal key={s.l} delay={i * 80} direction="scale">
+                      <div className="rounded-xl border border-zinc-700 bg-zinc-800/50 p-4 transition duration-300 hover:border-violet-500/40 hover:bg-zinc-800">
+                        <div className="text-2xl font-bold text-violet-400">{s.v}</div>
+                        <div className="mt-1 text-xs text-zinc-400">{s.l}</div>
+                      </div>
+                    </ScrollReveal>
+                  ))}
+                </div>
               </div>
-            </div>
-            <MockAnalytics />
+            </ScrollReveal>
+            <ScrollReveal direction="right" delay={150}>
+              <MockAnalytics />
+            </ScrollReveal>
           </div>
         </div>
       </section>
 
       <section id="faq" className="mx-auto max-w-3xl px-5 py-20 sm:px-8">
-        <div className="text-center">
+        <ScrollReveal className="text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">Frequently asked questions</h2>
           <p className="mt-3 text-zinc-600">Quick answers before you start.</p>
-        </div>
+        </ScrollReveal>
         <div className="mt-10">
-          {FAQS.map((f) => <FaqItem key={f.q} q={f.q} a={f.a} />)}
+          {FAQS.map((f, i) => (
+            <ScrollReveal key={f.q} delay={i * 70}>
+              <FaqItem q={f.q} a={f.a} />
+            </ScrollReveal>
+          ))}
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-20 sm:px-8">
-        <div className="rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-600 px-8 py-14 text-center text-white shadow-xl shadow-violet-500/25 sm:px-12">
+        <ScrollReveal direction="scale">
+          <div className="rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-600 px-8 py-14 text-center text-white shadow-xl shadow-violet-500/25 transition duration-500 hover:shadow-2xl hover:shadow-violet-500/30 sm:px-12">
           <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
             Ready to become a more disciplined trader?
           </h2>
@@ -561,7 +599,8 @@ export default function LandingPage() {
               Open your journal
             </Link>
           )}
-        </div>
+          </div>
+        </ScrollReveal>
       </section>
 
       <footer className="border-t border-zinc-200 bg-zinc-50">

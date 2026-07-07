@@ -59,7 +59,7 @@ function EmptyOverview({ onOpenSetup }) {
     <div className={`${card} flex flex-col items-center justify-center px-6 py-12 text-center`}>
       <p className="text-sm font-semibold text-zinc-800">No trades in this view yet</p>
       <p className="mt-2 max-w-md text-sm text-zinc-500">
-        Connect MetaTrader 5 from the MT5 Setup section, or switch accounts in the sidebar.
+        Connect MetaTrader 5 from Settings → MT5 Setup, or switch accounts in the sidebar.
       </p>
       <button className={`${btnOutline} mt-5`} type="button" onClick={onOpenSetup}>
         Open MT5 setup guide
@@ -83,7 +83,7 @@ export default function OverviewPage() {
 
       {!hasTrades && (
         <div className="mb-6">
-          <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'setup' } })} />
+          <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'settings', section: 'mt5-setup' } })} />
         </div>
       )}
 

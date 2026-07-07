@@ -6,7 +6,8 @@ import TradeModal from '../components/TradeModal';
 import OverviewPage from './OverviewPage';
 import LogPage from './LogPage';
 import CalendarPage from './CalendarPage';
-import Mt5SetupPage from './Mt5SetupPage';
+import EconomicCalendarPage from './EconomicCalendarPage';
+import WorldNewsPage from './WorldNewsPage';
 import SettingsPage from './SettingsPage';
 import { appShell } from '../lib/ui';
 
@@ -17,9 +18,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (location.state?.tab) {
-      const tab = location.state.tab === 'leaderboard' ? 'overview' : location.state.tab;
+      let tab = location.state.tab === 'leaderboard' ? 'overview' : location.state.tab;
+      let section = location.state.section || null;
+      if (tab === 'news') tab = 'economic-calendar';
+      if (tab === 'setup') {
+        tab = 'settings';
+        section = section || 'mt5-setup';
+      }
       setActiveTab(tab);
-      setSettingsFocus(location.state.section || null);
+      setSettingsFocus(section);
       window.history.replaceState({}, '');
     }
   }, [location.state]);
@@ -31,13 +38,16 @@ export default function DashboardPage() {
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50">
           <div
             className={`flex h-full min-h-0 min-w-0 flex-col ${
-              activeTab === 'log' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
+              activeTab === 'log' || activeTab === 'world-news'
+                ? 'overflow-hidden'
+                : 'overflow-y-auto overscroll-contain'
             }`}
           >
             {activeTab === 'overview' && <OverviewPage />}
             {activeTab === 'log' && <LogPage />}
             {activeTab === 'calendar' && <CalendarPage />}
-            {activeTab === 'setup' && <Mt5SetupPage />}
+            {activeTab === 'economic-calendar' && <EconomicCalendarPage />}
+            {activeTab === 'world-news' && <WorldNewsPage />}
             {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}
           </div>
         </main>

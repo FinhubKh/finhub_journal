@@ -8,6 +8,7 @@
 import { createServer } from 'http';
 import { loadEnv } from './load-env.mjs';
 import { handleEaSync } from './sync-handler.mjs';
+import { fetchEconomicCalendar, fetchMarketNews } from './market-handler.mjs';
 
 const env = loadEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL?.replace(/\/$/, '');
@@ -19,8 +20,8 @@ if (!supabaseUrl || !serviceKey) {
   process.exit(1);
 }
 
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
+function sendJson(res, status, body, extraHeaders = {}) {
+  res.writeHead(status, { 'Content-Type': 'application/json', ...extraHeaders });
   res.end(JSON.stringify(body));
 }
 
@@ -40,6 +41,26 @@ const server = createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/health') {
     sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/v1/market/economic-calendar') {
+    try {
+      const data = await fetchEconomicCalendar();
+      sendJson(res, 200, data, { 'Cache-Control': 'public, max-age=300' });
+    } catch (err) {
+      sendJson(res, 502, { error: err.message || 'Failed to load economic calendar' });
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/v1/market/news') {
+    try {
+      const data = await fetchMarketNews(url.searchParams.get('limit'));
+      sendJson(res, 200, data, { 'Cache-Control': 'public, max-age=300' });
+    } catch (err) {
+      sendJson(res, 502, { error: err.message || 'Failed to load market news' });
+    }
     return;
   }
 

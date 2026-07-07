@@ -1,0 +1,102 @@
+import { useEffect, useRef, useState } from 'react';
+
+function Chevron({ open }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className={`text-zinc-400 transition ${open ? 'rotate-180' : ''}`}
+    >
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function normalizeOptions(options) {
+  return options.map((option) => {
+    if (typeof option === 'string') return { value: option, label: option };
+    return option;
+  });
+}
+
+export default function CustomDropdown({
+  value,
+  onChange,
+  options,
+  ariaLabel = 'Select option',
+  className = '',
+  menuClassName = 'w-36',
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const items = normalizeOptions(options);
+  const selected = items.find((item) => item.value === value) || items[0];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDocClick(e) {
+      if (!rootRef.current?.contains(e.target)) setOpen(false);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  function pick(nextValue) {
+    onChange(nextValue);
+    setOpen(false);
+  }
+
+  return (
+    <div className={`relative ${className}`} ref={rootRef}>
+      <button
+        type="button"
+        className="inline-flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-900 transition hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98]"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={ariaLabel}
+      >
+        <span className="truncate">{selected?.label ?? value}</span>
+        <Chevron open={open} />
+      </button>
+
+      {open && (
+        <div
+          className={`absolute left-0 top-[calc(100%+8px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg ${menuClassName}`}
+          role="listbox"
+          aria-label={ariaLabel}
+        >
+          {items.map((item) => {
+            const isSelected = item.value === value;
+            return (
+              <button
+                key={item.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                  isSelected
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'bg-white text-zinc-700 hover:bg-zinc-100'
+                }`}
+                onClick={() => pick(item.value)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
