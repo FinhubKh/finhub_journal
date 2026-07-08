@@ -12,8 +12,8 @@ import {
   insertModel, deleteModel,
   updateTradingAccount,
 } from '../api';
-import TradingAccountsManager from '../components/TradingAccountsManager';
-import InstallGuideCard from '../components/InstallGuideCard';
+import TradingAccountsManager from '../components/settings/TradingAccountsManager';
+import InstallGuideCard from '../components/settings/InstallGuideCard';
 
 const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },

@@ -12,8 +12,8 @@ import {
   monthTradeTotal,
   yearTradeTotal,
 } from '../lib/dailyPnl';
-import DailyPnlModal from '../components/DailyPnlModal';
-import YearDropdown from '../components/YearDropdown';
+import DailyPnlModal from '../components/modals/DailyPnlModal';
+import YearDropdown from '../components/common/YearDropdown';
 import { btnGhost, card, cardBody, dashboardPageWide, dashboardPageWideFull } from '../lib/ui';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

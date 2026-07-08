@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
-import { ScrollReveal } from '../components/ScrollReveal';
+import { ScrollReveal } from '../components/common/ScrollReveal';
 
 const NAV_LINKS = [
   { href: '#platform', label: 'Platform' },

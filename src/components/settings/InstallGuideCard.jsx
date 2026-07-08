@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
-import { btnOutline, btnPrimary, btnSecondary, btnGhost, card, cardBody, cardHd, cardTitle } from '../lib/ui';
+import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../../api/env';
+import { btnOutline, btnPrimary, btnSecondary, btnGhost, card, cardBody, cardHd, cardTitle } from '../../lib/ui';
 
 const EA_DOWNLOAD_URL = '/FinhubJournal_TradeSync.ex5';
 

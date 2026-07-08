@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useTradeModal } from '../context/TradeModalContext';
-import { useAppData } from '../context/AppDataContext';
-import { useDialog } from '../context/DialogContext';
-import { deleteTrade, updateTradeAnnotation } from '../api';
-import { fmtR, fmtPnl, fmtDateLong } from '../lib/format';
+import { useTradeModal } from '../../context/TradeModalContext';
+import { useAppData } from '../../context/AppDataContext';
+import { useDialog } from '../../context/DialogContext';
+import { deleteTrade, updateTradeAnnotation } from '../../api';
+import { fmtR, fmtPnl, fmtDateLong } from '../../lib/format';
+import CustomDropdown from '../common/CustomDropdown';
 import {
   btnDanger, btnGhost, btnPrimaryFull, card, input, label, msgError, msgSuccess, tradeResultBadge,
-} from '../lib/ui';
+} from '../../lib/ui';
 
 export default function TradeModal() {
   const { trade, close } = useTradeModal();
@@ -142,19 +143,31 @@ export default function TradeModal() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={label}>Session</label>
-                  <select className={input} value={session} onChange={(e) => setSession(e.target.value)}>
-                    <option value="">Select...</option>
-                    <option value="asian">Asian</option>
-                    <option value="london">London</option>
-                    <option value="ny">New York</option>
-                  </select>
+                  <CustomDropdown
+                    className="w-full"
+                    menuClassName="w-full"
+                    value={session}
+                    onChange={setSession}
+                    options={[
+                      { value: '', label: 'Select...' },
+                      { value: 'asian', label: 'Asian' },
+                      { value: 'london', label: 'London' },
+                      { value: 'ny', label: 'New York' },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className={label}>Model</label>
-                  <select className={input} value={model} onChange={(e) => setModel(e.target.value)}>
-                    <option value="">Select...</option>
-                    {userModels.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-                  </select>
+                  <CustomDropdown
+                    className="w-full"
+                    menuClassName="w-full"
+                    value={model}
+                    onChange={setModel}
+                    options={[
+                      { value: '', label: 'Select...' },
+                      ...userModels.map((m) => ({ value: m.name, label: m.name }))
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className={label}>R Value</label>

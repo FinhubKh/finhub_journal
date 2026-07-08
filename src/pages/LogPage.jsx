@@ -1,4 +1,4 @@
-import TradeList from '../components/tabs/TradeList';
+import TradeList from '../components/journal/TradeList';
 
 export default function LogPage() {
   return (

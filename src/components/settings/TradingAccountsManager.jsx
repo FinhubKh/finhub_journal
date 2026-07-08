@@ -3,8 +3,8 @@ import {
   insertTradingAccount, deleteTradingAccount, updateTradingAccount,
   recalculateTradesForDenomination, repairCentAccountPnl,
   listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
-} from '../api';
-import { useDialog } from '../context/DialogContext';
+} from '../../api';
+import { useDialog } from '../../context/DialogContext';
 import {
   ACCOUNT_TYPES,
   PNL_DENOMINATIONS,
@@ -13,11 +13,12 @@ import {
   pnlDenominationLabel,
   normalizeSlug,
   normalizePnlDenomination,
-} from '../lib/accounts';
+} from '../../lib/accounts';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, cardHd, cardTitle, emptyState, input, msgError, msgSuccess,
   tableTd, tableTh,
-} from '../lib/ui';
+} from '../../lib/ui';
+import CustomDropdown from '../common/CustomDropdown';
 
 const EMPTY_FORM = {
   name: '',
@@ -49,15 +50,23 @@ function AccountFormFields({ form, setField }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-zinc-700">Type</label>
-          <select className={input} value={form.accountType} onChange={(e) => setField('accountType', e.target.value)}>
-            {ACCOUNT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+          <CustomDropdown
+            className="w-full"
+            menuClassName="w-full"
+            value={form.accountType}
+            onChange={(v) => setField('accountType', v)}
+            options={ACCOUNT_TYPES}
+          />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account currency</label>
-          <select className={input} value={form.pnlDenomination} onChange={(e) => setField('pnlDenomination', e.target.value)}>
-            {PNL_DENOMINATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </select>
+          <CustomDropdown
+            className="w-full"
+            menuClassName="w-full"
+            value={form.pnlDenomination}
+            onChange={(v) => setField('pnlDenomination', v)}
+            options={PNL_DENOMINATIONS}
+          />
         </div>
       </div>
       <p className="text-xs text-zinc-500">

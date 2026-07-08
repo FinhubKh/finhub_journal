@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { getUserEmail, getUserDisplayName } from '../api/auth';
+import { useAuth } from '../../context/AuthContext';
+import { getUserEmail, getUserDisplayName } from '../../api/auth';
 import AccountSwitcher from './AccountSwitcher';
-import { btnGhost } from '../lib/ui';
+import { btnGhost } from '../../lib/ui';
 
 const NEWS_TAB_IDS = ['economic-calendar', 'world-news'];
 

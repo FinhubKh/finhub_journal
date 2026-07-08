@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { deleteDailyPnl, upsertDailyPnl } from '../api';
-import { btnDanger, btnGhost, btnPrimary, card, input } from '../lib/ui';
+import { deleteDailyPnl, upsertDailyPnl } from '../../api';
+import { btnDanger, btnGhost, btnPrimary, card, input } from '../../lib/ui';
 
 function fmtPnl(v) {
   if (v == null || Number.isNaN(v)) return '—';

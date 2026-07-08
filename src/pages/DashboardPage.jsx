@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TradeModalProvider } from '../context/TradeModalContext';
-import TabBar from '../components/TabBar';
-import TradeModal from '../components/TradeModal';
+import TabBar from '../components/layout/TabBar';
+import TradeModal from '../components/modals/TradeModal';
 import OverviewPage from './OverviewPage';
 import LogPage from './LogPage';
 import CalendarPage from './CalendarPage';

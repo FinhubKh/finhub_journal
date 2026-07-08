@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { useAppData } from '../context/AppDataContext';
+import { useAppData } from '../../context/AppDataContext';
 import {
   groupTradesByAccount,
   accountTypeLabel,
-} from '../lib/accounts';
-import { computeStats } from '../lib/stats';
-import { card, cardBody, cardHd, cardTitle } from '../lib/ui';
+} from '../../lib/accounts';
+import { computeStats } from '../../lib/stats';
+import { card, cardBody, cardHd, cardTitle } from '../../lib/ui';
 
 function fmtPnl(v) {
   return v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;

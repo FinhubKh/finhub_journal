@@ -7,6 +7,7 @@ import { fmtR, fmtDateShort, capitalize } from '../../lib/format';
 import {
   btnGhost, btnDanger, btnSm, card, cardHd, cardTitle, emptyState, tradeResultBadge,
 } from '../../lib/ui';
+import CustomDropdown from '../common/CustomDropdown';
 
 function fmtPnlStrict(v) {
   if (v == null || v === '') return '—';
@@ -103,22 +104,40 @@ export default function TradeList() {
       </div>
 
       <div className="flex shrink-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-zinc-100 bg-zinc-50/50 px-4 py-3 md:px-5">
-        <select className={`${filterField} w-[118px]`} value={filters.result} onChange={(e) => setFilter('result', e.target.value)}>
-          <option value="">All results</option>
-          <option value="win">Win</option>
-          <option value="loss">Loss</option>
-          <option value="be">BE</option>
-        </select>
-        <select className={`${filterField} w-[118px]`} value={filters.session} onChange={(e) => setFilter('session', e.target.value)}>
-          <option value="">All sessions</option>
-          <option value="asian">Asian</option>
-          <option value="london">London</option>
-          <option value="ny">New York</option>
-        </select>
-        <select className={`${filterField} w-[118px]`} value={filters.model} onChange={(e) => setFilter('model', e.target.value)}>
-          <option value="">All models</option>
-          {userModels.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-        </select>
+        <CustomDropdown
+          className="shrink-0 w-[118px]"
+          menuClassName="w-36"
+          value={filters.result}
+          onChange={(v) => setFilter('result', v)}
+          options={[
+            { value: '', label: 'All results' },
+            { value: 'win', label: 'Win' },
+            { value: 'loss', label: 'Loss' },
+            { value: 'be', label: 'BE' },
+          ]}
+        />
+        <CustomDropdown
+          className="shrink-0 w-[118px]"
+          menuClassName="w-36"
+          value={filters.session}
+          onChange={(v) => setFilter('session', v)}
+          options={[
+            { value: '', label: 'All sessions' },
+            { value: 'asian', label: 'Asian' },
+            { value: 'london', label: 'London' },
+            { value: 'ny', label: 'New York' },
+          ]}
+        />
+        <CustomDropdown
+          className="shrink-0 w-[118px]"
+          menuClassName="w-36"
+          value={filters.model}
+          onChange={(v) => setFilter('model', v)}
+          options={[
+            { value: '', label: 'All models' },
+            ...userModels.map((m) => ({ value: m.name, label: m.name }))
+          ]}
+        />
         <input
           className={`${filterField} w-[100px]`}
           type="text"

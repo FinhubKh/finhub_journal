@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useAppData } from '../context/AppDataContext';
-import { insertStep } from '../api';
-import { useDialog } from '../context/DialogContext';
-import { btnGhost, btnPrimary, card, input } from '../lib/ui';
+import { useAppData } from '../../context/AppDataContext';
+import { insertStep } from '../../api';
+import { useDialog } from '../../context/DialogContext';
+import { btnGhost, btnPrimary, card, input } from '../../lib/ui';
 
 export default function AddChecklistStepModal({ isOpen, onClose }) {
   const { userSteps, refreshSteps } = useAppData();

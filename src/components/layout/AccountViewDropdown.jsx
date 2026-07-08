@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppData } from '../context/AppDataContext';
-import { accountTypeLabel } from '../lib/accounts';
+import { useAppData } from '../../context/AppDataContext';
+import { accountTypeLabel } from '../../lib/accounts';
 
 function Chevron({ open }) {
   return (

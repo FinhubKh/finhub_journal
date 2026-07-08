@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import ChecklistCard from '../components/tabs/ChecklistCard';
-import AddChecklistStepModal from '../components/AddChecklistStepModal';
+import ChecklistCard from '../components/journal/ChecklistCard';
+import AddChecklistStepModal from '../components/modals/AddChecklistStepModal';
 import { dashboardPageWideFull, btnPrimary } from '../lib/ui';
 
 export default function ChecklistPage() {

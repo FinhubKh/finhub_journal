@@ -2,10 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { computeStats } from '../lib/stats';
 import { btnOutline, card, dashboardPageWide, sectionLabel } from '../lib/ui';
-import AccountViewDropdown from '../components/AccountViewDropdown';
-import EquityChart from '../components/tabs/EquityChart';
-import BreakdownCard from '../components/tabs/BreakdownCard';
-import PortfolioBreakdown from '../components/PortfolioBreakdown';
+import AccountViewDropdown from '../components/layout/AccountViewDropdown';
+import EquityChart from '../components/dashboard/EquityChart';
+import BreakdownCard from '../components/dashboard/BreakdownCard';
+import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 
 function fmtPnl(v) {
   if (v == null || Number.isNaN(v)) return '—';

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchEconomicCalendar } from '../../api/market';
-import CustomDropdown from '../CustomDropdown';
+import CustomDropdown from '../common/CustomDropdown';
 import { ErrorBlock, formatRelativeTime, LoadingBlock } from './marketNewsShared';
 import {
   btnOutline,
