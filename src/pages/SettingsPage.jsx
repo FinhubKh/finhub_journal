@@ -9,7 +9,7 @@ import {
   input, label, msgError, msgSuccess, sectionLabel,
 } from '../lib/ui';
 import {
-  insertStep, deleteStep, insertModel, deleteModel,
+  insertModel, deleteModel,
   updateTradingAccount,
 } from '../api';
 import TradingAccountsManager from '../components/TradingAccountsManager';
@@ -86,10 +86,8 @@ export default function SettingsPage({ focusSection = null }) {
   const { alert, confirm } = useDialog();
   const { signOut, setDisplayName } = useAuth();
   const {
-    userSteps,
     userModels,
     tradingAccounts,
-    refreshSteps,
     refreshModels,
     refreshTradingAccounts,
     refreshTrades,
@@ -105,9 +103,6 @@ export default function SettingsPage({ focusSection = null }) {
   const [dnInput, setDnInput] = useState(getUserDisplayName());
   const [dnMsg, setDnMsg] = useState(null);
   const [dnSaving, setDnSaving] = useState(false);
-
-  const [newStepSection, setNewStepSection] = useState('');
-  const [newStepTitle, setNewStepTitle] = useState('');
 
   const [newModelName, setNewModelName] = useState('');
 
@@ -129,35 +124,6 @@ export default function SettingsPage({ focusSection = null }) {
       setDnMsg({ text: e.message, type: 'error' });
     } finally {
       setDnSaving(false);
-    }
-  }
-
-  async function addStep() {
-    const section = newStepSection.trim(), title = newStepTitle.trim();
-    if (!section || !title) {
-      await alert({ title: 'Missing fields', message: 'Please fill in both section and title.' });
-      return;
-    }
-    try {
-      await insertStep(section, title, userSteps.length);
-      setNewStepSection(''); setNewStepTitle('');
-      await refreshSteps();
-    } catch (e) {
-      await alert({ title: 'Error', message: 'Could not add step.' });
-    }
-  }
-
-  async function removeStep(id) {
-    const ok = await confirm({
-      title: 'Delete step?',
-      message: 'This checklist step will be removed permanently.',
-      confirmLabel: 'Delete',
-      destructive: true,
-    });
-    if (!ok) return;
-    try { await deleteStep(id); await refreshSteps(); }
-    catch (e) {
-      await alert({ title: 'Error', message: 'Could not delete step.' });
     }
   }
 
@@ -213,15 +179,17 @@ export default function SettingsPage({ focusSection = null }) {
   }
 
   return (
-    <div className={dashboardPageWide}>
-      <div className="mb-4">
+    <div className="flex h-full min-h-[calc(100dvh-3rem)] w-full min-w-0 flex-col p-4 pb-6 md:p-6">
+      <div className="mb-4 shrink-0">
         <h1 className="text-lg font-bold text-zinc-900">Settings</h1>
         <p className="mt-1 text-sm text-zinc-500">Trading accounts and journal preferences.</p>
       </div>
 
-      <SettingsTabBar activeTab={activeTab} onChange={setActiveTab} />
+      <div className="shrink-0">
+        <SettingsTabBar activeTab={activeTab} onChange={setActiveTab} />
+      </div>
 
-      <div className="mt-5 space-y-5">
+      <div className="mt-5 flex-1 flex flex-col space-y-5">
         {activeTab === 'account' && (
           <>
             <SettingsSection title="Trading accounts" id="trading-accounts">
@@ -243,29 +211,6 @@ export default function SettingsPage({ focusSection = null }) {
 
         {activeTab === 'journal' && (
           <>
-            <SettingsSection title="Checklist Steps">
-              {userSteps.length === 0 ? (
-                <div className={emptyState}>No steps yet.</div>
-              ) : (
-                <div className="divide-y divide-zinc-100">
-                  {userSteps.map((s) => (
-                    <div className={`${cardBody} flex items-center justify-between gap-3 py-3`} key={s.id}>
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-violet-600">{s.section}</div>
-                        <div className="text-sm font-medium text-zinc-900">{s.title}</div>
-                      </div>
-                      <button className={btnGhost} type="button" onClick={() => removeStep(s.id)}>Delete</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className={`${cardBody} space-y-3 border-t border-zinc-100`}>
-                <input className={input} type="text" placeholder="Section (e.g. HTF Context)" value={newStepSection} onChange={(e) => setNewStepSection(e.target.value)} />
-                <input className={input} type="text" placeholder="Step title" value={newStepTitle} onChange={(e) => setNewStepTitle(e.target.value)} />
-                <button className={btnSecondary} type="button" onClick={addStep}>+ Add Step</button>
-              </div>
-            </SettingsSection>
-
             <SettingsSection title="Entry Models">
               {userModels.length === 0 ? (
                 <div className={emptyState}>No models yet.</div>

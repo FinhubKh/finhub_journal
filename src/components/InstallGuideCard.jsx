@@ -42,7 +42,7 @@ export default function InstallGuideCard({ defaultOpen = true, compact = false, 
   }
 
   return (
-    <section className={card} aria-label="MT5 setup guide">
+    <section className={`${card} ${standalone ? 'flex flex-col h-full flex-1' : ''}`} aria-label="MT5 setup guide">
       <div className={cardHd}>
         <div>
           <h3 className={cardTitle}>MT5 setup guide</h3>
@@ -70,8 +70,8 @@ export default function InstallGuideCard({ defaultOpen = true, compact = false, 
       </div>
 
       {(standalone || open) && (
-        <div className={`${cardBody} space-y-6 border-t border-zinc-100 pt-5`}>
-          <div className="grid gap-4 lg:grid-cols-2">
+        <div className={`${cardBody} border-t border-zinc-100 pt-5 ${standalone ? 'flex-1 overflow-y-auto' : 'space-y-6'}`}>
+          <div className="grid gap-4 lg:grid-cols-2 lg:gap-6 h-full">
             <ol className="space-y-3">
               {STEPS.map((step) => (
                 <li key={step.n} className="flex gap-3 rounded-xl border border-zinc-100 bg-zinc-50/60 px-4 py-3">

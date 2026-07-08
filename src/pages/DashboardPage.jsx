@@ -9,6 +9,7 @@ import CalendarPage from './CalendarPage';
 import EconomicCalendarPage from './EconomicCalendarPage';
 import WorldNewsPage from './WorldNewsPage';
 import SettingsPage from './SettingsPage';
+import ChecklistPage from './ChecklistPage';
 import { appShell } from '../lib/ui';
 
 export default function DashboardPage() {
@@ -46,6 +47,7 @@ export default function DashboardPage() {
             {activeTab === 'overview' && <OverviewPage />}
             {activeTab === 'log' && <LogPage />}
             {activeTab === 'calendar' && <CalendarPage />}
+            {activeTab === 'checklist' && <ChecklistPage />}
             {activeTab === 'economic-calendar' && <EconomicCalendarPage />}
             {activeTab === 'world-news' && <WorldNewsPage />}
             {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}

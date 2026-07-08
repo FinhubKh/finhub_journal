@@ -26,7 +26,8 @@ export default function DailyPnlModal({
 
   useEffect(() => {
     const initialPnl = hasOverride ? override.pnl_usd : tradesSum;
-    setPnlInput(initialPnl === 0 && !hasOverride && syncedCount === 0 ? '' : String(initialPnl));
+    const roundedPnl = typeof initialPnl === 'number' ? Number(initialPnl.toFixed(2)) : Number(Number(initialPnl).toFixed(2));
+    setPnlInput(roundedPnl === 0 && !hasOverride && syncedCount === 0 ? '' : String(roundedPnl));
 
     const initialCount = hasOverride
       ? (override.trade_count != null ? override.trade_count : syncedCount)

@@ -324,12 +324,12 @@ function MonthDetailView({
                           {manual && <span className="text-[9px] font-bold text-violet-600">M</span>}
                         </span>
                         {active && (
-                          <span className={`mt-auto text-[10px] font-semibold ${dayPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+                          <span className={`mt-auto text-xs font-bold ${dayPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
                             {fmtPnl(dayPnl)}
                           </span>
                         )}
                         {active && (
-                          <span className="text-[9px] text-zinc-400">{count}t</span>
+                          <span className="text-[10px] text-zinc-400">{count} trade{count !== 1 ? 's' : ''}</span>
                         )}
                         {!active && useOverrides && (
                           <span className="mt-auto text-[9px] text-zinc-400">Tap to add</span>

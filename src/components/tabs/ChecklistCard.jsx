@@ -47,7 +47,7 @@ export default function ChecklistCard() {
   }
 
   return (
-    <div className={`${card} overflow-hidden`}>
+    <div className={`${card} flex min-h-0 flex-1 flex-col overflow-hidden`}>
       <div className={cardHd}>
         <div>
           <h2 className={cardTitle}>Pre-trade checklist</h2>
@@ -56,23 +56,23 @@ export default function ChecklistCard() {
         <span className="text-sm font-bold text-violet-600">{done}<span className="text-zinc-400">/{total}</span></span>
       </div>
 
-      <div className={`${cardBody} border-b border-zinc-100 pt-0`}>
+      <div className={`${cardBody} shrink-0 border-b border-zinc-100 pt-0`}>
         <div className="h-2 overflow-hidden rounded-full bg-zinc-100" role="progressbar" aria-valuenow={done} aria-valuemin="0" aria-valuemax={total}>
           <div className="h-full rounded-full bg-violet-600 transition-all duration-300" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       {complete && (
-        <div className="border-b border-violet-200 bg-violet-600 px-4 py-3 text-white md:px-5">
+        <div className="shrink-0 border-b border-violet-200 bg-violet-600 px-4 py-3 text-white md:px-5">
           <p className="text-sm font-semibold">Checklist complete</p>
           <p className="text-xs text-violet-100">You are cleared to execute — log the trade after entry.</p>
         </div>
       )}
 
-      <div className="max-h-[300px] overflow-y-auto px-4 py-3 md:px-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 md:px-5">
         {total === 0 ? (
           <p className="py-8 text-center text-sm text-zinc-400">
-            No steps configured.<br />Add checklist items in Settings → Journal.
+            No steps configured.<br />Click "+ Add Step" to create checklist items.
           </p>
         ) : (
           <div className="space-y-4">
@@ -124,7 +124,7 @@ export default function ChecklistCard() {
       </div>
 
       {total > 0 && (
-        <div className="flex justify-end border-t border-zinc-100 px-4 py-3 md:px-5">
+        <div className="flex shrink-0 justify-end border-t border-zinc-100 px-4 py-3 md:px-5">
           <button className={btnGhost} type="button" onClick={() => setChecked(new Set())}>Reset</button>
         </div>
       )}
