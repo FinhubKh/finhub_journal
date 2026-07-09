@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { getRemembered, clearRemembered } from '../api/auth';
-import { btnAuthGoogle, btnAuthSubmit, btnAuthTab, btnText, msgError, msgSuccess } from '../lib/ui';
+import { btnAuthGoogle, btnAuthSubmit, btnAuthTab, btnText } from '../lib/ui';
 
 const PERKS = [
   'Log trades with R-multiples and notes',
@@ -95,36 +96,30 @@ function AuthDivider() {
 }
 
 export default function AuthPage() {
-  const { signIn, signUp, resetPassword, quickSignIn, signInWithGoogle, configured } = useAuth();
+  const { signIn, signUp, resetPassword, quickSignIn, configured } = useAuth();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState(() => (searchParams.get('mode') === 'signup' ? 'signup' : 'signin'));
   const [showReset, setShowReset] = useState(false);
   const [remembered, setRemembered] = useState(getRemembered());
   const [quickLoading, setQuickLoading] = useState(false);
-  const [quickMsg, setQuickMsg] = useState(null);
 
   const [siEmail, setSiEmail] = useState('');
   const [siPass, setSiPass] = useState('');
-  const [siMsg, setSiMsg] = useState(null);
   const [siLoading, setSiLoading] = useState(false);
   const [siRemember, setSiRemember] = useState(true);
 
   const [suEmail, setSuEmail] = useState('');
   const [suPass, setSuPass] = useState('');
   const [suPass2, setSuPass2] = useState('');
-  const [suMsg, setSuMsg] = useState(null);
   const [suLoading, setSuLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleMsg, setGoogleMsg] = useState(null);
 
   const [resetEmail, setResetEmail] = useState('');
-  const [resetMsg, setResetMsg] = useState(null);
   const [resetLoading, setResetLoading] = useState(false);
 
   async function handleQuickSignIn() {
-    setQuickLoading(true); setQuickMsg(null);
+    setQuickLoading(true);
     try { await quickSignIn(); }
-    catch (e) { setQuickMsg({ text: e.message, type: 'error' }); setRemembered(null); }
+    catch (e) { toast.error(e.message); setRemembered(null); }
     finally { setQuickLoading(false); }
   }
 
@@ -134,48 +129,42 @@ export default function AuthPage() {
   }
 
   async function handleSignIn() {
-    if (!siEmail || !siPass) return setSiMsg({ text: 'Please fill in all fields.', type: 'error' });
-    if (!configured) return setSiMsg({ text: 'Add your Supabase keys first.', type: 'error' });
-    setSiLoading(true); setSiMsg(null);
+    if (!siEmail || !siPass) return toast.error('Please fill in all fields.');
+    if (!configured) return toast.error('Add your Supabase keys first.');
+    setSiLoading(true);
     try { await signIn(siEmail.trim(), siPass, siRemember); }
-    catch (e) { setSiMsg({ text: e.message, type: 'error' }); }
+    catch (e) { toast.error(e.message); }
     finally { setSiLoading(false); }
   }
 
   async function handleSignUp() {
-    if (!suEmail || !suPass || !suPass2) return setSuMsg({ text: 'Please fill in all fields.', type: 'error' });
-    if (suPass !== suPass2) return setSuMsg({ text: 'Passwords do not match.', type: 'error' });
-    if (suPass.length < 6) return setSuMsg({ text: 'Password must be at least 6 characters.', type: 'error' });
-    if (!configured) return setSuMsg({ text: 'Add your Supabase keys first.', type: 'error' });
-    setSuLoading(true); setSuMsg(null);
+    if (!suEmail || !suPass || !suPass2) return toast.error('Please fill in all fields.');
+    if (suPass !== suPass2) return toast.error('Passwords do not match.');
+    if (suPass.length < 6) return toast.error('Password must be at least 6 characters.');
+    if (!configured) return toast.error('Add your Supabase keys first.');
+    setSuLoading(true);
     try {
       await signUp(suEmail.trim(), suPass);
-      setSuMsg({ text: 'Account created! Check your email to confirm, then sign in.', type: 'success' });
-      setTimeout(() => { setMode('signin'); setShowReset(false); }, 2500);
-    } catch (e) { setSuMsg({ text: e.message, type: 'error' }); }
+      setSuEmail(''); setSuPass(''); setSuPass2('');
+      setShowReset(false);
+      setMode('signin');
+      toast.success('Account created. Please sign in.');
+    } catch (e) { toast.error(e.message); }
     finally { setSuLoading(false); }
   }
 
   async function handleReset() {
-    if (!resetEmail) return setResetMsg({ text: 'Please enter your email.', type: 'error' });
-    setResetLoading(true); setResetMsg(null);
+    if (!resetEmail) return toast.error('Please enter your email.');
+    setResetLoading(true);
     try {
       await resetPassword(resetEmail.trim());
-      setResetMsg({ text: 'Reset link sent! Check your inbox.', type: 'success' });
-    } catch (e) { setResetMsg({ text: e.message, type: 'error' }); }
+      toast.success('Reset link sent! Check your inbox.');
+    } catch (e) { toast.error(e.message); }
     finally { setResetLoading(false); }
   }
 
   function handleGoogleSignIn() {
-    if (!configured) return setGoogleMsg({ text: 'Add your Supabase keys first.', type: 'error' });
-    setGoogleLoading(true);
-    setGoogleMsg(null);
-    try {
-      signInWithGoogle();
-    } catch (e) {
-      setGoogleMsg({ text: e.message, type: 'error' });
-      setGoogleLoading(false);
-    }
+    toast.info('Google login/register: Coming soon.');
   }
 
   const tabBtn = btnAuthTab;
@@ -231,7 +220,6 @@ export default function AuthPage() {
                   {quickLoading ? 'Signing in...' : 'Sign in instantly'}
                 </button>
                 <button type="button" className={btnText} onClick={forgetMe}>Not you? Forget me</button>
-                {quickMsg && <p className={`mt-2 ${quickMsg.type === 'error' ? msgError : msgSuccess}`}>{quickMsg.text}</p>}
               </div>
             )}
 
@@ -245,6 +233,11 @@ export default function AuthPage() {
 
                 {mode === 'signin' && (
                   <div className="space-y-7">
+                    <button type="button" className={googleBtn} disabled onClick={handleGoogleSignIn}>
+                      {iconGoogle}
+                      Coming soon
+                    </button>
+                    <AuthDivider />
                     <AuthField
                       placeholder="Email"
                       type="email"
@@ -268,15 +261,14 @@ export default function AuthPage() {
                         {siLoading ? 'Signing in...' : 'Login'}
                       </button>
                     </div>
-                    {siMsg && <p className={siMsg.type === 'error' ? msgError : msgSuccess}>{siMsg.text}</p>}
                   </div>
                 )}
 
                 {mode === 'signup' && (
                   <div className="space-y-7">
-                    <button type="button" className={googleBtn} disabled={googleLoading} onClick={handleGoogleSignIn}>
+                    <button type="button" className={googleBtn} disabled onClick={handleGoogleSignIn}>
                       {iconGoogle}
-                      {googleLoading ? 'Redirecting...' : 'Continue with Google'}
+                      Coming soon
                     </button>
                     <AuthDivider />
                     <AuthField
@@ -304,8 +296,6 @@ export default function AuthPage() {
                         {suLoading ? 'Creating...' : 'Sign Up'}
                       </button>
                     </div>
-                    {suMsg && <p className={suMsg.type === 'error' ? msgError : msgSuccess}>{suMsg.text}</p>}
-                    {googleMsg && <p className={googleMsg.type === 'error' ? msgError : msgSuccess}>{googleMsg.text}</p>}
                   </div>
                 )}
               </>
@@ -326,7 +316,6 @@ export default function AuthPage() {
                 <button type="button" className={submitBtn} disabled={resetLoading} onClick={handleReset}>
                   {resetLoading ? 'Sending...' : 'Send link'}
                 </button>
-                {resetMsg && <p className={resetMsg.type === 'error' ? msgError : msgSuccess}>{resetMsg.text}</p>}
               </div>
             )}
           </div>

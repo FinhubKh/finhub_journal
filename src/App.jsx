@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { ToastContainer } from 'react-toastify';
 import { useAuth } from './context/AuthContext';
 import { AppDataProvider } from './context/AppDataContext';
 import LandingPage from './pages/LandingPage';
@@ -33,6 +34,17 @@ function AppChrome({ children }) {
   return (
     <>
       <div id="confetti-container" aria-hidden="true" />
+      <ToastContainer
+        position="top-right"
+        autoClose={2500}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        pauseOnHover
+        draggable
+        theme="light"
+      />
       {children}
     </>
   );

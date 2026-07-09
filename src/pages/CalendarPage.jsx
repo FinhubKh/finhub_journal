@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { fetchTradesByMonth, fetchDailyPnlByYear } from '../api';
 import { filterTradesForView } from '../lib/accounts';
+import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import {
   dayHasActivity,
   overridesToMap,
@@ -478,6 +479,13 @@ export default function CalendarPage() {
 
   return (
     <div className={screen === 'detail' ? dashboardPageWideFull : dashboardPageWide}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-zinc-900">Calendar</h1>
+          <p className="text-sm text-zinc-500">Filter by account or view all accounts.</p>
+        </div>
+        <AccountViewDropdown />
+      </div>
       {screen === 'year' ? (
         <YearView
           year={year}
