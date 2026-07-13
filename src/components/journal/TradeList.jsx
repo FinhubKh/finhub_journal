@@ -5,9 +5,10 @@ import { useDialog } from '../../context/DialogContext';
 import { deleteTrade } from '../../api';
 import { fmtR, fmtDateShort, capitalize } from '../../lib/format';
 import {
-  btnGhost, btnDanger, btnSm, card, cardHd, cardTitle, emptyState, tradeResultBadge,
+  btnGhost, btnDanger, btnSm, btnPrimary, card, cardHd, cardTitle, emptyState, tradeResultBadge,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
+import ManualTradeModal from '../modals/ManualTradeModal';
 
 function fmtPnlStrict(v) {
   if (v == null || v === '') return '—';
@@ -31,6 +32,7 @@ export default function TradeList() {
   const { alert, confirm } = useDialog();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
+  const [manualOpen, setManualOpen] = useState(false);
 
   function setFilter(key, value) { setFilters((f) => ({ ...f, [key]: value })); }
   function clearFilters() { setFilters(EMPTY_FILTERS); }
@@ -77,8 +79,10 @@ export default function TradeList() {
       destructive: true,
     });
     if (!ok) return;
-    try { await deleteTrade(id); await refreshTrades(); }
-    catch {
+    try {
+      await deleteTrade(id);
+      await refreshTrades();
+    } catch {
       await alert({ title: 'Error', message: 'Could not delete trade.' });
     }
   }
@@ -100,7 +104,12 @@ export default function TradeList() {
             {hasFilters ? ` · filtered from ${visibleTrades.length}` : ''}
           </p>
         </div>
-        <button className={btnGhost} type="button" onClick={refreshTrades}>Refresh</button>
+        <div className="flex items-center gap-2">
+          <button className={btnPrimary} type="button" onClick={() => setManualOpen(true)}>
+            Log trade
+          </button>
+          <button className={btnGhost} type="button" onClick={refreshTrades}>Refresh</button>
+        </div>
       </div>
 
       <div className="flex shrink-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-zinc-100 bg-zinc-50/50 px-4 py-3 md:px-5">
@@ -153,7 +162,7 @@ export default function TradeList() {
 
       {filtered.length === 0 ? (
         <div className={`${emptyState} min-h-0 flex-1`}>
-          {visibleTrades.length === 0 ? 'No trades yet. Sync from MT5 or check your filters.' : 'No trades match your filters.'}
+          {visibleTrades.length === 0 ? 'No trades yet. Log a manual trade or sync from MT5.' : 'No trades match your filters.'}
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto">
@@ -269,6 +278,8 @@ export default function TradeList() {
           )}
         </div>
       )}
+
+      <ManualTradeModal isOpen={manualOpen} onClose={() => setManualOpen(false)} />
     </div>
   );
 }

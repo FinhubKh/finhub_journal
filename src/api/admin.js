@@ -27,23 +27,6 @@ export async function adminDeleteUser(userId) {
   return rpc('admin_delete_user', { target_user_id: userId });
 }
 
-export async function adminFetchTrades(limit = 200) {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trades?select=id,user_id,date,symbol,pnl_usd,result,source,account,account_id,ticket,close_time&order=close_time.desc.nullslast,date.desc&limit=${limit}`,
-    { headers: authHeaders(getToken()) },
-  );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function adminDeleteTrade(id) {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
 export async function adminFetchTradingAccounts() {
   const res = await authFetch(
     `${SUPABASE_URL}/rest/v1/trading_accounts?select=id,user_id,name,account_type,broker,pnl_denomination,is_default,created_at&order=created_at.desc`,

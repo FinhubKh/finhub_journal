@@ -9,10 +9,14 @@ import { createServer } from 'http';
 import { loadEnv } from './load-env.mjs';
 import { handleEaSync } from './sync-handler.mjs';
 import { fetchEconomicCalendar, fetchMarketNews } from './market-handler.mjs';
+import { handleAiChecklistRequest } from './ai-checklist-handler.mjs';
 
 const env = loadEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL?.replace(/\/$/, '');
 const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = env.VITE_SUPABASE_ANON_KEY;
+const sealionApiKey = (env.SEALION_API_KEY || '').trim();
+const sealionModel = (env.SEALION_MODEL || '').trim() || undefined;
 const port = Number(env.EA_API_PORT || 8787);
 
 if (!supabaseUrl || !serviceKey) {
@@ -76,6 +80,23 @@ const server = createServer(async (req, res) => {
       accountMeta: body.account_meta,
       supabaseUrl,
       serviceKey,
+    });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/ai/checklist') {
+    if (!anonKey) {
+      sendJson(res, 500, { error: 'Supabase anon key is not configured' });
+      return;
+    }
+    const body = await readBody(req);
+    req.body = body || {};
+    const result = await handleAiChecklistRequest(req, {
+      supabaseUrl,
+      anonKey,
+      sealionApiKey,
+      model: sealionModel,
     });
     sendJson(res, result.status, result.body);
     return;

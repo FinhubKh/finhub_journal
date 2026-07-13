@@ -7,6 +7,7 @@
     { "source": "/v1/ea/sync", "destination": "/api/v1/ea/sync" },
     { "source": "/v1/market/economic-calendar", "destination": "/api/v1/market/economic-calendar" },
     { "source": "/v1/market/news", "destination": "/api/v1/market/news" },
+    { "source": "/v1/ai/checklist", "destination": "/api/v1/ai/checklist" },
     { "source": "/health", "destination": "/api/health" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
@@ -19,6 +20,9 @@
     },
     "api/v1/market/news.js": {
       "maxDuration": 15
+    },
+    "api/v1/ai/checklist.js": {
+      "maxDuration": 60
     }
   }
 }

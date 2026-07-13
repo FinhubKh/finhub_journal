@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import ChecklistCard from '../components/journal/ChecklistCard';
-import AddChecklistStepModal from '../components/modals/AddChecklistStepModal';
-import { dashboardPageWideFull, btnPrimary } from '../lib/ui';
+import ChecklistStepModal from '../components/modals/ChecklistStepModal';
+import AiChecklistSidebar from '../components/checklist/AiChecklistSidebar';
+import { dashboardPageWideFull, btnPrimary, btnOutline } from '../lib/ui';
 
 export default function ChecklistPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAiOpen, setIsAiOpen] = useState(false);
 
   return (
     <div className={dashboardPageWideFull}>
@@ -15,16 +17,22 @@ export default function ChecklistPage() {
             Build consistency by completing your routine before every session.
           </p>
         </div>
-        <button className={btnPrimary} type="button" onClick={() => setIsModalOpen(true)}>
-          + Add Step
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className={btnOutline} type="button" onClick={() => setIsAiOpen(true)}>
+            Generate with AI
+          </button>
+          <button className={btnPrimary} type="button" onClick={() => setIsModalOpen(true)}>
+            + Add Step
+          </button>
+        </div>
       </header>
-      
+
       <div className="flex min-h-0 flex-1 flex-col">
         <ChecklistCard />
       </div>
 
-      <AddChecklistStepModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ChecklistStepModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AiChecklistSidebar isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} />
     </div>
   );
 }

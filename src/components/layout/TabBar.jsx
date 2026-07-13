@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getUserEmail, getUserDisplayName } from '../../api/auth';
-import AccountSwitcher from './AccountSwitcher';
 import { btnGhost } from '../../lib/ui';
 
 const NEWS_TAB_IDS = ['economic-calendar', 'world-news'];
@@ -178,7 +177,6 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             <span className="hidden md:inline">Admin panel</span>
           </button>
         )}
-        <AccountSwitcher />
         <button type="button" className={`${btnGhost} w-full justify-center bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 md:justify-start`} onClick={async () => { await signOut(); navigate('/'); }}>
           <span className="md:hidden" title="Sign out">Out</span>
           <span className="hidden md:inline">Sign out</span>

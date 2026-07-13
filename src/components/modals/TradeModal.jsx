@@ -5,6 +5,7 @@ import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, updateTradeAnnotation } from '../../api';
 import { fmtR, fmtPnl, fmtDateLong } from '../../lib/format';
 import CustomDropdown from '../common/CustomDropdown';
+import TradeScreenshots from '../journal/TradeScreenshots';
 import {
   btnDanger, btnGhost, btnPrimaryFull, card, input, label, msgError, msgSuccess, tradeResultBadge,
 } from '../../lib/ui';
@@ -46,6 +47,7 @@ export default function TradeModal() {
 
   const t = trade;
   const isApi = t.source === 'api';
+  const isManual = !isApi;
   const rDisplay = t.r_value ? fmtR(t.r_value) : '—';
   const pnlDisplay = t.pnl_usd ? fmtPnl(t.pnl_usd) : '—';
   const pnlClass = t.pnl_usd >= 0 ? 'text-violet-600' : 'text-rose-600';
@@ -53,13 +55,16 @@ export default function TradeModal() {
   async function handleDelete() {
     const ok = await confirm({
       title: 'Delete trade?',
-      message: 'This trade will be removed from your journal permanently.',
+      message: 'This trade and its screenshots will be removed permanently.',
       confirmLabel: 'Delete',
       destructive: true,
     });
     if (!ok) return;
-    try { await deleteTrade(t.id); close(); await refreshTrades(); }
-    catch (e) {
+    try {
+      await deleteTrade(t.id);
+      close();
+      await refreshTrades();
+    } catch (e) {
       await alert({ title: 'Error', message: 'Could not delete trade.' });
     }
   }
@@ -98,9 +103,10 @@ export default function TradeModal() {
           <div className="flex flex-wrap gap-2">
             <span className={tradeResultBadge(t.result)}>{t.result}</span>
             {isApi && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600">API</span>}
+            {isManual && <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">Manual</span>}
             {t.account && <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">{t.account}</span>}
-            {!isApi && t.model && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.model}</span>}
-            {!isApi && t.session && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.session}</span>}
+            {t.model && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.model}</span>}
+            {t.session && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.session}</span>}
           </div>
 
           <p className="text-xs text-zinc-400">{fmtDateLong(t.date)}</p>
@@ -130,16 +136,11 @@ export default function TradeModal() {
             </div>
           )}
 
-          {!isApi && t.notes && (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Notes</div>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-700">{t.notes}</p>
-            </div>
-          )}
-
-          {isApi && (
+          {(isApi || isManual) && (
             <>
-              <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Your journal entry</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                {isManual ? 'Journal details' : 'Your journal entry'}
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={label}>Session</label>
@@ -165,7 +166,7 @@ export default function TradeModal() {
                     onChange={setModel}
                     options={[
                       { value: '', label: 'Select...' },
-                      ...userModels.map((m) => ({ value: m.name, label: m.name }))
+                      ...userModels.map((m) => ({ value: m.name, label: m.name })),
                     ]}
                   />
                 </div>
@@ -175,19 +176,30 @@ export default function TradeModal() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className={label}>Notes / Reasoning / Emotion</label>
-                  <textarea className={`${input} resize-none`} rows="3" placeholder="Why did you enter? How did you feel?"
-                    value={notes} onChange={(e) => setNotes(e.target.value)} />
+                  <textarea
+                    className={`${input} resize-none`}
+                    rows="3"
+                    placeholder="Why did you enter? How did you feel?"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
                 </div>
               </div>
               <button className={btnPrimaryFull} type="button" disabled={saving} onClick={saveAnnotation}>
-                {saving ? 'Saving...' : 'Save Annotation'}
+                {saving ? 'Saving...' : 'Save'}
               </button>
               {annMsg && <p className={annMsg.type === 'error' ? msgError : msgSuccess}>{annMsg.text}</p>}
             </>
           )}
+
+          {isManual && (
+            <div className="border-t border-zinc-100 pt-4">
+              <TradeScreenshots tradeId={t.id} enabled />
+            </div>
+          )}
         </div>
 
-        {!isApi && (
+        {isManual && (
           <div className="border-t border-zinc-100 p-4 md:p-5">
             <button className={`${btnDanger} w-full`} type="button" onClick={handleDelete}>Delete this trade</button>
           </div>

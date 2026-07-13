@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
-import { insertStep } from '../../api';
+import { insertStep, updateStep } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { btnGhost, btnPrimary, card, input } from '../../lib/ui';
 
-export default function AddChecklistStepModal({ isOpen, onClose }) {
+export default function ChecklistStepModal({ isOpen, onClose, step = null }) {
   const { userSteps, refreshSteps } = useAppData();
   const { alert } = useDialog();
+  const isEdit = Boolean(step);
 
   const [section, setSection] = useState('');
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setSection('');
-      setTitle('');
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    setSection(step?.section || '');
+    setTitle(step?.title || '');
+  }, [isOpen, step]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,11 +46,18 @@ export default function AddChecklistStepModal({ isOpen, onClose }) {
 
     setSaving(true);
     try {
-      await insertStep(sec, tit, userSteps.length);
+      if (isEdit) {
+        await updateStep(step.id, { section: sec, title: tit });
+      } else {
+        await insertStep(sec, tit, userSteps.length);
+      }
       await refreshSteps();
       onClose();
     } catch (err) {
-      await alert({ title: 'Error', message: 'Could not add checklist step.' });
+      await alert({
+        title: 'Error',
+        message: isEdit ? 'Could not update checklist step.' : 'Could not add checklist step.',
+      });
     } finally {
       setSaving(false);
     }
@@ -66,11 +73,13 @@ export default function AddChecklistStepModal({ isOpen, onClose }) {
         className={`${card} w-full max-w-sm shadow-xl`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="add-step-title"
+        aria-labelledby="checklist-step-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 id="add-step-title" className="text-base font-semibold text-zinc-900">Add Checklist Step</h2>
+          <h2 id="checklist-step-title" className="text-base font-semibold text-zinc-900">
+            {isEdit ? 'Edit Checklist Step' : 'Add Checklist Step'}
+          </h2>
           <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Close</button>
         </div>
 
@@ -103,10 +112,10 @@ export default function AddChecklistStepModal({ isOpen, onClose }) {
             />
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 mt-2">
+          <div className="mt-2 flex justify-end gap-2 border-t border-zinc-100 pt-4">
             <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Cancel</button>
             <button className={btnPrimary} type="submit" disabled={saving}>
-              {saving ? 'Adding...' : 'Add Step'}
+              {saving ? (isEdit ? 'Saving...' : 'Adding...') : (isEdit ? 'Save changes' : 'Add Step')}
             </button>
           </div>
         </form>

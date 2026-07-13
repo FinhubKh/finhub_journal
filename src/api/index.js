@@ -3,6 +3,7 @@
  * Supabase REST data calls (trades, checklist, models, sync keys).
  */
 import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, getUserId, authFetch } from './auth';
+import { deleteAllTradeImages } from './tradeImages';
 
 export async function insertTrade(trade) {
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/trades`, {
@@ -201,6 +202,11 @@ export async function deleteDailyPnl(date) {
 }
 
 export async function deleteTrade(id) {
+  try {
+    await deleteAllTradeImages(id);
+  } catch {
+    // ignore if images table/storage not set up yet
+  }
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${id}`, {
     method: 'DELETE',
     headers: authHeaders(getToken()),

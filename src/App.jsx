@@ -15,10 +15,17 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function JournalRoute({ children }) {
+  const { isAdmin, ready, profileLoading } = useAuth();
+  if (!ready || profileLoading) return null;
+  if (isAdmin) return <Navigate to="/admin" replace />;
+  return children;
+}
+
 function GuestRoute({ children }) {
-  const { isAuthenticated, ready } = useAuth();
-  if (!ready) return null;
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  const { isAuthenticated, isAdmin, ready, profileLoading } = useAuth();
+  if (!ready || profileLoading) return null;
+  if (isAuthenticated) return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
   return children;
 }
 
@@ -69,9 +76,11 @@ export default function App() {
               path="/dashboard"
               element={(
                 <ProtectedRoute>
-                  <AppDataProvider>
-                    <DashboardPage />
-                  </AppDataProvider>
+                  <JournalRoute>
+                    <AppDataProvider>
+                      <DashboardPage />
+                    </AppDataProvider>
+                  </JournalRoute>
                 </ProtectedRoute>
               )}
             />

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import {
@@ -7,22 +7,19 @@ import {
   adminListUsers,
   adminSetUserRole,
   adminDeleteUser,
-  adminFetchTrades,
-  adminDeleteTrade,
   adminFetchTradingAccounts,
   adminDeleteTradingAccount,
   adminFetchSyncKeys,
   adminRevokeSyncKey,
 } from '../api/admin';
 import {
-  btnDanger, btnGhost, btnOutline, btnSm, card, cardBody, cardHd, cardTitle,
-  dashboardPageWide, emptyState, input, msgError, tableTd, tableTdRight, tableTh,
+  btnDanger, btnGhost, btnSm, card, cardBody, cardHd, cardTitle,
+  dashboardPageWide, emptyState, input, msgError, tableTd, tableTh,
 } from '../lib/ui';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
-  { id: 'trades', label: 'Trades' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'sync', label: 'Sync keys' },
 ];
@@ -67,7 +64,6 @@ export default function AdminPage() {
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
-  const [trades, setTrades] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [syncKeys, setSyncKeys] = useState([]);
   const [search, setSearch] = useState('');
@@ -89,16 +85,14 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, usersData, tradesData, accountsData, keysData] = await Promise.all([
+      const [statsData, usersData, accountsData, keysData] = await Promise.all([
         adminPlatformStats(),
         adminListUsers(),
-        adminFetchTrades(250),
         adminFetchTradingAccounts(),
         adminFetchSyncKeys(),
       ]);
       setStats(statsData);
       setUsers(usersData || []);
-      setTrades(tradesData || []);
       setAccounts(accountsData || []);
       setSyncKeys(keysData || []);
     } catch (e) {
@@ -117,17 +111,6 @@ export default function AdminPage() {
   const filteredUsers = users.filter((u) =>
     !q || u.email?.toLowerCase().includes(q) || u.display_name?.toLowerCase().includes(q),
   );
-
-  const filteredTrades = trades.filter((t) => {
-    if (!q) return true;
-    const u = userById[t.user_id];
-    return (
-      u?.email?.toLowerCase().includes(q)
-      || t.symbol?.toLowerCase().includes(q)
-      || t.account?.toLowerCase().includes(q)
-      || String(t.ticket || '').includes(q)
-    );
-  });
 
   async function handleToggleRole(user) {
     const nextRole = user.role === 'admin' ? 'user' : 'admin';
@@ -163,25 +146,6 @@ export default function AdminPage() {
       await loadAll();
     } catch (e) {
       await alert({ title: 'Error', message: e.message || 'Could not delete user.' });
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handleDeleteTrade(trade) {
-    const ok = await confirm({
-      title: 'Delete trade?',
-      message: `Ticket ${trade.ticket || trade.id} will be removed.`,
-      confirmLabel: 'Delete',
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusyId(trade.id);
-    try {
-      await adminDeleteTrade(trade.id);
-      await loadAll();
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not delete trade.' });
     } finally {
       setBusyId(null);
     }
@@ -234,7 +198,6 @@ export default function AdminPage() {
             <h1 className="text-lg font-bold text-zinc-900">Platform control</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link className={btnOutline} to="/dashboard">Back to journal</Link>
             <button className={btnGhost} type="button" onClick={loadAll} disabled={loading}>Refresh</button>
             <button className={btnDanger} type="button" onClick={async () => { await signOut(); navigate('/'); }}>Sign out</button>
           </div>
@@ -263,12 +226,9 @@ export default function AdminPage() {
             {activeTab === 'overview' && stats && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Users" value={stats.total_users} />
-                <StatCard label="Trades" value={stats.total_trades} />
-                <StatCard label="EA synced" value={stats.api_trades} />
                 <StatCard label="Trading accounts" value={stats.total_accounts} />
                 <StatCard label="Active sync keys" value={stats.active_sync_keys} />
                 <StatCard label="Admins" value={stats.admin_users} />
-                <StatCard label="Total PnL (USD)" value={`$${Number(stats.total_pnl || 0).toLocaleString()}`} />
               </div>
             )}
 
@@ -283,10 +243,8 @@ export default function AdminPage() {
                       <tr className="border-b border-zinc-200">
                         <th className={tableTh}>User</th>
                         <th className={tableTh}>Role</th>
-                        <th className={tableTh}>Trades</th>
                         <th className={tableTh}>Accounts</th>
                         <th className={tableTh}>Keys</th>
-                        <th className={`${tableTh} text-right`}>PnL</th>
                         <th className={`${tableTh} text-right`}>Actions</th>
                       </tr>
                     </thead>
@@ -305,12 +263,8 @@ export default function AdminPage() {
                               {user.role}
                             </span>
                           </td>
-                          <td className={tableTd}>{user.trade_count}</td>
                           <td className={tableTd}>{user.account_count}</td>
                           <td className={tableTd}>{user.sync_key_count}</td>
-                          <td className={tableTdRight}>
-                            ${Number(user.total_pnl || 0).toLocaleString()}
-                          </td>
                           <td className={`${tableTd} text-right`}>
                             <div className="flex justify-end gap-1">
                               <button
@@ -330,55 +284,6 @@ export default function AdminPage() {
                                 Delete
                               </button>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-
-            {activeTab === 'trades' && (
-              <section className={card}>
-                <div className={cardHd}>
-                  <h2 className={cardTitle}>Recent trades ({filteredTrades.length})</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[960px] border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-zinc-200">
-                        <th className={tableTh}>Date</th>
-                        <th className={tableTh}>User</th>
-                        <th className={tableTh}>Symbol</th>
-                        <th className={tableTh}>Account</th>
-                        <th className={tableTh}>Source</th>
-                        <th className={tableTh}>Result</th>
-                        <th className={`${tableTh} text-right`}>PnL</th>
-                        <th className={`${tableTh} text-right`}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100">
-                      {filteredTrades.map((trade) => (
-                        <tr key={trade.id} className="hover:bg-zinc-50/80">
-                          <td className={tableTd}>{trade.date}</td>
-                          <td className={tableTd}>
-                            <div className="text-xs text-zinc-600">{userById[trade.user_id]?.email || trade.user_id?.slice(0, 8)}</div>
-                          </td>
-                          <td className={tableTd}>{trade.symbol || '—'}</td>
-                          <td className={tableTd}>{trade.account || accountById[trade.account_id]?.name || '—'}</td>
-                          <td className={tableTd}>{trade.source || 'manual'}</td>
-                          <td className={tableTd}>{trade.result}</td>
-                          <td className={tableTdRight}>${Number(trade.pnl_usd || 0).toLocaleString()}</td>
-                          <td className={`${tableTd} text-right`}>
-                            <button
-                              className={btnDanger}
-                              type="button"
-                              disabled={busyId === trade.id}
-                              onClick={() => handleDeleteTrade(trade)}
-                            >
-                              Delete
-                            </button>
                           </td>
                         </tr>
                       ))}

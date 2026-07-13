@@ -107,14 +107,13 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Admin read/delete on app tables
+-- Admin access on operational tables (not private journal data)
 drop policy if exists "Admins can view all trades" on trades;
-create policy "Admins can view all trades"
-  on trades for select using (public.is_admin());
-
 drop policy if exists "Admins can delete all trades" on trades;
-create policy "Admins can delete all trades"
-  on trades for delete using (public.is_admin());
+drop policy if exists "Admins can view all daily pnl" on daily_pnl;
+drop policy if exists "Admins can delete all daily pnl" on daily_pnl;
+drop policy if exists "Admins can view all checklist steps" on checklist_steps;
+drop policy if exists "Admins can view all entry models" on entry_models;
 
 drop policy if exists "Admins can view all trading accounts" on trading_accounts;
 create policy "Admins can view all trading accounts"
@@ -131,22 +130,6 @@ create policy "Admins can view all sync keys"
 drop policy if exists "Admins can delete all sync keys" on sync_keys;
 create policy "Admins can delete all sync keys"
   on sync_keys for delete using (public.is_admin());
-
-drop policy if exists "Admins can view all daily pnl" on daily_pnl;
-create policy "Admins can view all daily pnl"
-  on daily_pnl for select using (public.is_admin());
-
-drop policy if exists "Admins can delete all daily pnl" on daily_pnl;
-create policy "Admins can delete all daily pnl"
-  on daily_pnl for delete using (public.is_admin());
-
-drop policy if exists "Admins can view all checklist steps" on checklist_steps;
-create policy "Admins can view all checklist steps"
-  on checklist_steps for select using (public.is_admin());
-
-drop policy if exists "Admins can view all entry models" on entry_models;
-create policy "Admins can view all entry models"
-  on entry_models for select using (public.is_admin());
 
 -- Admin RPCs
 create or replace function public.admin_platform_stats()
@@ -165,11 +148,8 @@ begin
   select json_build_object(
     'total_users', (select count(*)::int from profiles),
     'admin_users', (select count(*)::int from profiles where role = 'admin'),
-    'total_trades', (select count(*)::int from trades),
-    'api_trades', (select count(*)::int from trades where source = 'api'),
     'total_accounts', (select count(*)::int from trading_accounts),
-    'active_sync_keys', (select count(*)::int from sync_keys),
-    'total_pnl', coalesce((select sum(pnl_usd) from trades), 0)
+    'active_sync_keys', (select count(*)::int from sync_keys)
   ) into result;
 
   return result;
@@ -183,11 +163,8 @@ returns table (
   display_name text,
   role text,
   created_at timestamptz,
-  trade_count bigint,
   account_count bigint,
-  sync_key_count bigint,
-  total_pnl numeric,
-  last_trade_date date
+  sync_key_count bigint
 )
 language plpgsql
 security definer
@@ -205,11 +182,8 @@ begin
     p.display_name,
     p.role,
     p.created_at,
-    (select count(*)::bigint from trades t where t.user_id = p.id) as trade_count,
     (select count(*)::bigint from trading_accounts ta where ta.user_id = p.id) as account_count,
-    (select count(*)::bigint from sync_keys sk where sk.user_id = p.id) as sync_key_count,
-    coalesce((select sum(t.pnl_usd) from trades t where t.user_id = p.id), 0) as total_pnl,
-    (select max(t.date) from trades t where t.user_id = p.id) as last_trade_date
+    (select count(*)::bigint from sync_keys sk where sk.user_id = p.id) as sync_key_count
   from profiles p
   order by p.created_at desc;
 end;
