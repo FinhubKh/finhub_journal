@@ -349,3 +349,5 @@ export async function revokeAccountSyncKey(accountId) {
   );
   if (!res.ok) throw new Error(await res.text());
 }
+
+export * from './compounding';
