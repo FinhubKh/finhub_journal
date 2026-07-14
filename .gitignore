@@ -1,7 +1,50 @@
-node_modules
-dist
-.env
-.vercel
-backend/.cache
+# Dependencies & build
+node_modules/
+dist/
+.vercel/
 
-.superpowers
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# Agent / AI tooling
+.superpowers/
+.claude/
+.cursor/
+.qodo/
+.codex/
+.agent/
+.agents/
+skills/
+.skills/
+.gemini/
+.continue/
+.windsurf/
+
+# Local caches / tooling junk
+.cache/
+*.tsbuildinfo
+compile_commands.json
+.mql-auto-forwards/
+backend/.cache/
+
+# Sample / reference stubs (not shipped app code)
+public/Sample_compounding/
+public/compounding/
+docs/superpowers/
+
+# Logs / coverage
+*.log
+npm-debug.log*
+coverage/
+.nyc_output/
