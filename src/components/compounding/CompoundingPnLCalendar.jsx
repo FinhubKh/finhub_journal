@@ -8,6 +8,7 @@ import {
 } from '../../lib/compounding/calendarPnL';
 import { formatMoney } from '../../lib/compounding/formatMoney';
 import { btnGhost, card, cardBody } from '../../lib/ui';
+import { pnlToneClass } from './CompoundingUI';
 
 export default function CompoundingPnLCalendar({
   trades,
@@ -70,7 +71,7 @@ export default function CompoundingPnLCalendar({
             >
               <div className="font-semibold text-zinc-800">{day}</div>
               {dayData ? (
-                <div className={`mt-0.5 tabular-nums ${dayData.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <div className={`mt-0.5 tabular-nums ${pnlToneClass(dayData.amount)}`}>
                   {formatMoney(dayData.amount, { compact: true })}
                 </div>
               ) : null}
@@ -83,7 +84,8 @@ export default function CompoundingPnLCalendar({
         <div className="font-medium text-zinc-900">Selected: {selectedDate}</div>
         {selectedEntry ? (
           <p className="mt-1">
-            {formatCalendarDaySummary(selectedEntry)} · {formatMoney(selectedEntry.amount)}
+            {formatCalendarDaySummary(selectedEntry)} ·{' '}
+            <span className={pnlToneClass(selectedEntry.amount)}>{formatMoney(selectedEntry.amount)}</span>
           </p>
         ) : (
           <p className="mt-1 text-zinc-400">No compounding trades this day yet.</p>

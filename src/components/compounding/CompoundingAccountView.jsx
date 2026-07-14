@@ -3,7 +3,8 @@ import { useDialog } from '../../context/DialogContext';
 import { useCompoundingAccount } from '../../hooks/useCompoundingAccount';
 import { formatLocalDate } from '../../lib/compounding/calendarPnL';
 import { formatMoney } from '../../lib/compounding/formatMoney';
-import { btnDanger, btnGhost, dashboardPageWide, pillBtn, pillToggle } from '../../lib/ui';
+import { btnDanger, btnGhost, dashboardPageWide, msgError, pillBtn, pillToggle } from '../../lib/ui';
+import { MetricCard, SectionBlock } from './CompoundingUI';
 import ProgressSection from './ProgressSection';
 import TradesToGoalSummary from './TradesToGoalSummary';
 import CompoundingSpreadsheet from './CompoundingSpreadsheet';
@@ -18,17 +19,6 @@ const TABS = [
   { id: 'analytics', label: 'Analytics' },
   { id: 'settings', label: 'Settings' },
 ];
-
-function MetricCard({ label, value, tone }) {
-  const toneClass =
-    tone === 'profit' ? 'text-emerald-600' : tone === 'loss' ? 'text-rose-600' : 'text-zinc-900';
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">{label}</div>
-      <div className={`mt-1 text-base font-semibold tabular-nums ${toneClass}`}>{value}</div>
-    </div>
-  );
-}
 
 export default function CompoundingAccountView({ accountId, onBack }) {
   const { confirm } = useDialog();
@@ -62,7 +52,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
         <button type="button" className={btnGhost} onClick={onBack}>
           Back
         </button>
-        <p className="mt-4 text-sm text-rose-600">{error || 'Plan not found.'}</p>
+        <p className={`mt-4 ${msgError}`}>{error || 'Plan not found.'}</p>
       </div>
     );
   }
@@ -103,7 +93,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
           {formatMoney(config.startingBalance)} → {formatMoney(config.targetBalance)}
         </h1>
         <p className="mt-2 text-sm text-zinc-500">
-          <span className="font-medium text-emerald-600">{config.targetProfitPercent}%</span> profit per win ·{' '}
+          <span className="font-medium text-violet-600">{config.targetProfitPercent}%</span> profit per win ·{' '}
           <span className="font-medium text-rose-600">{config.riskPercent}%</span> risk per loss
           {account.tradingAccountId ? ' · linked trading account' : ''}
         </p>
@@ -131,26 +121,39 @@ export default function CompoundingAccountView({ accountId, onBack }) {
             targetBalance={config.targetBalance}
             progressPercent={stats.progressPercent}
           />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            <MetricCard label="Current balance" value={formatMoney(stats.currentBalance)} />
-            <MetricCard label="Target balance" value={formatMoney(stats.targetBalance)} />
-            <MetricCard label="Remaining" value={formatMoney(stats.remainingAmount)} />
-            <MetricCard
-              label="Net profit"
-              value={formatMoney(stats.netProfit)}
-              tone={stats.netProfit >= 0 ? 'profit' : 'loss'}
-            />
-            <MetricCard label="Win rate" value={`${stats.winRate.toFixed(1)}%`} tone="profit" />
-            <MetricCard label="Wins / losses" value={`${stats.winningTrades} / ${stats.losingTrades}`} />
-            <MetricCard label="Total trades" value={String(stats.totalTrades)} />
-            <MetricCard label="Current streak" value={streakLabel} />
-            <MetricCard label="Best win streak" value={String(stats.bestWinStreak)} tone="profit" />
-            <MetricCard
-              label="Largest drawdown"
-              value={`${formatMoney(stats.largestDrawdown)} (${stats.largestDrawdownPercent.toFixed(1)}%)`}
-              tone="loss"
-            />
-          </div>
+          <SectionBlock title="Summary">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              <MetricCard label="Current balance" value={formatMoney(stats.currentBalance)} size="sm" />
+              <MetricCard label="Target balance" value={formatMoney(stats.targetBalance)} size="sm" />
+              <MetricCard label="Remaining" value={formatMoney(stats.remainingAmount)} size="sm" />
+              <MetricCard
+                label="Net profit"
+                value={formatMoney(stats.netProfit)}
+                tone={stats.netProfit >= 0 ? 'positive' : 'negative'}
+                size="sm"
+              />
+              <MetricCard
+                label="Win rate"
+                value={`${stats.winRate.toFixed(1)}%`}
+                tone={stats.winRate >= 50 ? 'positive' : stats.totalTrades ? 'negative' : 'neutral'}
+                size="sm"
+              />
+              <MetricCard label="Wins / losses" value={`${stats.winningTrades} / ${stats.losingTrades}`} size="sm" />
+            </div>
+          </SectionBlock>
+          <SectionBlock title="Risk & streaks">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <MetricCard label="Total trades" value={String(stats.totalTrades)} size="sm" />
+              <MetricCard label="Current streak" value={streakLabel} size="sm" />
+              <MetricCard label="Best win streak" value={String(stats.bestWinStreak)} tone="positive" size="sm" />
+              <MetricCard
+                label="Largest drawdown"
+                value={`${formatMoney(stats.largestDrawdown)} (${stats.largestDrawdownPercent.toFixed(1)}%)`}
+                tone="negative"
+                size="sm"
+              />
+            </div>
+          </SectionBlock>
         </div>
       )}
 
@@ -161,7 +164,9 @@ export default function CompoundingAccountView({ accountId, onBack }) {
           selectedLogDate={selectedLogDate}
           onSelectLogDate={setSelectedLogDate}
           onOpenPnlTab={() => setActiveTab('pnl')}
-          actions={{ addTrade, updateTrade, isSaving }}
+          addTrade={addTrade}
+          updateTrade={updateTrade}
+          isSaving={isSaving}
           title={account.name}
         />
       )}

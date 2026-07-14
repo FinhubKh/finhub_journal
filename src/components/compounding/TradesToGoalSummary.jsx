@@ -7,11 +7,11 @@ export default function TradesToGoalSummary({ config, currentBalance }) {
 
   return (
     <div className={`${card} ${cardBody} border-violet-100 bg-violet-50/40`}>
-      <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
         Trades to reach {formatMoney(config.targetBalance)}
       </p>
       {atGoal ? (
-        <p className="text-lg font-semibold text-emerald-600">Goal reached — you hit your target balance.</p>
+        <p className="text-lg font-semibold text-violet-700">Goal reached — you hit your target balance.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>

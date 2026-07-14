@@ -35,7 +35,7 @@ export function buildWinLossDistribution(trades) {
   const losses = trades.filter((t) => t.result === 'loss').length;
   const breakeven = trades.filter((t) => t.result === 'breakeven').length;
   return [
-    { name: 'Wins', value: wins, color: '#059669' },
+    { name: 'Wins', value: wins, color: '#7c3aed' },
     { name: 'Losses', value: losses, color: '#e11d48' },
     { name: 'Breakeven', value: breakeven, color: '#a1a1aa' },
   ];

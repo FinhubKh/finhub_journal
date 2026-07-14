@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
   deleteCompoundingAccount,
@@ -13,7 +13,6 @@ import { tradesNeededToTarget } from '../lib/compounding/projection';
 import { accountToConfig } from '../lib/compounding/account';
 import {
   btnDanger,
-  btnGhost,
   btnPrimary,
   card,
   cardBody,
@@ -24,6 +23,7 @@ import {
 } from '../lib/ui';
 import CustomDropdown from '../components/common/CustomDropdown';
 import CompoundingAccountView from '../components/compounding/CompoundingAccountView';
+import { ModalActions, PlanModalShell } from '../components/compounding/CompoundingUI';
 
 const EMPTY_FORM = {
   name: '',
@@ -34,15 +34,50 @@ const EMPTY_FORM = {
   tradingAccountId: '',
 };
 
+function PlanCard({ account, linkedName, onOpen, onDelete }) {
+  const config = accountToConfig(account);
+  const winsNeeded = tradesNeededToTarget(config);
+
+  return (
+    <div className={`${card} ${cardBody}`}>
+      <div>
+        <h2 className="text-base font-semibold text-zinc-900">{account.name}</h2>
+        <p className="mt-1 text-sm tabular-nums text-zinc-600">
+          {formatMoney(account.startingBalance)} → {formatMoney(account.targetBalance)}
+        </p>
+        <p className="mt-1 text-xs text-zinc-500">
+          {account.targetProfitPercent}% / win · {account.riskPercent}% risk · ~{winsNeeded} wins if all win
+        </p>
+        {account.tradingAccountId ? (
+          <p className="mt-2 text-xs text-violet-600">Linked: {linkedName || 'Trading account'}</p>
+        ) : (
+          <p className="mt-2 text-xs text-zinc-400">Standalone plan</p>
+        )}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" className={btnPrimary} onClick={onOpen}>
+          Open
+        </button>
+        <button type="button" className={btnDanger} onClick={onDelete}>
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CreatePlanModal({ tradingAccounts, onClose, onCreated }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const accountOptions = [
-    { value: '', label: 'None (standalone)' },
-    ...tradingAccounts.map((a) => ({ value: a.id, label: a.name })),
-  ];
+  const accountOptions = useMemo(
+    () => [
+      { value: '', label: 'None (standalone)' },
+      ...tradingAccounts.map((a) => ({ value: a.id, label: a.name })),
+    ],
+    [tradingAccounts],
+  );
 
   const handleCreate = async () => {
     const name = form.name.trim();
@@ -97,97 +132,93 @@ function CreatePlanModal({ tradingAccounts, onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-900/40 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-zinc-900">New compounding plan</h2>
-          <p className="mt-1 text-xs text-zinc-500">
-            Capital, target balance, profit % per win, and risk % — generates your compound table.
-          </p>
+    <PlanModalShell
+      title="New compounding plan"
+      subtitle="Capital, target balance, profit % per win, and risk % — generates your compound table."
+      onClose={onClose}
+      busy={saving}
+      footer={
+        <ModalActions
+          onCancel={onClose}
+          onConfirm={() => void handleCreate()}
+          busy={saving}
+          confirmLabel="Create plan"
+        />
+      }
+    >
+      <div>
+        <label className={label}>Plan name</label>
+        <input
+          className={input}
+          placeholder="e.g. $20 to $20k challenge"
+          value={form.name}
+          onChange={(e) => setField('name', e.target.value)}
+          autoFocus
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className={label}>Starting capital</label>
+          <input
+            type="number"
+            step="0.01"
+            className={`${input} tabular-nums`}
+            value={form.startingBalance}
+            onChange={(e) => setField('startingBalance', e.target.value)}
+          />
         </div>
-        <div className="space-y-3 px-5 py-4">
-          <div>
-            <label className={label}>Plan name</label>
-            <input
-              className={input}
-              placeholder="e.g. $20 to $20k challenge"
-              value={form.name}
-              onChange={(e) => setField('name', e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className={label}>Starting capital</label>
-              <input
-                type="number"
-                step="0.01"
-                className={`${input} tabular-nums`}
-                value={form.startingBalance}
-                onChange={(e) => setField('startingBalance', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={label}>Target balance</label>
-              <input
-                type="number"
-                step="0.01"
-                className={`${input} tabular-nums`}
-                value={form.targetBalance}
-                onChange={(e) => setField('targetBalance', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={label}>Profit % per win</label>
-              <input
-                type="number"
-                step="0.01"
-                className={`${input} tabular-nums`}
-                value={form.targetProfitPercent}
-                onChange={(e) => setField('targetProfitPercent', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={label}>Risk % per trade</label>
-              <input
-                type="number"
-                step="0.01"
-                className={`${input} tabular-nums`}
-                value={form.riskPercent}
-                onChange={(e) => setField('riskPercent', e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={label}>Link trading account (optional)</label>
-            <CustomDropdown
-              className="w-full"
-              menuClassName="w-full"
-              value={form.tradingAccountId}
-              onChange={(v) => {
-                setField('tradingAccountId', v);
-                const linked = tradingAccounts.find((a) => a.id === v);
-                if (linked?.starting_balance != null && Number(linked.starting_balance) > 0) {
-                  setField('startingBalance', String(linked.starting_balance));
-                }
-              }}
-              options={accountOptions}
-            />
-          </div>
+        <div>
+          <label className={label}>Target balance</label>
+          <input
+            type="number"
+            step="0.01"
+            className={`${input} tabular-nums`}
+            value={form.targetBalance}
+            onChange={(e) => setField('targetBalance', e.target.value)}
+          />
         </div>
-        <div className="flex justify-end gap-2 border-t border-zinc-100 px-5 py-4">
-          <button type="button" className={btnGhost} onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-          <button type="button" className={btnPrimary} onClick={() => void handleCreate()} disabled={saving}>
-            {saving ? 'Creating…' : 'Create plan'}
-          </button>
+        <div>
+          <label className={label}>Profit % per win</label>
+          <input
+            type="number"
+            step="0.01"
+            className={`${input} tabular-nums`}
+            value={form.targetProfitPercent}
+            onChange={(e) => setField('targetProfitPercent', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={label}>Risk % per trade</label>
+          <input
+            type="number"
+            step="0.01"
+            className={`${input} tabular-nums`}
+            value={form.riskPercent}
+            onChange={(e) => setField('riskPercent', e.target.value)}
+          />
         </div>
       </div>
-    </div>
+      <div>
+        <label className={label}>Link trading account (optional)</label>
+        <CustomDropdown
+          className="w-full"
+          menuClassName="w-full"
+          value={form.tradingAccountId}
+          onChange={(v) => {
+            const linked = tradingAccounts.find((a) => a.id === v);
+            setForm((prev) => ({
+              ...prev,
+              tradingAccountId: v,
+              startingBalance:
+                linked?.starting_balance != null && Number(linked.starting_balance) > 0
+                  ? String(linked.starting_balance)
+                  : prev.startingBalance,
+            }));
+          }}
+          options={accountOptions}
+        />
+      </div>
+    </PlanModalShell>
   );
 }
 
@@ -198,6 +229,12 @@ export default function CompoundingPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+
+  const tradingNameById = useMemo(() => {
+    const map = new Map();
+    for (const a of tradingAccounts) map.set(a.id, a.name);
+    return map;
+  }, [tradingAccounts]);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -219,8 +256,6 @@ export default function CompoundingPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
-
-  const tradingName = (id) => tradingAccounts.find((a) => a.id === id)?.name;
 
   if (selectedId) {
     return (
@@ -256,60 +291,30 @@ export default function CompoundingPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {accounts.map((account) => {
-            const config = accountToConfig(account);
-            const winsNeeded = tradesNeededToTarget(config);
-            return (
-              <div key={account.id} className={`${card} ${cardBody}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold text-zinc-900">{account.name}</h2>
-                    <p className="mt-1 text-sm tabular-nums text-zinc-600">
-                      {formatMoney(account.startingBalance)} → {formatMoney(account.targetBalance)}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {account.targetProfitPercent}% / win · {account.riskPercent}% risk · ~{winsNeeded} wins if all
-                      win
-                    </p>
-                    {account.tradingAccountId ? (
-                      <p className="mt-2 text-xs text-violet-600">
-                        Linked: {tradingName(account.tradingAccountId) || 'Trading account'}
-                      </p>
-                    ) : (
-                      <p className="mt-2 text-xs text-zinc-400">Standalone plan</p>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className={btnPrimary} onClick={() => setSelectedId(account.id)}>
-                    Open
-                  </button>
-                  <button
-                    type="button"
-                    className={btnDanger}
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: 'Delete plan?',
-                        message: `Delete “${account.name}” and all of its compounding trades?`,
-                        confirmLabel: 'Delete',
-                        destructive: true,
-                      });
-                      if (!ok) return;
-                      try {
-                        await deleteCompoundingAccount(account.id);
-                        toast.success('Plan deleted');
-                        await reload();
-                      } catch (e) {
-                        toast.error(e?.message || 'Delete failed');
-                      }
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {accounts.map((account) => (
+            <PlanCard
+              key={account.id}
+              account={account}
+              linkedName={tradingNameById.get(account.tradingAccountId)}
+              onOpen={() => setSelectedId(account.id)}
+              onDelete={async () => {
+                const ok = await confirm({
+                  title: 'Delete plan?',
+                  message: `Delete “${account.name}” and all of its compounding trades?`,
+                  confirmLabel: 'Delete',
+                  destructive: true,
+                });
+                if (!ok) return;
+                try {
+                  await deleteCompoundingAccount(account.id);
+                  toast.success('Plan deleted');
+                  await reload();
+                } catch (e) {
+                  toast.error(e?.message || 'Delete failed');
+                }
+              }}
+            />
+          ))}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   deleteAllCompoundingTrades,
   deleteCompoundingTrade,
@@ -18,7 +18,14 @@ export function useCompoundingAccount(accountId) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const accountRef = useRef(account);
+  const tradesRef = useRef(trades);
+  const configRef = useRef(null);
+  accountRef.current = account;
+  tradesRef.current = trades;
+
   const config = useMemo(() => (account ? accountToConfig(account) : null), [account]);
+  configRef.current = config;
   const stats = useMemo(() => (config ? computeStats(config, trades) : null), [config, trades]);
 
   const load = useCallback(async () => {
@@ -50,12 +57,14 @@ export function useCompoundingAccount(accountId) {
 
   const addTrade = useCallback(
     async (input) => {
-      if (!accountId || !config) return;
+      const cfg = configRef.current;
+      if (!accountId || !cfg) return;
       setIsSaving(true);
       try {
+        const current = tradesRef.current;
         const useManualPL = input.actualPL !== undefined && !Number.isNaN(input.actualPL);
         const created = await insertCompoundingTrade(accountId, {
-          tradeNumber: trades.length + 1,
+          tradeNumber: current.length + 1,
           date: input.date,
           result: input.result,
           notes: input.notes ?? '',
@@ -65,45 +74,41 @@ export function useCompoundingAccount(accountId) {
           calendarWinTrades: input.calendarWinTrades,
           calendarLossTrades: input.calendarLossTrades,
         });
-        setTrades(rebuildTradeChain(config, [...trades, created]));
+        setTrades(rebuildTradeChain(cfg, [...current, created]));
       } finally {
         setIsSaving(false);
       }
     },
-    [accountId, config, trades],
+    [accountId],
   );
 
-  const updateTrade = useCallback(
-    async (id, input) => {
-      if (!config) return;
-      setIsSaving(true);
-      try {
-        await updateCompoundingTrade(id, input);
-        const next = trades.map((t) =>
-          t.id === id ? { ...t, ...input, updatedAt: new Date().toISOString() } : t,
-        );
-        setTrades(rebuildTradeChain(config, next));
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [config, trades],
-  );
+  const updateTrade = useCallback(async (id, input) => {
+    const cfg = configRef.current;
+    if (!cfg) return;
+    setIsSaving(true);
+    try {
+      await updateCompoundingTrade(id, input);
+      const next = tradesRef.current.map((t) =>
+        t.id === id ? { ...t, ...input, updatedAt: new Date().toISOString() } : t,
+      );
+      setTrades(rebuildTradeChain(cfg, next));
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
 
-  const deleteTrade = useCallback(
-    async (id) => {
-      if (!config) return;
-      setIsSaving(true);
-      try {
-        await deleteCompoundingTrade(id);
-        const filtered = trades.filter((t) => t.id !== id);
-        setTrades(rebuildTradeChain(config, filtered));
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [config, trades],
-  );
+  const deleteTrade = useCallback(async (id) => {
+    const cfg = configRef.current;
+    if (!cfg) return;
+    setIsSaving(true);
+    try {
+      await deleteCompoundingTrade(id);
+      const filtered = tradesRef.current.filter((t) => t.id !== id);
+      setTrades(rebuildTradeChain(cfg, filtered));
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
 
   const clearAllTrades = useCallback(async () => {
     if (!accountId) return;
@@ -118,18 +123,18 @@ export function useCompoundingAccount(accountId) {
 
   const updateAccount = useCallback(
     async (partial) => {
-      if (!accountId || !account) return;
+      if (!accountId || !accountRef.current) return;
       setIsSaving(true);
       try {
         const updated = await updateCompoundingAccount(accountId, partial);
-        const nextAccount = updated || { ...account, ...partial };
+        const nextAccount = updated || { ...accountRef.current, ...partial };
         setAccount(nextAccount);
-        setTrades(rebuildTradeChain(accountToConfig(nextAccount), trades));
+        setTrades(rebuildTradeChain(accountToConfig(nextAccount), tradesRef.current));
       } finally {
         setIsSaving(false);
       }
     },
-    [account, accountId, trades],
+    [accountId],
   );
 
   return {

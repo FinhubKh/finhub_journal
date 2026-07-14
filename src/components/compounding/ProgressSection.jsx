@@ -1,15 +1,15 @@
 import { generateMilestones, getNextMilestone } from '../../lib/compounding/milestones';
 import { formatMoney } from '../../lib/compounding/formatMoney';
-import { card, cardBody } from '../../lib/ui';
+import { PanelCard } from './CompoundingUI';
 
 export default function ProgressSection({ startingBalance, currentBalance, targetBalance, progressPercent }) {
   const nextMilestone = getNextMilestone(generateMilestones(startingBalance, targetBalance), currentBalance);
 
   return (
-    <div className={`${card} ${cardBody}`}>
+    <PanelCard>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">Progress to target</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Progress to target</p>
           <p className="mt-1 text-3xl font-semibold tabular-nums text-zinc-900">{progressPercent.toFixed(1)}%</p>
         </div>
         <div className="text-right text-sm tabular-nums text-zinc-500">
@@ -28,6 +28,6 @@ export default function ProgressSection({ startingBalance, currentBalance, targe
         {nextMilestone ? <span className="text-violet-600">Next: {formatMoney(nextMilestone)}</span> : null}
         <span>{formatMoney(targetBalance)}</span>
       </div>
-    </div>
+    </PanelCard>
   );
 }
