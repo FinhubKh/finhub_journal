@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchPublicLeaderboard } from '../../api/share';
+import { getCachedPublicLeaderboard } from '../../lib/leaderboardCache';
 import { btnPrimary, card, cardHd, cardTitle, sectionLabel } from '../../lib/ui';
 
 function fmtPnl(v) {
@@ -219,7 +219,7 @@ export default function LeaderboardPreview({
     let cancelled = false;
     setLoading(true);
     setFailed(false);
-    fetchPublicLeaderboard({ limit, minTrades: 5 })
+    getCachedPublicLeaderboard({ limit, minTrades: 5 })
       .then((data) => {
         if (cancelled) return;
         setEntries((data.entries || []).slice(0, limit));

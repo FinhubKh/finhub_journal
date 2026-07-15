@@ -225,6 +225,8 @@ create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public
 as $$ select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'); $$;
 grant execute on function public.is_admin() to authenticated;
+revoke all on function public.is_admin() from public;
+revoke all on function public.is_admin() from anon;
 
 drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
@@ -324,6 +326,14 @@ grant execute on function public.admin_platform_stats() to authenticated;
 grant execute on function public.admin_list_users() to authenticated;
 grant execute on function public.admin_set_user_role(uuid, text) to authenticated;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
+revoke all on function public.admin_platform_stats() from public, anon;
+revoke all on function public.admin_list_users() from public, anon;
+revoke all on function public.admin_set_user_role(uuid, text) from public, anon;
+revoke all on function public.admin_delete_user(uuid) from public, anon;
+
+-- Trigger helpers must not be callable as RPC
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.prevent_profile_role_escalation() from public, anon, authenticated;
 
 -- ── LEADERBOARD (published accounts) — full defs in schema_leaderboard.sql ─
 -- Removed legacy all-users get_leaderboard that exposed emails.
@@ -413,7 +423,7 @@ begin
 end;
 $$;
 
-revoke all on function public.set_trading_account_public(uuid, boolean) from public;
+revoke all on function public.set_trading_account_public(uuid, boolean) from public, anon;
 grant execute on function public.set_trading_account_public(uuid, boolean) to authenticated;
 
 -- Public bundle: account + owner display name + trades (no sync keys / email)

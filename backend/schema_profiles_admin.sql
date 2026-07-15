@@ -29,6 +29,7 @@ as $$
 $$;
 
 grant execute on function public.is_admin() to authenticated;
+revoke all on function public.is_admin() from public, anon;
 
 drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile"
@@ -233,3 +234,9 @@ grant execute on function public.admin_platform_stats() to authenticated;
 grant execute on function public.admin_list_users() to authenticated;
 grant execute on function public.admin_set_user_role(uuid, text) to authenticated;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
+revoke all on function public.admin_platform_stats() from public, anon;
+revoke all on function public.admin_list_users() from public, anon;
+revoke all on function public.admin_set_user_role(uuid, text) from public, anon;
+revoke all on function public.admin_delete_user(uuid) from public, anon;
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.prevent_profile_role_escalation() from public, anon, authenticated;

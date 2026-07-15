@@ -1,48 +1,78 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
+
+function buildSeries(trades) {
+  const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const labels = [];
+  const dataUsd = [];
+  const dataR = [];
+  let cumUsd = 0;
+  let cumR = 0;
+
+  sorted.forEach((t) => {
+    cumUsd += t.pnl_usd || 0;
+    cumR += t.r_value || 0;
+    labels.push(new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+    dataUsd.push(parseFloat(cumUsd.toFixed(2)));
+    dataR.push(parseFloat(cumR.toFixed(2)));
+  });
+
+  return { labels, dataUsd, dataR };
+}
 
 export default function EquityChart({ trades }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [mode, setMode] = useState('usd');
 
+  const empty = !trades || trades.length === 0;
+
+  const lastVal = useMemo(() => {
+    if (empty) return null;
+    return mode === 'usd'
+      ? trades.reduce((s, t) => s + (t.pnl_usd || 0), 0)
+      : trades.reduce((s, t) => s + (t.r_value || 0), 0);
+  }, [trades, mode, empty]);
+
+  useEffect(() => () => {
+    if (chartRef.current) {
+      chartRef.current.destroy();
+      chartRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    if (!trades || trades.length === 0) {
-      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    if (empty) {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
       return;
     }
 
-    const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
-    const labels = [];
-    const dataUsd = [];
-    const dataR = [];
-    let cumUsd = 0;
-    let cumR = 0;
-
-    sorted.forEach((t) => {
-      cumUsd += t.pnl_usd || 0;
-      cumR += t.r_value || 0;
-      labels.push(new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
-      dataUsd.push(parseFloat(cumUsd.toFixed(2)));
-      dataR.push(parseFloat(cumR.toFixed(2)));
-    });
-
+    const { labels, dataUsd, dataR } = buildSeries(trades);
     const values = mode === 'usd' ? dataUsd : dataR;
-    const accentColor = '#7c3aed';
-    const fillColor = 'rgba(124, 58, 237, 0.06)';
-    const tickColor = '#a1a1aa';
-    const gridColor = 'rgba(0, 0, 0, 0.04)';
     const labelFmt = mode === 'usd'
       ? (v) => (v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`)
       : (v) => (v >= 0 ? `+${v.toFixed(2)}R` : `${v.toFixed(2)}R`);
 
-    if (chartRef.current) chartRef.current.destroy();
+    if (chartRef.current) {
+      const chart = chartRef.current;
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = values;
+      chart.options.scales.y.ticks.callback = labelFmt;
+      chart.options.plugins.tooltip.callbacks.label = (ctx) => labelFmt(ctx.raw);
+      chart.update('none');
+      return;
+    }
+
+    const accentColor = '#7c3aed';
     chartRef.current = new Chart(canvas, {
       type: 'line',
       data: {
@@ -57,13 +87,14 @@ export default function EquityChart({ trades }) {
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 2,
           fill: true,
-          backgroundColor: fillColor,
+          backgroundColor: 'rgba(124, 58, 237, 0.06)',
           tension: 0.35,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
@@ -78,26 +109,19 @@ export default function EquityChart({ trades }) {
         },
         scales: {
           x: {
-            ticks: { color: tickColor, font: { size: 10, family: CHART_FONT }, maxTicksLimit: 7, maxRotation: 0 },
+            ticks: { color: '#a1a1aa', font: { size: 10, family: CHART_FONT }, maxTicksLimit: 7, maxRotation: 0 },
             grid: { display: false },
             border: { display: false },
           },
           y: {
-            ticks: { color: tickColor, font: { size: 10, family: CHART_FONT }, callback: labelFmt, maxTicksLimit: 6 },
-            grid: { color: gridColor },
+            ticks: { color: '#a1a1aa', font: { size: 10, family: CHART_FONT }, callback: labelFmt, maxTicksLimit: 6 },
+            grid: { color: 'rgba(0, 0, 0, 0.04)' },
             border: { display: false },
           },
         },
       },
     });
-
-    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [trades, mode]);
-
-  const empty = !trades || trades.length === 0;
-  const lastVal = empty ? null : (mode === 'usd'
-    ? trades.reduce((s, t) => s + (t.pnl_usd || 0), 0)
-    : trades.reduce((s, t) => s + (t.r_value || 0), 0));
+  }, [trades, mode, empty]);
 
   return (
     <div className={`${card} overflow-hidden`}>
@@ -120,9 +144,12 @@ export default function EquityChart({ trades }) {
           </div>
         </div>
       </div>
-      <div className={`${cardBody} relative h-[240px] sm:h-[280px]`}>
-        <canvas ref={canvasRef} className={empty ? 'hidden' : 'block h-full w-full'} />
-        {empty && <div className={emptyState}>No trades to chart yet.</div>}
+      <div className={`${cardBody} relative h-56`}>
+        {empty ? (
+          <div className={emptyState}>No trades to chart yet.</div>
+        ) : (
+          <canvas ref={canvasRef} />
+        )}
       </div>
     </div>
   );

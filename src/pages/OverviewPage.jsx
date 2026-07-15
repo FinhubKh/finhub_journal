@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { computeStats } from '../lib/stats';
@@ -108,7 +109,7 @@ function EmptyOverview({ onOpenSetup }) {
 export default function OverviewPage() {
   const navigate = useNavigate();
   const { visibleTrades, viewMode, dataLoading } = useAppData();
-  const stats = computeStats(visibleTrades);
+  const stats = useMemo(() => computeStats(visibleTrades), [visibleTrades]);
   const hasTrades = visibleTrades.length > 0;
 
   const pfNum = stats ? parseFloat(stats.pf) : NaN;

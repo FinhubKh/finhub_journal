@@ -1,9 +1,50 @@
-/**
- * nXuu — API layer
- * Supabase REST data calls (trades, checklist, models, sync keys).
- */
 import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, getUserId, authFetch } from './auth';
 import { deleteAllTradeImages } from './tradeImages';
+
+/** Columns used across journal UI — avoid select=*. */
+export const TRADE_SELECT = [
+  'id',
+  'user_id',
+  'created_at',
+  'date',
+  'result',
+  'r_value',
+  'pnl_usd',
+  'notes',
+  'model',
+  'session',
+  'account',
+  'account_id',
+  'source',
+  'ticket',
+  'symbol',
+  'direction',
+  'entry_price',
+  'exit_price',
+  'lot_size',
+  'open_time',
+  'close_time',
+].join(',');
+
+export const TRADING_ACCOUNT_SELECT = [
+  'id',
+  'user_id',
+  'name',
+  'slug',
+  'account_type',
+  'broker',
+  'starting_balance',
+  'color',
+  'is_default',
+  'connection_status',
+  'pnl_denomination',
+  'is_public',
+  'share_token',
+  'published_at',
+  'created_at',
+].join(',');
+
+const TRADE_PAGE_SIZE = 1000;
 
 export async function insertTrade(trade) {
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/trades`, {
@@ -21,7 +62,7 @@ export async function fetchTradingAccounts() {
   // Always scope to the signed-in user. Public RLS also allows SELECT on
   // published accounts, which would otherwise flood Settings with everyone else's.
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trading_accounts?select=*&user_id=eq.${uid}&order=is_default.desc,created_at.asc`,
+    `${SUPABASE_URL}/rest/v1/trading_accounts?select=${TRADING_ACCOUNT_SELECT}&user_id=eq.${uid}&order=is_default.desc,created_at.asc`,
     { headers: authHeaders(getToken()) },
   );
   if (!res.ok) {
@@ -154,14 +195,33 @@ export async function repairCentAccountPnl(account) {
 }
 
 export async function fetchAllTrades() {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trades?select=*&user_id=eq.${getUserId()}&order=date.desc,created_at.desc`,
-    {
-      headers: authHeaders(getToken()),
-    },
-  );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  const uid = getUserId();
+  const out = [];
+  let from = 0;
+
+  // Page through PostgREST (default max rows) so large journals still load fully,
+  // without pulling unused columns on each page.
+  for (;;) {
+    const to = from + TRADE_PAGE_SIZE - 1;
+    const res = await authFetch(
+      `${SUPABASE_URL}/rest/v1/trades?select=${TRADE_SELECT}&user_id=eq.${uid}&order=date.desc,created_at.desc`,
+      {
+        headers: {
+          ...authHeaders(getToken()),
+          Range: `${from}-${to}`,
+          Prefer: 'count=exact',
+        },
+      },
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    out.push(...batch);
+    if (batch.length < TRADE_PAGE_SIZE) break;
+    from += TRADE_PAGE_SIZE;
+  }
+
+  return out;
 }
 
 export async function fetchTradesByMonth(year, month) {
@@ -169,7 +229,7 @@ export async function fetchTradesByMonth(year, month) {
   const lastDay = new Date(year, month, 0).getDate();
   const to = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trades?select=*&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
+    `${SUPABASE_URL}/rest/v1/trades?select=${TRADE_SELECT}&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
     { headers: authHeaders(getToken()) }
   );
   if (!res.ok) throw new Error(await res.text());

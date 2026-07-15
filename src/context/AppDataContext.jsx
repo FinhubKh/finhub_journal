@@ -80,15 +80,15 @@ export function AppDataProvider({ children }) {
 
       setDataLoading(true);
       try {
-        await Promise.all([
-          refreshTrades(),
-          refreshSteps(),
-          refreshModels(),
-          refreshTradingAccounts(),
-        ]);
+        // Priority path: overview/log need trades + accounts first.
+        await Promise.all([refreshTrades(), refreshTradingAccounts()]);
       } finally {
         if (!cancelled) setDataLoading(false);
       }
+
+      if (cancelled) return;
+      // Secondary: checklist / models can load after first paint.
+      void Promise.all([refreshSteps(), refreshModels()]);
     }
 
     load();

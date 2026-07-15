@@ -7,6 +7,7 @@ import {
 } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
+import { invalidateLeaderboardCache } from '../../lib/leaderboardCache';
 import {
   ACCOUNT_TYPES,
   PNL_DENOMINATIONS,
@@ -287,6 +288,7 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
     setBusy(true);
     try {
       const updated = await setTradingAccountPublic(account.id, next);
+      invalidateLeaderboardCache();
       await onUpdated();
       if (next) {
         const url = getAccountShareUrl(updated) || `${window.location.origin}/share/${updated?.share_token || ''}`;

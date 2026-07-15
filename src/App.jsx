@@ -1,14 +1,27 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import { useAuth } from './context/AuthContext';
 import { AppDataProvider } from './context/AppDataContext';
-import LandingPage from './pages/LandingPage';
-import AuthPage from './pages/AuthPage';
-import DashboardPage from './pages/DashboardPage';
-import AdminPage from './pages/AdminPage';
-import PublicSharePage from './pages/PublicSharePage';
-import LeaderboardPage from './pages/LeaderboardPage';
+
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-zinc-50">
+      <span
+        className="inline-block h-9 w-9 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600"
+        aria-hidden
+      />
+      <span className="sr-only">Loading</span>
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, ready } = useAuth();
@@ -71,34 +84,36 @@ export default function App() {
     !ready ? null : (
       <BrowserRouter>
         <AppChrome>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/share/:token" element={<PublicSharePage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/login" element={<GuestRoute><AuthPage /></GuestRoute>} />
-            <Route
-              path="/dashboard"
-              element={(
-                <ProtectedRoute>
-                  <JournalRoute>
-                    <AppDataProvider>
-                      <DashboardPage />
-                    </AppDataProvider>
-                  </JournalRoute>
-                </ProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin"
-              element={(
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              )}
-            />
-            <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/share/:token" element={<PublicSharePage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/login" element={<GuestRoute><AuthPage /></GuestRoute>} />
+              <Route
+                path="/dashboard"
+                element={(
+                  <ProtectedRoute>
+                    <JournalRoute>
+                      <AppDataProvider>
+                        <DashboardPage />
+                      </AppDataProvider>
+                    </JournalRoute>
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin"
+                element={(
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                )}
+              />
+              <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </AppChrome>
       </BrowserRouter>
     )

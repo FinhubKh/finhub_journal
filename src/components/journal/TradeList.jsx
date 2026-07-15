@@ -16,7 +16,7 @@ function fmtPnlStrict(v) {
 }
 
 const EMPTY_FILTERS = { result: '', session: '', model: '', account: '', from: '', to: '' };
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
 
 const filterControl =
   'h-9 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15 disabled:cursor-not-allowed disabled:opacity-50';

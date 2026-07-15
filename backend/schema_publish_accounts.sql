@@ -80,7 +80,7 @@ begin
 end;
 $$;
 
-revoke all on function public.set_trading_account_public(uuid, boolean) from public;
+revoke all on function public.set_trading_account_public(uuid, boolean) from public, anon;
 grant execute on function public.set_trading_account_public(uuid, boolean) to authenticated;
 
 -- Public bundle: account + owner display name + trades (no sync keys / email)
@@ -161,5 +161,5 @@ begin
 end;
 $$;
 
-revoke all on function public.get_published_trading_account(text) from public;
+revoke all on function public.get_published_trading_account(text) from public, anon;
 grant execute on function public.get_published_trading_account(text) to anon, authenticated;

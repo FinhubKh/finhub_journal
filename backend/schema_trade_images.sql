@@ -74,6 +74,8 @@ create trigger trade_images_manual_only
   before insert or update on trade_images
   for each row execute function public.enforce_manual_trade_images();
 
+revoke all on function public.enforce_manual_trade_images() from public, anon, authenticated;
+
 -- Storage bucket (private)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (

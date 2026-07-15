@@ -125,7 +125,13 @@ export default function TradeScreenshots({ tradeId, enabled }) {
                 onClick={() => img.url && setPreviewUrl(img.url)}
               >
                 {img.url ? (
-                  <img src={img.url} alt={img.label} className="h-full w-full object-cover" />
+                  <img
+                    src={img.url}
+                    alt={img.label}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-xs text-zinc-400">Unavailable</div>
                 )}

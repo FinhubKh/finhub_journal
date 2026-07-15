@@ -7,4 +7,16 @@ import { aiDevApiPlugin } from './vite-ai-api.mjs'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), marketDevApiPlugin(), aiDevApiPlugin()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/chart.js')) return 'chart';
+          if (id.includes('node_modules/react-router')) return 'router';
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react';
+          if (id.includes('node_modules/react-toastify')) return 'toast';
+        },
+      },
+    },
+  },
 })

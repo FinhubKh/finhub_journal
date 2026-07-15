@@ -73,3 +73,5 @@ $$;
 
 grant execute on function public.admin_platform_stats() to authenticated;
 grant execute on function public.admin_list_users() to authenticated;
+revoke all on function public.admin_platform_stats() from public, anon;
+revoke all on function public.admin_list_users() from public, anon;

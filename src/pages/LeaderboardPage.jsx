@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchPublicLeaderboard } from '../api/share';
+import { getCachedPublicLeaderboard } from '../lib/leaderboardCache';
 import { accountTypeLabel } from '../lib/accounts';
 import {
   btnOutline,
@@ -154,7 +154,7 @@ export default function LeaderboardPage({ embedded = false }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchPublicLeaderboard({ limit: 50, minTrades: 5 })
+    getCachedPublicLeaderboard({ limit: 50, minTrades: 5 })
       .then((data) => {
         if (!cancelled) setPayload(data);
       })
