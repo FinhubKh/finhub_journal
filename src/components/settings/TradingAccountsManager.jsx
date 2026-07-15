@@ -3,8 +3,10 @@ import {
   insertTradingAccount, deleteTradingAccount, updateTradingAccount,
   recalculateTradesForDenomination, repairCentAccountPnl,
   listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
+  setTradingAccountPublic, getAccountShareUrl,
 } from '../../api';
 import { useDialog } from '../../context/DialogContext';
+import { toast } from 'react-toastify';
 import {
   ACCOUNT_TYPES,
   PNL_DENOMINATIONS,
@@ -15,8 +17,7 @@ import {
   normalizePnlDenomination,
 } from '../../lib/accounts';
 import {
-  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, cardHd, cardTitle, emptyState, input, msgError, msgSuccess,
-  tableTd, tableTh,
+  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, msgError, msgSuccess,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
 
@@ -32,6 +33,20 @@ function accountToForm(account) {
     accountType: account.account_type || 'live',
     pnlDenomination: normalizePnlDenomination(account.pnl_denomination),
   };
+}
+
+function Badge({ children, tone = 'neutral' }) {
+  const tones = {
+    neutral: 'bg-zinc-100 text-zinc-600',
+    accent: 'bg-violet-100 text-violet-700',
+    success: 'bg-emerald-50 text-emerald-700',
+    muted: 'bg-zinc-50 text-zinc-500 ring-1 ring-inset ring-zinc-200',
+  };
+  return (
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tones[tone]}`}>
+      {children}
+    </span>
+  );
 }
 
 function AccountFormFields({ form, setField }) {
@@ -245,15 +260,66 @@ function SyncKeyModal({ account, syncKey, onClose }) {
   );
 }
 
-function AccountSyncKeyActions({ account, hasKey, onKeysChanged }) {
+function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onKeysChanged }) {
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [revealedKey, setRevealedKey] = useState(null);
+  const shareUrl = getAccountShareUrl(account);
 
-  async function handleGenerate() {
+  async function handlePublishToggle() {
+    const next = !account.is_public;
+    if (next) {
+      const ok = await confirm({
+        title: `Publish "${account.name}"?`,
+        message: 'Anyone with the link can view this account’s stats and full trade history. Sync keys stay private.',
+        confirmLabel: 'Publish',
+      });
+      if (!ok) return;
+    } else {
+      const ok = await confirm({
+        title: `Unpublish "${account.name}"?`,
+        message: 'The public link will stop working until you publish again.',
+        confirmLabel: 'Unpublish',
+      });
+      if (!ok) return;
+    }
+
+    setBusy(true);
+    try {
+      const updated = await setTradingAccountPublic(account.id, next);
+      await onUpdated();
+      if (next) {
+        const url = getAccountShareUrl(updated) || `${window.location.origin}/share/${updated?.share_token || ''}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          toast.success('Account published — link copied');
+        } catch {
+          toast.success('Account published');
+        }
+      } else {
+        toast.success('Account unpublished');
+      }
+    } catch (e) {
+      await alert({ title: 'Error', message: e.message || 'Could not update publish status.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Share link copied');
+    } catch {
+      await alert({ title: 'Share link', message: shareUrl });
+    }
+  }
+
+  async function handleGenerateKey() {
     const ok = await confirm({
       title: `Generate sync key for "${account.name}"?`,
-      message: hasKey
+      message: hasSyncKey
         ? 'The previous key for this account will stop working until you update MT5.'
         : 'Copy the key into the EA on this MT5 terminal.',
       confirmLabel: 'Generate',
@@ -271,7 +337,7 @@ function AccountSyncKeyActions({ account, hasKey, onKeysChanged }) {
     }
   }
 
-  async function handleShow() {
+  async function handleShowKey() {
     setBusy(true);
     try {
       const key = await getAccountSyncKey(account.id);
@@ -288,7 +354,7 @@ function AccountSyncKeyActions({ account, hasKey, onKeysChanged }) {
     }
   }
 
-  async function handleRevoke() {
+  async function handleRevokeKey() {
     const ok = await confirm({
       title: `Revoke sync key for "${account.name}"?`,
       message: 'MT5 will stop syncing for this account until you generate a new key.',
@@ -306,40 +372,6 @@ function AccountSyncKeyActions({ account, hasKey, onKeysChanged }) {
       setBusy(false);
     }
   }
-
-  return (
-    <>
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        {hasKey ? (
-          <>
-            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-              Active
-            </span>
-            <button className={btnSm} type="button" disabled={busy} onClick={handleShow}>Show key</button>
-            <button className={btnSm} type="button" disabled={busy} onClick={handleGenerate}>Regenerate</button>
-            <button className={btnDanger} type="button" disabled={busy} onClick={handleRevoke}>Revoke</button>
-          </>
-        ) : (
-          <>
-            <span className="text-xs text-zinc-400">No key</span>
-            <button className={btnSm} type="button" disabled={busy} onClick={handleGenerate}>Generate</button>
-          </>
-        )}
-      </div>
-      {revealedKey && (
-        <SyncKeyModal
-          account={account}
-          syncKey={revealedKey}
-          onClose={() => setRevealedKey(null)}
-        />
-      )}
-    </>
-  );
-}
-
-function AccountTableRow({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onKeysChanged }) {
-  const { alert, confirm } = useDialog();
-  const [busy, setBusy] = useState(false);
 
   async function handleRepair() {
     const ok = await confirm({
@@ -384,51 +416,119 @@ function AccountTableRow({ account, hasSyncKey, onEdit, onSetDefault, onUpdated,
   }
 
   return (
-    <tr className="transition hover:bg-zinc-50/80">
-      <td className={tableTd}>
-        <div className="flex items-center gap-2.5">
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
-            style={{ backgroundColor: account.color || '#7c3aed' }}
-          />
-          <span className="font-semibold text-zinc-900">{account.name}</span>
-        </div>
-      </td>
-      <td className={tableTd}>{accountTypeLabel(account.account_type)}</td>
-      <td className={tableTd}>{pnlDenominationLabel(account.pnl_denomination)}</td>
-      <td className={tableTd}>
-        {account.is_default ? (
-          <span className="rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
-            Default
-          </span>
-        ) : (
-          <span className="text-zinc-400">—</span>
-        )}
-      </td>
-      <td className={tableTd}>
-        <AccountSyncKeyActions account={account} hasKey={hasSyncKey} onKeysChanged={onKeysChanged} />
-      </td>
-      <td className={`${tableTd} text-right`}>
-        <div className="flex flex-wrap justify-end gap-1">
+    <>
+      <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:border-zinc-300">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 md:px-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
+                style={{ backgroundColor: account.color || '#7c3aed' }}
+                aria-hidden
+              />
+              <h4 className="truncate text-base font-semibold tracking-tight text-zinc-900">{account.name}</h4>
+              {account.is_default ? <Badge tone="accent">Default</Badge> : null}
+            </div>
+            <p className="mt-1.5 text-sm text-zinc-500">
+              {accountTypeLabel(account.account_type)}
+              <span className="mx-1.5 text-zinc-300">·</span>
+              {pnlDenominationLabel(account.pnl_denomination)}
+            </p>
+          </div>
           <button className={btnSm} type="button" disabled={busy} onClick={() => onEdit(account)}>
             Edit
           </button>
-          {account.pnl_denomination === 'cent' && (
-            <button className={btnSm} type="button" disabled={busy} onClick={handleRepair}>
-              Fix PnL
-            </button>
-          )}
-          {!account.is_default && (
-            <button className={btnSm} type="button" disabled={busy} onClick={() => onSetDefault(account.id)}>
-              Default
-            </button>
-          )}
-          <button className={btnDanger} type="button" disabled={busy} onClick={handleRemove}>
+        </div>
+
+        <div className="grid gap-px border-t border-zinc-100 bg-zinc-100 sm:grid-cols-2">
+          <div className="bg-white px-4 py-4 md:px-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Sharing</p>
+              {account.is_public ? <Badge tone="success">Public</Badge> : <Badge tone="muted">Private</Badge>}
+            </div>
+            <p className="text-xs leading-relaxed text-zinc-500">
+              {account.is_public
+                ? 'Anyone with the link can view stats and trade history.'
+                : 'Only you can see this account. Publish to share a read-only link.'}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className={btnSm} type="button" disabled={busy} onClick={() => void handlePublishToggle()}>
+                {account.is_public ? 'Unpublish' : 'Publish'}
+              </button>
+              {account.is_public && shareUrl ? (
+                <button className={btnOutline} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
+                  Copy link
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="bg-white px-4 py-4 md:px-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">MT5 sync</p>
+              {hasSyncKey ? <Badge tone="success">Connected</Badge> : <Badge tone="muted">No key</Badge>}
+            </div>
+            <p className="text-xs leading-relaxed text-zinc-500">
+              {hasSyncKey
+                ? 'A sync key is active for this account. Show it to reconnect the EA if needed.'
+                : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {hasSyncKey ? (
+                <>
+                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
+                    Show key
+                  </button>
+                  <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+                    Regenerate
+                  </button>
+                  <button
+                    className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-45"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleRevokeKey()}
+                  >
+                    Revoke
+                  </button>
+                </>
+              ) : (
+                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+                  Generate key
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 bg-zinc-50/70 px-4 py-3 md:px-5">
+          <div className="flex flex-wrap gap-2">
+            {!account.is_default ? (
+              <button className={btnGhost} type="button" disabled={busy} onClick={() => onSetDefault(account.id)}>
+                Set as default
+              </button>
+            ) : (
+              <span className="self-center text-xs text-zinc-400">Used as your default account</span>
+            )}
+            {account.pnl_denomination === 'cent' ? (
+              <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRepair()}>
+                Fix cent PnL
+              </button>
+            ) : null}
+          </div>
+          <button className={btnDanger} type="button" disabled={busy} onClick={() => void handleRemove()}>
             Remove
           </button>
         </div>
-      </td>
-    </tr>
+      </article>
+
+      {revealedKey ? (
+        <SyncKeyModal
+          account={account}
+          syncKey={revealedKey}
+          onClose={() => setRevealedKey(null)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -455,54 +555,37 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
 
   return (
     <>
-      <div className={`${cardHd} border-b border-zinc-100`}>
-        <div>
-          <h3 className={cardTitle}>Trading accounts</h3>
-          <p className="mt-0.5 text-xs text-zinc-500">
-            {tradingAccounts.length === 0
-              ? 'Add accounts and generate an MT5 sync key per account'
-              : `${tradingAccounts.length} account${tradingAccounts.length === 1 ? '' : 's'}`}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="text-sm text-zinc-500">
+          {tradingAccounts.length === 0
+            ? 'Add an account, then generate an MT5 sync key for it.'
+            : `${tradingAccounts.length} account${tradingAccounts.length === 1 ? '' : 's'} · sync, share, and set your default`}
+        </p>
         <button className={btnPrimary} type="button" onClick={() => setModal({ mode: 'add' })}>
           Add account
         </button>
       </div>
 
       {tradingAccounts.length === 0 ? (
-        <div className={emptyState}>
+        <div className={`${card} ${emptyState} mt-3`}>
           <p>No trading accounts yet.</p>
           <button className={`${btnOutline} mt-4`} type="button" onClick={() => setModal({ mode: 'add' })}>
             Add your first account
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-zinc-200">
-                <th className={tableTh}>Account</th>
-                <th className={tableTh}>Type</th>
-                <th className={tableTh}>Currency</th>
-                <th className={tableTh}>Status</th>
-                <th className={`${tableTh} text-right`}>MT5 sync</th>
-                <th className={`${tableTh} text-right`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {tradingAccounts.map((account) => (
-                <AccountTableRow
-                  key={account.id}
-                  account={account}
-                  hasSyncKey={keyAccountIds.has(account.id)}
-                  onEdit={(acc) => setModal({ mode: 'edit', account: acc })}
-                  onSetDefault={onSetDefault}
-                  onUpdated={onUpdated}
-                  onKeysChanged={handleKeysChanged}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-3 space-y-3">
+          {tradingAccounts.map((account) => (
+            <AccountCard
+              key={account.id}
+              account={account}
+              hasSyncKey={keyAccountIds.has(account.id)}
+              onEdit={(acc) => setModal({ mode: 'edit', account: acc })}
+              onSetDefault={onSetDefault}
+              onUpdated={onUpdated}
+              onKeysChanged={handleKeysChanged}
+            />
+          ))}
         </div>
       )}
 

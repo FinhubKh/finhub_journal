@@ -11,6 +11,7 @@ import WorldNewsPage from './WorldNewsPage';
 import SettingsPage from './SettingsPage';
 import ChecklistPage from './ChecklistPage';
 import CompoundingPage from './CompoundingPage';
+import LeaderboardPage from './LeaderboardPage';
 import { appShell } from '../lib/ui';
 
 export default function DashboardPage() {
@@ -20,7 +21,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (location.state?.tab) {
-      let tab = location.state.tab === 'leaderboard' ? 'overview' : location.state.tab;
+      let tab = location.state.tab;
       let section = location.state.section || null;
       if (tab === 'news') tab = 'economic-calendar';
       if (tab === 'setup') {
@@ -50,6 +51,7 @@ export default function DashboardPage() {
             {activeTab === 'calendar' && <CalendarPage />}
             {activeTab === 'checklist' && <ChecklistPage />}
             {activeTab === 'compound' && <CompoundingPage />}
+            {activeTab === 'leaderboard' && <LeaderboardPage embedded />}
             {activeTab === 'economic-calendar' && <EconomicCalendarPage />}
             {activeTab === 'world-news' && <WorldNewsPage />}
             {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}

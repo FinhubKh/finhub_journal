@@ -29,6 +29,7 @@ export default function CustomDropdown({
   ariaLabel = 'Select option',
   className = '',
   menuClassName = 'w-36',
+  buttonClassName = '',
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -56,11 +57,14 @@ export default function CustomDropdown({
     setOpen(false);
   }
 
+  const defaultButton =
+    'inline-flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-900 transition hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98]';
+
   return (
     <div className={`relative ${className}`} ref={rootRef}>
       <button
         type="button"
-        className="inline-flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-900 transition hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98]"
+        className={buttonClassName || defaultButton}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -72,7 +76,7 @@ export default function CustomDropdown({
 
       {open && (
         <div
-          className={`absolute left-0 top-[calc(100%+8px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg ${menuClassName}`}
+          className={`absolute left-0 top-[calc(100%+6px)] z-40 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg ${menuClassName}`}
           role="listbox"
           aria-label={ariaLabel}
         >

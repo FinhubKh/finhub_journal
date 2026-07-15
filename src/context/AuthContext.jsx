@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
-  getSession, subscribeAuth, restoreSession, signIn as apiSignIn, signUp as apiSignUp,
+  getSession, subscribeAuth, restoreSessionAndRefresh, signIn as apiSignIn, signUp as apiSignUp,
   signOut as apiSignOut, setSessionFromTokens, updateUserDisplayName, requestPasswordReset,
   quickSignIn as apiQuickSignIn, signInWithGoogle as apiSignInWithGoogle, isConfigured,
+  ensureFreshSession,
 } from '../api/auth';
 import { fetchMyProfile } from '../api/profile';
 
@@ -47,10 +48,19 @@ export function AuthProvider({ children }) {
           } catch (e) { console.error('Token restore failed:', e); }
         }
       }
-      restoreSession();
+      await restoreSessionAndRefresh();
       setReady(true);
     })();
   }, []);
+
+  // Quietly renew access tokens while the tab stays open.
+  useEffect(() => {
+    if (!session?.refresh_token) return undefined;
+    const id = window.setInterval(() => {
+      ensureFreshSession().catch(() => {});
+    }, 4 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [session?.refresh_token]);
 
   const signIn = useCallback((email, pass, remember) => apiSignIn(email, pass, remember), []);
   const quickSignIn = useCallback(() => apiQuickSignIn(), []);

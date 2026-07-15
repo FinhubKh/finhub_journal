@@ -16,10 +16,46 @@ import TradingAccountsManager from '../components/settings/TradingAccountsManage
 import InstallGuideCard from '../components/settings/InstallGuideCard';
 
 const SETTINGS_TABS = [
-  { id: 'account', label: 'Account' },
-  { id: 'mt5', label: 'MT5 Setup' },
-  { id: 'journal', label: 'Journal' },
-  { id: 'data', label: 'Data' },
+  {
+    id: 'account',
+    label: 'Account',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M2 6.5h12" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M5 9.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'mt5',
+    label: 'MT5 Setup',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 4.5h10v7a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 11.5v-7z" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M5.5 3v1.5M10.5 3v1.5M6 8.5l1.5 1.5L10.5 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'journal',
+    label: 'Journal',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'data',
+    label: 'Data',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 11.5V13h10v-1.5M8 3v7.5M8 10.5l-2.5-2.5M8 10.5l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ];
 
 const FOCUS_TO_TAB = {
@@ -52,11 +88,11 @@ function SettingsRow({ title, sub, children }) {
 function SettingsTabBar({ activeTab, onChange }) {
   return (
     <nav
-      className="sticky top-0 z-10 -mx-4 border-b border-zinc-200 bg-zinc-50 md:-mx-6"
+      className="sticky top-0 z-10 -mx-4 bg-zinc-50/95 px-4 py-3 backdrop-blur-sm md:-mx-6 md:px-6"
       role="tablist"
       aria-label="Settings sections"
     >
-      <div className="flex gap-0 overflow-x-auto px-4 md:px-6">
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-zinc-200 bg-zinc-100/80 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {SETTINGS_TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -65,14 +101,15 @@ function SettingsTabBar({ activeTab, onChange }) {
               type="button"
               role="tab"
               aria-selected={active}
-              className={`shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98] ${
                 active
-                  ? 'border-violet-600 text-violet-700'
-                  : 'border-transparent text-zinc-500 hover:border-zinc-200 hover:text-zinc-800'
+                  ? 'bg-white text-violet-700 shadow-sm ring-1 ring-zinc-200/80'
+                  : 'text-zinc-500 hover:bg-white/60 hover:text-zinc-800'
               }`}
               onClick={() => onChange(tab.id)}
             >
-              {tab.label}
+              <span className={`shrink-0 ${active ? 'text-violet-600' : 'text-zinc-400'}`}>{tab.icon}</span>
+              <span className="truncate">{tab.label}</span>
             </button>
           );
         })}
@@ -192,7 +229,8 @@ export default function SettingsPage({ focusSection = null }) {
       <div className="mt-5 flex-1 flex flex-col space-y-5">
         {activeTab === 'account' && (
           <>
-            <SettingsSection title="Trading accounts" id="trading-accounts">
+            <section className="space-y-3" id="trading-accounts">
+              <h2 className={sectionLabel}>Trading accounts</h2>
               <TradingAccountsManager
                 tradingAccounts={tradingAccounts}
                 onSetDefault={setDefaultAccount}
@@ -201,7 +239,7 @@ export default function SettingsPage({ focusSection = null }) {
                   await refreshTrades();
                 }}
               />
-            </SettingsSection>
+            </section>
           </>
         )}
 

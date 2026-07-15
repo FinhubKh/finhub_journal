@@ -16,19 +16,63 @@ export function authHeaders(token) {
   };
 }
 
-function persistSession() {
-  const store = sessionStorage.getItem('nxuu_session') ? sessionStorage : localStorage;
-  store.setItem('nxuu_session', JSON.stringify(_session));
-}
-
 let _session = null;
+let _refreshPromise = null;
 const listeners = new Set();
+
 function notify() {
   listeners.forEach((fn) => fn());
 }
+
 export function subscribeAuth(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+function normalizeSession(data, prev = null) {
+  if (!data?.access_token) return null;
+  const expiresIn = Number(data.expires_in);
+  const expiresAt =
+    data.expires_at ||
+    (Number.isFinite(expiresIn)
+      ? Math.floor(Date.now() / 1000) + expiresIn
+      : prev?.expires_at || null);
+
+  return {
+    ...prev,
+    ...data,
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || prev?.refresh_token || null,
+    user: data.user || prev?.user || null,
+    expires_at: expiresAt,
+  };
+}
+
+/** Active session always lives in sessionStorage for this browser tab. */
+function persistSession() {
+  if (!_session) {
+    sessionStorage.removeItem('nxuu_session');
+    return;
+  }
+  sessionStorage.setItem('nxuu_session', JSON.stringify(_session));
+
+  // Keep remembered refresh token in sync when "Remember me" is on.
+  try {
+    const rem = JSON.parse(localStorage.getItem('nxuu_remember') || 'null');
+    if (rem?.email && _session.refresh_token) {
+      localStorage.setItem(
+        'nxuu_remember',
+        JSON.stringify({ email: rem.email, refresh_token: _session.refresh_token }),
+      );
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearSessionStorage() {
+  localStorage.removeItem('nxuu_session');
+  sessionStorage.removeItem('nxuu_session');
 }
 
 export function getSession() { return _session; }
@@ -37,7 +81,13 @@ export function getUserId() { return _session?.user?.id || null; }
 export function getUserEmail() { return _session?.user?.email || ''; }
 export function getUserDisplayName() { return _session?.user?.user_metadata?.display_name || ''; }
 
+function secondsUntilExpiry() {
+  if (!_session?.expires_at) return null;
+  return _session.expires_at - Math.floor(Date.now() / 1000);
+}
+
 export async function updateUserDisplayName(name) {
+  await ensureFreshSession();
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     method: 'PUT',
     headers: authHeaders(getToken()),
@@ -49,8 +99,8 @@ export async function updateUserDisplayName(name) {
   }
   const updated = await res.json();
   if (_session && updated?.user_metadata) {
-    _session.user.user_metadata = updated.user_metadata;
-    localStorage.setItem('nxuu_session', JSON.stringify(_session));
+    _session = { ..._session, user: { ..._session.user, user_metadata: updated.user_metadata } };
+    persistSession();
     notify();
   }
   return updated;
@@ -79,21 +129,20 @@ export async function signIn(email, password, remember = false) {
   if (!res.ok || data.error || data.error_code || data.msg || !data.access_token) {
     throw new Error(data.error_description || data.msg || data.error || 'Invalid email or password.');
   }
-  localStorage.removeItem('nxuu_session');
-  sessionStorage.removeItem('nxuu_session');
-  _session = data;
-  sessionStorage.setItem('nxuu_session', JSON.stringify(data));
+  clearSessionStorage();
+  _session = normalizeSession(data);
+  persistSession();
   if (remember) {
     localStorage.setItem('nxuu_remember', JSON.stringify({ email, refresh_token: data.refresh_token }));
   } else {
     localStorage.removeItem('nxuu_remember');
   }
   notify();
-  return data;
+  return _session;
 }
 
 // "Remember Me" — stored separately from the active session so the app
-// always lands on the login screen, but the user can relogin in one tap.
+// always lands on the login page, but the user can relogin in one tap.
 export function getRemembered() {
   try { return JSON.parse(localStorage.getItem('nxuu_remember') || 'null'); }
   catch (e) { return null; }
@@ -116,48 +165,101 @@ export async function quickSignIn() {
     clearRemembered();
     throw new Error('Session expired, please sign in again.');
   }
-  _session = data;
-  sessionStorage.setItem('nxuu_session', JSON.stringify(data));
+  _session = normalizeSession(data);
+  persistSession();
   localStorage.setItem('nxuu_remember', JSON.stringify({ email: rem.email, refresh_token: data.refresh_token }));
-  notify();
-  return data;
-}
-
-export async function refreshSession() {
-  if (!_session?.refresh_token) throw new Error('No refresh token');
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
-    body: JSON.stringify({ refresh_token: _session.refresh_token }),
-  });
-  const data = await res.json();
-  if (!res.ok || !data.access_token) throw new Error('Refresh failed');
-  _session = { ..._session, access_token: data.access_token, refresh_token: data.refresh_token };
-  localStorage.setItem('nxuu_session', JSON.stringify(_session));
   notify();
   return _session;
 }
 
+export async function refreshSession() {
+  if (!_session?.refresh_token) throw new Error('No refresh token');
+
+  // Deduplicate concurrent refreshes (many API calls can 401 at once).
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: _session.refresh_token }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) {
+      throw new Error(data.msg || data.error_description || 'Refresh failed');
+    }
+    _session = normalizeSession(data, _session);
+    persistSession();
+    notify();
+    return _session;
+  })();
+
+  try {
+    return await _refreshPromise;
+  } finally {
+    _refreshPromise = null;
+  }
+}
+
+/** Refresh if access token is missing expiry info, expired, or about to expire. */
+export async function ensureFreshSession({ force = false } = {}) {
+  if (!_session?.access_token) return null;
+  const left = secondsUntilExpiry();
+  if (!force && left != null && left > 60) return _session;
+  if (!_session.refresh_token) throw new Error('Session expired');
+  return refreshSession();
+}
+
+function mergeAuthHeader(options, token) {
+  const headers = { ...(options.headers || {}) };
+  headers.Authorization = `Bearer ${token}`;
+  if (!headers.apikey && !headers.Apikey) headers.apikey = SUPABASE_ANON_KEY;
+  return { ...options, headers };
+}
+
+async function looksLikeJwtExpired(res) {
+  if (res.status !== 401) return false;
+  try {
+    const data = await res.clone().json();
+    const msg = String(data?.message || data?.msg || data?.error_description || '');
+    return data?.code === 'PGRST303' || /jwt expired|invalid jwt/i.test(msg) || true;
+  } catch {
+    return true;
+  }
+}
+
 export async function authFetch(url, options = {}) {
-  let res = await fetch(url, options);
-  if (res.status === 401 && _session?.refresh_token) {
+  try {
+    await ensureFreshSession();
+  } catch {
+    /* continue; request may still work or surface auth error */
+  }
+
+  let res = await fetch(url, mergeAuthHeader(options, getToken()));
+
+  if ((await looksLikeJwtExpired(res)) && _session?.refresh_token) {
     try {
       await refreshSession();
-      const retryOptions = { ...options, headers: { ...options.headers, Authorization: `Bearer ${getToken()}` } };
-      res = await fetch(url, retryOptions);
-    } catch (e) { /* refresh failed, return original 401 */ }
+      res = await fetch(url, mergeAuthHeader(options, getToken()));
+    } catch {
+      await forceSignOutLocal();
+    }
   }
+
   return res;
+}
+
+async function forceSignOutLocal() {
+  _session = null;
+  clearSessionStorage();
+  notify();
 }
 
 export async function signOut() {
   try {
     await fetch(`${SUPABASE_URL}/auth/v1/logout`, { method: 'POST', headers: authHeaders(getToken()) });
   } catch (e) { /* ignore */ }
-  _session = null;
-  localStorage.removeItem('nxuu_session');
-  sessionStorage.removeItem('nxuu_session');
-  notify();
+  await forceSignOutLocal();
 }
 
 export function restoreSession() {
@@ -169,16 +271,29 @@ export function restoreSession() {
     if (!raw) return false;
     const s = JSON.parse(raw);
     if (!s?.access_token || !s?.user?.id || !s?.user?.email) {
-      localStorage.removeItem('nxuu_session');
-      sessionStorage.removeItem('nxuu_session');
+      clearSessionStorage();
       return false;
     }
-    _session = s;
+    _session = normalizeSession(s);
+    persistSession();
     notify();
     return true;
   } catch (e) {
-    localStorage.removeItem('nxuu_session');
-    sessionStorage.removeItem('nxuu_session');
+    clearSessionStorage();
+    return false;
+  }
+}
+
+/** Restore session then refresh token if it already expired while the tab was open. */
+export async function restoreSessionAndRefresh() {
+  const ok = restoreSession();
+  if (!ok) return false;
+  try {
+    const left = secondsUntilExpiry();
+    await ensureFreshSession({ force: left == null || left <= 0 });
+    return !!_session;
+  } catch {
+    await forceSignOutLocal();
     return false;
   }
 }
@@ -190,10 +305,14 @@ export async function setSessionFromTokens(accessToken, refreshToken) {
   if (!res.ok) throw new Error('Could not verify token');
   const user = await res.json();
   if (!user?.id) throw new Error('Invalid user from token');
-  const session = { access_token: accessToken, refresh_token: refreshToken, user };
-  _session = session;
+  _session = normalizeSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    user,
+    expires_in: 3600,
+  });
   localStorage.removeItem('nxuu_session');
-  sessionStorage.setItem('nxuu_session', JSON.stringify(session));
+  persistSession();
   notify();
 }
 

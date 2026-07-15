@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
 import { ScrollReveal } from '../components/common/ScrollReveal';
+import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
 
 const NAV_LINKS = [
   { href: '#platform', label: 'Platform' },
+  { href: '#leaderboard', label: 'Leaderboard' },
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'How it works' },
   { href: '#install', label: 'Install' },
@@ -212,50 +214,6 @@ function MockChecklist() {
   );
 }
 
-function MockDashboard() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-2xl shadow-violet-500/15">
-      <div className="flex border-b border-zinc-100">
-        <div className="hidden w-36 shrink-0 border-r border-zinc-100 bg-zinc-50 p-3 sm:block">
-          <div className="text-xs font-bold text-violet-600">FinhubKH</div>
-          <div className="mt-4 space-y-1.5">
-            {['Overview', 'Log', 'Calendar', 'Settings'].map((t, i) => (
-              <div key={t} className={`rounded-lg px-2 py-1.5 text-[11px] font-medium ${i === 0 ? 'bg-violet-100 text-violet-700' : 'text-zinc-400'}`}>{t}</div>
-            ))}
-          </div>
-        </div>
-        <div className="min-w-0 flex-1 p-4">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            {[
-              { l: 'Net result', v: '+$2,480', c: 'text-emerald-600' },
-              { l: 'Win rate', v: '58%', c: 'text-violet-600' },
-              { l: 'Profit factor', v: '1.72', c: 'text-zinc-900' },
-              { l: 'Avg R', v: '+0.42R', c: 'text-emerald-600' },
-            ].map((s) => (
-              <div key={s.l} className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
-                <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">{s.l}</div>
-                <div className={`mt-1 text-base font-bold ${s.c}`}>{s.v}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 rounded-xl border border-zinc-100 bg-zinc-50/50 p-3">
-            <svg viewBox="0 0 400 100" className="h-24 w-full" aria-hidden="true">
-              <defs>
-                <linearGradient id="hero-eq" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path d="M0 75 L50 70 L100 55 L150 60 L200 40 L250 35 L300 25 L350 20 L400 12 L400 100 L0 100 Z" fill="url(#hero-eq)" />
-              <path d="M0 75 L50 70 L100 55 L150 60 L200 40 L250 35 L300 25 L350 20 L400 12" fill="none" stroke="#7c3aed" strokeWidth="2.5" />
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function FeatureMock({ type }) {
   if (type === 'journal') return <MockJournal />;
   if (type === 'analytics') return <MockAnalytics />;
@@ -324,7 +282,7 @@ export default function LandingPage() {
       <section className="relative flex min-h-dvh items-center overflow-hidden border-b border-zinc-100 bg-gradient-to-b from-violet-50/80 via-white to-white">
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-200/40 blur-3xl landing-hero-glow" />
         <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-fuchsia-200/30 blur-3xl landing-hero-glow" style={{ animationDelay: '1.5s' }} />
-        <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-28 sm:px-8 lg:grid-cols-2 lg:py-32">
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-28 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] lg:gap-8 lg:py-32">
           <div>
             <h1 className="landing-hero-in text-[clamp(2.25rem,5vw,3.5rem)] font-extrabold leading-[1.08] tracking-tight text-zinc-900">
               Everything you need to
@@ -346,9 +304,19 @@ export default function LandingPage() {
             </div>
             <p className="landing-hero-in landing-hero-in-d3 mt-4 text-sm text-zinc-400">No credit card. Private by default.</p>
           </div>
-          <div className="relative landing-hero-mock landing-hero-float">
+          <div className="relative landing-hero-mock lg:-mr-4 xl:-mr-8">
             <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 blur-2xl landing-hero-glow" />
-            <div className="relative"><MockDashboard /></div>
+            <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-2xl shadow-violet-500/15">
+              <img
+                src="/image/heroSection.png"
+                alt="FinhubKH Journal overview dashboard"
+                className="block h-auto w-full min-w-0"
+                width={1600}
+                height={1000}
+                decoding="async"
+                fetchPriority="high"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -362,6 +330,8 @@ export default function LandingPage() {
           </div>
         </ScrollReveal>
       </section>
+
+      <LeaderboardPreview variant="landing" limit={10} />
 
       <section id="platform" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <ScrollReveal className="mx-auto max-w-2xl text-center">

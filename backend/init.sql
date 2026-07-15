@@ -66,6 +66,9 @@ create table if not exists trading_accounts (
   is_default          boolean not null default false,
   connection_status   text default 'manual',
   pnl_denomination    text not null default 'usd' check (pnl_denomination in ('usd', 'cent')),
+  is_public           boolean not null default false,
+  share_token         text,
+  published_at        timestamptz,
   created_at          timestamptz default now(),
   unique (user_id, slug)
 );
@@ -322,35 +325,285 @@ grant execute on function public.admin_list_users() to authenticated;
 grant execute on function public.admin_set_user_role(uuid, text) to authenticated;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
 
--- ── LEADERBOARD ─────────────────────────────────────────────
-create or replace function get_leaderboard()
-returns table (
-  user_id      uuid,
-  email        text,
-  display_name text,
-  total_trades bigint,
-  win_rate     numeric,
-  total_pnl    numeric
+-- ── LEADERBOARD (published accounts) — full defs in schema_leaderboard.sql ─
+-- Removed legacy all-users get_leaderboard that exposed emails.
+-- Run backend/schema_leaderboard.sql in Supabase if leaderboard RPC is missing.
+
+drop function if exists public.get_leaderboard();
+
+-- ============================================================
+-- FinhubKH Journal — Publish trading accounts (public share links)
+-- Run in Supabase SQL Editor
+-- ============================================================
+
+alter table trading_accounts
+  add column if not exists is_public boolean not null default false;
+
+alter table trading_accounts
+  add column if not exists share_token text;
+
+alter table trading_accounts
+  add column if not exists published_at timestamptz;
+
+create unique index if not exists trading_accounts_share_token_uidx
+  on trading_accounts(share_token)
+  where share_token is not null;
+
+create index if not exists trading_accounts_is_public_idx
+  on trading_accounts(is_public)
+  where is_public = true;
+
+-- Public can read published account rows (owners still use their own policy)
+drop policy if exists "Anyone can view published trading accounts" on trading_accounts;
+create policy "Anyone can view published trading accounts"
+  on trading_accounts for select
+  using (is_public = true and share_token is not null);
+
+-- Public can read trades that belong to a published account
+drop policy if exists "Anyone can view trades of published accounts" on trades;
+create policy "Anyone can view trades of published accounts"
+  on trades for select
+  using (
+    exists (
+      select 1
+      from public.trading_accounts a
+      where a.id = trades.account_id
+        and a.is_public = true
+        and a.share_token is not null
+    )
+  );
+
+-- Owner: publish / unpublish (generates a stable share_token on first publish)
+create or replace function public.set_trading_account_public(
+  p_account_id uuid,
+  p_is_public boolean
 )
-language sql
+returns public.trading_accounts
+language plpgsql
 security definer
 set search_path = public
 as $$
-  select
-    t.user_id,
-    au.email::text,
-    au.raw_user_meta_data->>'display_name' as display_name,
-    count(*)::bigint as total_trades,
-    round(
-      sum(case when t.result = 'win' then 1 else 0 end)::numeric
-      / nullif(count(*), 0) * 100,
-    1) as win_rate,
-    sum(t.pnl_usd) as total_pnl
-  from trades t
-  join auth.users au on au.id = t.user_id
-  group by t.user_id, au.email, au.raw_user_meta_data
-  having count(*) >= 1
-  order by win_rate desc;
+declare
+  row_out public.trading_accounts;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.trading_accounts a
+  set
+    is_public = p_is_public,
+    share_token = case
+      when p_is_public and a.share_token is null then replace(gen_random_uuid()::text, '-', '')
+      else a.share_token
+    end,
+    published_at = case
+      when p_is_public then coalesce(a.published_at, now())
+      else a.published_at
+    end
+  where a.id = p_account_id
+    and a.user_id = auth.uid()
+  returning * into row_out;
+
+  if row_out.id is null then
+    raise exception 'Account not found';
+  end if;
+
+  return row_out;
+end;
 $$;
 
-grant execute on function get_leaderboard() to authenticated;
+revoke all on function public.set_trading_account_public(uuid, boolean) from public;
+grant execute on function public.set_trading_account_public(uuid, boolean) to authenticated;
+
+-- Public bundle: account + owner display name + trades (no sync keys / email)
+create or replace function public.get_published_trading_account(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+declare
+  acc public.trading_accounts;
+  owner_name text;
+  trade_rows jsonb;
+begin
+  if p_token is null or length(trim(p_token)) < 8 then
+    return null;
+  end if;
+
+  select * into acc
+  from public.trading_accounts
+  where share_token = trim(p_token)
+    and is_public = true
+  limit 1;
+
+  if acc.id is null then
+    return null;
+  end if;
+
+  select coalesce(nullif(trim(p.display_name), ''), split_part(coalesce(p.email, ''), '@', 1), 'Trader')
+  into owner_name
+  from public.profiles p
+  where p.id = acc.user_id;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'id', t.id,
+        'date', t.date,
+        'symbol', t.symbol,
+        'direction', t.direction,
+        'result', t.result,
+        'pnl_usd', t.pnl_usd,
+        'r_value', t.r_value,
+        'session', t.session,
+        'model', t.model,
+        'notes', t.notes,
+        'account_id', t.account_id,
+        'created_at', t.created_at
+      )
+      order by t.date desc, t.created_at desc
+    ),
+    '[]'::jsonb
+  )
+  into trade_rows
+  from public.trades t
+  where t.account_id = acc.id;
+
+  return jsonb_build_object(
+    'account', jsonb_build_object(
+      'id', acc.id,
+      'name', acc.name,
+      'slug', acc.slug,
+      'account_type', acc.account_type,
+      'broker', acc.broker,
+      'color', acc.color,
+      'pnl_denomination', acc.pnl_denomination,
+      'starting_balance', acc.starting_balance,
+      'share_token', acc.share_token,
+      'published_at', acc.published_at,
+      'created_at', acc.created_at
+    ),
+    'owner', jsonb_build_object(
+      'display_name', coalesce(owner_name, 'Trader')
+    ),
+    'trades', trade_rows
+  );
+end;
+$$;
+
+revoke all on function public.get_published_trading_account(text) from public;
+grant execute on function public.get_published_trading_account(text) to anon, authenticated;
+
+-- ============================================================
+-- Public leaderboard (published accounts) — also in schema_leaderboard.sql
+-- ============================================================
+
+create or replace function public.get_public_leaderboard(
+  p_limit int default 50,
+  p_min_trades int default 5
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+declare
+  lim int := greatest(1, least(coalesce(p_limit, 50), 100));
+  min_trades int := greatest(0, least(coalesce(p_min_trades, 5), 1000));
+  rows jsonb;
+begin
+  select coalesce(
+    jsonb_agg(row_to_json(ranked)::jsonb order by ranked.rank_pnl),
+    '[]'::jsonb
+  )
+  into rows
+  from (
+    select
+      row_number() over (order by s.total_pnl desc nulls last, s.trade_count desc) as rank_pnl,
+      s.account_id,
+      s.account_name,
+      s.share_token,
+      s.account_type,
+      s.pnl_denomination,
+      s.color,
+      s.published_at,
+      s.display_name,
+      s.trade_count,
+      s.wins,
+      s.losses,
+      round(s.total_pnl::numeric, 2) as total_pnl,
+      case
+        when s.trade_count > 0 then round((s.wins::numeric / s.trade_count::numeric) * 100)
+        else 0
+      end as win_rate,
+      case
+        when s.gross_loss > 0 then round((s.gross_win / s.gross_loss)::numeric, 2)
+        when s.gross_win > 0 then null
+        else null
+      end as profit_factor,
+      case
+        when s.gross_loss = 0 and s.gross_win > 0 then true
+        else false
+      end as profit_factor_infinite
+    from (
+      select
+        a.id as account_id,
+        a.name as account_name,
+        a.share_token,
+        a.account_type,
+        a.pnl_denomination,
+        a.color,
+        a.published_at,
+        coalesce(
+          nullif(trim(p.display_name), ''),
+          split_part(coalesce(p.email, ''), '@', 1),
+          'Trader'
+        ) as display_name,
+        count(t.id)::int as trade_count,
+        count(*) filter (where t.result = 'win')::int as wins,
+        count(*) filter (where t.result = 'loss')::int as losses,
+        coalesce(sum(t.pnl_usd), 0)::float8 as total_pnl,
+        coalesce(sum(t.pnl_usd) filter (where t.result = 'win'), 0)::float8 as gross_win,
+        abs(coalesce(sum(t.pnl_usd) filter (where t.result = 'loss'), 0))::float8 as gross_loss
+      from public.trading_accounts a
+      left join public.profiles p on p.id = a.user_id
+      left join public.trades t on t.account_id = a.id
+      where a.is_public = true
+        and a.share_token is not null
+      group by
+        a.id, a.name, a.share_token, a.account_type, a.pnl_denomination,
+        a.color, a.published_at, p.display_name, p.email
+      having count(t.id) >= min_trades
+    ) s
+    order by s.total_pnl desc nulls last, s.trade_count desc
+    limit lim
+  ) ranked;
+
+  return jsonb_build_object(
+    'entries', rows,
+    'min_trades', min_trades,
+    'limit', lim
+  );
+end;
+$$;
+
+revoke all on function public.get_public_leaderboard(int, int) from public;
+grant execute on function public.get_public_leaderboard(int, int) to anon, authenticated;
+
+create or replace function public.get_leaderboard()
+returns jsonb
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select public.get_public_leaderboard(50, 5);
+$$;
+
+revoke all on function public.get_leaderboard() from public;
+grant execute on function public.get_leaderboard() to anon, authenticated;
+

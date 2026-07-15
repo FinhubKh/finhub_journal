@@ -6,6 +6,7 @@ import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
+import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
 
 function fmtPnl(v) {
   if (v == null || Number.isNaN(v)) return '—';
@@ -54,6 +55,42 @@ function OverviewHeader() {
   );
 }
 
+function SkeletonBlock({ className = '' }) {
+  return <div className={`animate-pulse rounded-2xl bg-zinc-200/80 ${className}`} />;
+}
+
+function OverviewLoading() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <div className="flex flex-col items-center justify-center gap-3 py-6">
+        <span
+          className="inline-block h-9 w-9 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600"
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-zinc-500">Loading your overview…</p>
+      </div>
+
+      <section aria-hidden>
+        <div className={`${sectionLabel} mb-3 h-3 w-20 rounded bg-zinc-200/80`} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]" aria-hidden>
+        <div className="space-y-4">
+          <SkeletonBlock className="h-40" />
+          <SkeletonBlock className="h-56" />
+        </div>
+        <SkeletonBlock className="h-72" />
+      </div>
+    </div>
+  );
+}
+
 function EmptyOverview({ onOpenSetup }) {
   return (
     <div className={`${card} flex flex-col items-center justify-center px-6 py-12 text-center`}>
@@ -70,7 +107,7 @@ function EmptyOverview({ onOpenSetup }) {
 
 export default function OverviewPage() {
   const navigate = useNavigate();
-  const { visibleTrades, viewMode } = useAppData();
+  const { visibleTrades, viewMode, dataLoading } = useAppData();
   const stats = computeStats(visibleTrades);
   const hasTrades = visibleTrades.length > 0;
 
@@ -81,111 +118,130 @@ export default function OverviewPage() {
     <div className={dashboardPageWide}>
       <OverviewHeader />
 
-      {!hasTrades && (
-        <div className="mb-6">
-          <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'settings', section: 'mt5-setup' } })} />
-        </div>
-      )}
-
-      {hasTrades && (
-        <div className="space-y-6">
-          {/* Primary KPIs */}
-          <section aria-label="Key metrics">
-            <h2 className={`${sectionLabel} mb-3`}>Summary</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <HeroStat
-                label="Net result"
-                value={fmtPnl(stats?.totalPnl)}
-                hint={`${stats?.total || 0} closed trade${stats?.total !== 1 ? 's' : ''}`}
-                positive={stats ? stats.totalPnl >= 0 : null}
-              />
-              <StatTile
-                label="Win rate"
-                value={stats ? `${stats.wr}%` : '—'}
-                hint={stats ? `${stats.wins.length}W · ${stats.losses.length}L` : undefined}
-                tone={stats && stats.wr >= 50 ? 'positive' : stats ? 'negative' : 'neutral'}
-              />
-              <StatTile
-                label="Profit factor"
-                value={stats ? stats.pf : '—'}
-                hint="Gross wins ÷ gross losses"
-                tone={pfPositive ? 'positive' : stats ? 'negative' : 'neutral'}
-              />
-              <StatTile
-                label="Total trades"
-                value={stats ? String(stats.total) : '—'}
-                hint={stats ? `Avg ${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R per trade` : undefined}
-              />
+      {dataLoading ? (
+        <OverviewLoading />
+      ) : (
+        <>
+          {!hasTrades && (
+            <div className="mb-6">
+              <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'settings', section: 'mt5-setup' } })} />
             </div>
-          </section>
+          )}
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="min-w-0 space-y-6">
-              {/* Risk & expectancy */}
-              <section aria-label="Risk metrics">
-                <h2 className={`${sectionLabel} mb-3`}>Risk & expectancy</h2>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                  <StatTile
-                    label="Expectancy"
-                    value={stats && !Number.isNaN(stats.expectancy) ? fmtPnl(stats.expectancy) : '—'}
-                    hint="Per trade"
-                    tone={stats && stats.expectancy >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
+          {hasTrades && (
+            <div className="space-y-6">
+              {/* Primary KPIs */}
+              <section aria-label="Key metrics">
+                <h2 className={`${sectionLabel} mb-3`}>Summary</h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <HeroStat
+                    label="Net result"
+                    value={fmtPnl(stats?.totalPnl)}
+                    hint={`${stats?.total || 0} closed trade${stats?.total !== 1 ? 's' : ''}`}
+                    positive={stats ? stats.totalPnl >= 0 : null}
                   />
                   <StatTile
-                    label="Avg R"
-                    value={stats ? `${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R` : '—'}
-                    hint="Mean R-multiple"
+                    label="Win rate"
+                    value={stats ? `${stats.wr}%` : '—'}
+                    hint={stats ? `${stats.wins.length}W · ${stats.losses.length}L` : undefined}
+                    tone={stats && stats.wr >= 50 ? 'positive' : stats ? 'negative' : 'neutral'}
                   />
                   <StatTile
-                    label="Max drawdown"
-                    value={stats && stats.maxDD > 0 ? fmtPnl(-stats.maxDD) : '—'}
-                    hint="Peak to trough"
-                    tone="negative"
+                    label="Profit factor"
+                    value={stats ? stats.pf : '—'}
+                    hint="Gross wins ÷ gross losses"
+                    tone={pfPositive ? 'positive' : stats ? 'negative' : 'neutral'}
                   />
                   <StatTile
-                    label="Avg win"
-                    value={stats && stats.avgWin > 0 ? fmtPnl(stats.avgWin) : '—'}
-                    tone="positive"
+                    label="Total trades"
+                    value={stats ? String(stats.total) : '—'}
+                    hint={stats ? `Avg ${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R per trade` : undefined}
                   />
-                  <StatTile
-                    label="Avg loss"
-                    value={stats && stats.avgLoss > 0 ? fmtPnl(-stats.avgLoss) : '—'}
-                    tone="negative"
-                  />
-                  <div className={`${card} p-4`}>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Streaks</span>
-                    <div className="mt-3 grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-xl font-bold text-violet-600 sm:text-2xl">
-                          {stats && stats.bestStreak > 0 ? `${stats.bestStreak}W` : '—'}
-                        </div>
-                        <span className="text-xs text-zinc-500">Best win</span>
-                      </div>
-                      <div>
-                        <div className="text-xl font-bold text-rose-600 sm:text-2xl">
-                          {stats && stats.worstStreak > 0 ? `${stats.worstStreak}L` : '—'}
-                        </div>
-                        <span className="text-xs text-zinc-500">Worst loss</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </section>
 
-              <EquityChart trades={visibleTrades} />
-              <div className="xl:hidden">
-                <BreakdownCard trades={visibleTrades} />
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="min-w-0 space-y-6">
+                  {/* Risk & expectancy */}
+                  <section aria-label="Risk metrics">
+                    <h2 className={`${sectionLabel} mb-3`}>Risk & expectancy</h2>
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                      <StatTile
+                        label="Expectancy"
+                        value={stats && !Number.isNaN(stats.expectancy) ? fmtPnl(stats.expectancy) : '—'}
+                        hint="Per trade"
+                        tone={stats && stats.expectancy >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
+                      />
+                      <StatTile
+                        label="Avg R"
+                        value={stats ? `${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R` : '—'}
+                        hint="Mean R-multiple"
+                      />
+                      <StatTile
+                        label="Max drawdown"
+                        value={stats && stats.maxDD > 0 ? fmtPnl(-stats.maxDD) : '—'}
+                        hint="Peak to trough"
+                        tone="negative"
+                      />
+                      <StatTile
+                        label="Avg win"
+                        value={stats && stats.avgWin > 0 ? fmtPnl(stats.avgWin) : '—'}
+                        tone="positive"
+                      />
+                      <StatTile
+                        label="Avg loss"
+                        value={stats && stats.avgLoss > 0 ? fmtPnl(-stats.avgLoss) : '—'}
+                        tone="negative"
+                      />
+                      <div className={`${card} p-4`}>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Streaks</span>
+                        <div className="mt-3 grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="text-xl font-bold text-violet-600 sm:text-2xl">
+                              {stats && stats.bestStreak > 0 ? `${stats.bestStreak}W` : '—'}
+                            </div>
+                            <span className="text-xs text-zinc-500">Best win</span>
+                          </div>
+                          <div>
+                            <div className="text-xl font-bold text-rose-600 sm:text-2xl">
+                              {stats && stats.worstStreak > 0 ? `${stats.worstStreak}L` : '—'}
+                            </div>
+                            <span className="text-xs text-zinc-500">Worst loss</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <EquityChart trades={visibleTrades} />
+                  <div className="xl:hidden">
+                    <BreakdownCard trades={visibleTrades} />
+                  </div>
+                </div>
+
+                <aside className="min-w-0 space-y-4">
+                  <LeaderboardPreview
+                    limit={5}
+                    seeAllState={{ tab: 'leaderboard' }}
+                  />
+                  {viewMode === 'portfolio' && <PortfolioBreakdown />}
+                  <div className="hidden xl:block">
+                    <BreakdownCard trades={visibleTrades} />
+                  </div>
+                </aside>
               </div>
             </div>
+          )}
 
-            <aside className="min-w-0 space-y-4">
-              {viewMode === 'portfolio' && <PortfolioBreakdown />}
-              <div className="hidden xl:block">
-                <BreakdownCard trades={visibleTrades} />
-              </div>
-            </aside>
-          </div>
-        </div>
+          {!hasTrades && (
+            <div className="mt-2 max-w-xl">
+              <LeaderboardPreview
+                limit={5}
+                seeAllState={{ tab: 'leaderboard' }}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

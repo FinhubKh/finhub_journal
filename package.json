@@ -13,6 +13,7 @@
     "api:dev": "node backend/api/server.mjs",
     "db:check": "node scripts/db-check.mjs",
     "seed:admin": "node scripts/seed-admin.mjs",
+    "seed:leaderboard": "node scripts/seed-leaderboard.mjs",
     "functions:deploy": "node scripts/deploy-functions.mjs"
   },
   "dependencies": {

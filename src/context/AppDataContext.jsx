@@ -28,6 +28,7 @@ export function AppDataProvider({ children }) {
   const [userSteps, setUserSteps] = useState([]);
   const [userModels, setUserModels] = useState([]);
   const [tradingAccounts, setTradingAccounts] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [viewMode, setViewModeState] = useState(readViewMode);
   const [activeAccountId, setActiveAccountIdState] = useState(readActiveAccountId);
 
@@ -63,19 +64,37 @@ export function AppDataProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshTrades();
-      refreshSteps();
-      refreshModels();
-      refreshTradingAccounts();
-    } else {
-      setAllTrades([]);
-      setUserSteps([]);
-      setUserModels([]);
-      setTradingAccounts([]);
-      setViewModeState('portfolio');
-      setActiveAccountIdState('');
+    let cancelled = false;
+
+    async function load() {
+      if (!isAuthenticated) {
+        setAllTrades([]);
+        setUserSteps([]);
+        setUserModels([]);
+        setTradingAccounts([]);
+        setViewModeState('portfolio');
+        setActiveAccountIdState('');
+        setDataLoading(false);
+        return;
+      }
+
+      setDataLoading(true);
+      try {
+        await Promise.all([
+          refreshTrades(),
+          refreshSteps(),
+          refreshModels(),
+          refreshTradingAccounts(),
+        ]);
+      } finally {
+        if (!cancelled) setDataLoading(false);
+      }
     }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, refreshTrades, refreshSteps, refreshModels, refreshTradingAccounts]);
 
   const setViewMode = useCallback((mode) => {
@@ -126,6 +145,7 @@ export function AppDataProvider({ children }) {
     visibleTrades,
     accountTrades: visibleTrades,
     tradingAccounts,
+    dataLoading,
     viewMode,
     activeAccountId,
     activeAccount,

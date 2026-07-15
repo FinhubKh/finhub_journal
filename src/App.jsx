@@ -7,6 +7,8 @@ import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
+import PublicSharePage from './pages/PublicSharePage';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, ready } = useAuth();
@@ -71,6 +73,8 @@ export default function App() {
         <AppChrome>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/share/:token" element={<PublicSharePage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/login" element={<GuestRoute><AuthPage /></GuestRoute>} />
             <Route
               path="/dashboard"

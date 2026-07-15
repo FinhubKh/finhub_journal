@@ -17,8 +17,11 @@ export async function insertTrade(trade) {
 
 // ── TRADING ACCOUNTS ──
 export async function fetchTradingAccounts() {
+  const uid = getUserId();
+  // Always scope to the signed-in user. Public RLS also allows SELECT on
+  // published accounts, which would otherwise flood Settings with everyone else's.
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trading_accounts?select=*&order=is_default.desc,created_at.asc`,
+    `${SUPABASE_URL}/rest/v1/trading_accounts?select=*&user_id=eq.${uid}&order=is_default.desc,created_at.asc`,
     { headers: authHeaders(getToken()) },
   );
   if (!res.ok) {
@@ -39,11 +42,14 @@ export async function insertTradingAccount(account) {
 }
 
 export async function updateTradingAccount(id, fields) {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
-    body: JSON.stringify(fields),
-  });
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}&user_id=eq.${getUserId()}`,
+    {
+      method: 'PATCH',
+      headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+      body: JSON.stringify(fields),
+    },
+  );
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -51,25 +57,32 @@ export async function updateTradingAccount(id, fields) {
 export async function deleteTradingAccount(accountOrId) {
   const id = typeof accountOrId === 'object' ? accountOrId.id : accountOrId;
   const name = typeof accountOrId === 'object' ? accountOrId.name?.trim() : null;
+  const uid = getUserId();
 
-  const delById = await authFetch(`${SUPABASE_URL}/rest/v1/trades?account_id=eq.${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
-  });
+  const delById = await authFetch(
+    `${SUPABASE_URL}/rest/v1/trades?account_id=eq.${id}&user_id=eq.${uid}`,
+    {
+      method: 'DELETE',
+      headers: authHeaders(getToken()),
+    },
+  );
   if (!delById.ok) throw new Error(await delById.text());
 
   if (name) {
     const delByName = await authFetch(
-      `${SUPABASE_URL}/rest/v1/trades?account=eq.${encodeURIComponent(name)}`,
+      `${SUPABASE_URL}/rest/v1/trades?account=eq.${encodeURIComponent(name)}&user_id=eq.${uid}`,
       { method: 'DELETE', headers: authHeaders(getToken()) },
     );
     if (!delByName.ok) throw new Error(await delByName.text());
   }
 
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
-  });
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}&user_id=eq.${uid}`,
+    {
+      method: 'DELETE',
+      headers: authHeaders(getToken()),
+    },
+  );
   if (!res.ok) throw new Error(await res.text());
 }
 
@@ -80,8 +93,9 @@ function pnlResult(pnl) {
 }
 
 async function fetchTradesForAccount(account) {
+  const uid = getUserId();
   const byIdRes = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account_id=eq.${account.id}`,
+    `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account_id=eq.${account.id}&user_id=eq.${uid}`,
     { headers: authHeaders(getToken()) },
   );
   if (!byIdRes.ok) throw new Error(await byIdRes.text());
@@ -90,7 +104,7 @@ async function fetchTradesForAccount(account) {
 
   if (account.name?.trim()) {
     const byNameRes = await authFetch(
-      `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account=eq.${encodeURIComponent(account.name.trim())}`,
+      `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account=eq.${encodeURIComponent(account.name.trim())}&user_id=eq.${uid}`,
       { headers: authHeaders(getToken()) },
     );
     if (!byNameRes.ok) throw new Error(await byNameRes.text());
@@ -140,9 +154,12 @@ export async function repairCentAccountPnl(account) {
 }
 
 export async function fetchAllTrades() {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/trades?select=*&order=date.desc,created_at.desc`, {
-    headers: authHeaders(getToken()),
-  });
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/trades?select=*&user_id=eq.${getUserId()}&order=date.desc,created_at.desc`,
+    {
+      headers: authHeaders(getToken()),
+    },
+  );
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -152,7 +169,7 @@ export async function fetchTradesByMonth(year, month) {
   const lastDay = new Date(year, month, 0).getDate();
   const to = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trades?select=*&date=gte.${from}&date=lte.${to}&order=date.asc`,
+    `${SUPABASE_URL}/rest/v1/trades?select=*&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
     { headers: authHeaders(getToken()) }
   );
   if (!res.ok) throw new Error(await res.text());
@@ -164,7 +181,7 @@ export async function fetchDailyPnlByYear(year) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/daily_pnl?select=*&date=gte.${from}&date=lte.${to}&order=date.asc`,
+    `${SUPABASE_URL}/rest/v1/daily_pnl?select=*&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
     { headers: authHeaders(getToken()) },
   );
   if (!res.ok) {
@@ -351,3 +368,4 @@ export async function revokeAccountSyncKey(accountId) {
 }
 
 export * from './compounding';
+export * from './share';
