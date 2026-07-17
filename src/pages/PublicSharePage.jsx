@@ -74,6 +74,8 @@ export default function PublicSharePage() {
   }, [token]);
 
   const trades = data?.trades ?? [];
+  const tradeCount = data?.tradeCount ?? trades.length;
+  const tradesCapped = Boolean(data?.tradesCapped);
   const stats = useMemo(() => (trades.length ? computeStats(trades) : null), [trades]);
 
   const totalPages = Math.max(1, Math.ceil(trades.length / PAGE_SIZE));
@@ -150,6 +152,12 @@ export default function PublicSharePage() {
           <div className={`${card} ${emptyState}`}>No trades on this account yet.</div>
         ) : (
           <div className="space-y-6">
+            {tradesCapped ? (
+              <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+                Showing the latest {trades.length.toLocaleString()} of {tradeCount.toLocaleString()} trades.
+                Stats and equity below use this window.
+              </p>
+            ) : null}
             <section>
               <h2 className={`${sectionLabel} mb-3`}>Summary</h2>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -181,10 +189,14 @@ export default function PublicSharePage() {
               <div className={`${card} overflow-hidden`}>
                 <div className={cardHd}>
                   <h2 className={cardTitle}>Trade history</h2>
-                  <span className="text-xs text-zinc-400">{trades.length} trades</span>
+                  <span className="text-xs text-zinc-400">
+                    {tradesCapped
+                      ? `${trades.length} shown · ${tradeCount} total`
+                      : `${trades.length} trades`}
+                  </span>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] border-collapse text-left">
+                  <table className="w-full min-w-[640px] border-collapse text-left">
                     <thead>
                       <tr className="border-b border-zinc-200">
                         <th className={tableTh}>Date</th>
@@ -194,7 +206,7 @@ export default function PublicSharePage() {
                         <th className={`${tableTh} text-right`}>R</th>
                         <th className={`${tableTh} text-right`}>PnL</th>
                         <th className={tableTh}>Session</th>
-                        <th className={tableTh}>Notes</th>
+                        <th className={tableTh}>Model</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
@@ -217,7 +229,7 @@ export default function PublicSharePage() {
                             {fmtPnl(t.pnl_usd)}
                           </td>
                           <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                          <td className={`${tableTd} max-w-[220px] truncate text-zinc-500`}>{t.notes || '—'}</td>
+                          <td className={`${tableTd} text-zinc-500`}>{t.model || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

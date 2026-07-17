@@ -19,17 +19,31 @@ export async function setTradingAccountPublic(accountId, isPublic) {
   });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
-  // PostgREST may return object or array depending on Prefer
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/** Rotate share token for a published account. Invalidates the old public URL. */
+export async function regenerateTradingAccountShareToken(accountId) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/rpc/regenerate_trading_account_share_token`, {
+    method: 'POST',
+    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+    body: JSON.stringify({ p_account_id: accountId }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
   return Array.isArray(data) ? data[0] : data;
 }
 
 /**
  * Load a published account + trades for the public share page.
  * Works for anonymous visitors (uses anon key when no session).
+ * Notes are never returned. Trades are hard-capped server-side (latest first).
  */
-export async function fetchPublishedTradingAccount(token) {
+export async function fetchPublishedTradingAccount(token, opts = {}) {
   const clean = String(token || '').trim();
   if (!clean) return null;
+
+  const limit = Number.isFinite(opts.limit) ? opts.limit : 1000;
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_published_trading_account`, {
     method: 'POST',
@@ -38,16 +52,22 @@ export async function fetchPublishedTradingAccount(token) {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ p_token: clean }),
+    body: JSON.stringify({ p_token: clean, p_limit: limit }),
   });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   if (!data || !data.account) return null;
 
+  const trades = Array.isArray(data.trades) ? data.trades : [];
+  const tradeCount = Number.isFinite(data.trade_count) ? data.trade_count : trades.length;
+
   return {
     account: data.account,
     owner: data.owner || { display_name: 'Trader' },
-    trades: Array.isArray(data.trades) ? data.trades : [],
+    trades,
+    tradeCount,
+    tradesReturned: Number.isFinite(data.trades_returned) ? data.trades_returned : trades.length,
+    tradesCapped: Boolean(data.trades_capped),
     shareUrl: shareUrlForToken(data.account.share_token),
   };
 }

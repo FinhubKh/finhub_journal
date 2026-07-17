@@ -363,25 +363,10 @@ create index if not exists trading_accounts_is_public_idx
   on trading_accounts(is_public)
   where is_public = true;
 
--- Public can read published account rows (owners still use their own policy)
+-- Public data is RPC-only. Do not add public SELECT policies on
+-- trading_accounts / trades (that would allow enumerating all published accounts).
 drop policy if exists "Anyone can view published trading accounts" on trading_accounts;
-create policy "Anyone can view published trading accounts"
-  on trading_accounts for select
-  using (is_public = true and share_token is not null);
-
--- Public can read trades that belong to a published account
 drop policy if exists "Anyone can view trades of published accounts" on trades;
-create policy "Anyone can view trades of published accounts"
-  on trades for select
-  using (
-    exists (
-      select 1
-      from public.trading_accounts a
-      where a.id = trades.account_id
-        and a.is_public = true
-        and a.share_token is not null
-    )
-  );
 
 -- Owner: publish / unpublish (generates a stable share_token on first publish)
 create or replace function public.set_trading_account_public(
@@ -426,8 +411,46 @@ $$;
 revoke all on function public.set_trading_account_public(uuid, boolean) from public, anon;
 grant execute on function public.set_trading_account_public(uuid, boolean) to authenticated;
 
--- Public bundle: account + owner display name + trades (no sync keys / email)
-create or replace function public.get_published_trading_account(p_token text)
+create or replace function public.regenerate_trading_account_share_token(
+  p_account_id uuid
+)
+returns public.trading_accounts
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row_out public.trading_accounts;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.trading_accounts a
+  set share_token = replace(gen_random_uuid()::text, '-', '')
+  where a.id = p_account_id
+    and a.user_id = auth.uid()
+    and a.is_public = true
+  returning * into row_out;
+
+  if row_out.id is null then
+    raise exception 'Account not found or not published';
+  end if;
+
+  return row_out;
+end;
+$$;
+
+revoke all on function public.regenerate_trading_account_share_token(uuid) from public, anon;
+grant execute on function public.regenerate_trading_account_share_token(uuid) to authenticated;
+
+drop function if exists public.get_published_trading_account(text);
+
+-- Public bundle: no notes / sync keys / email. Trades hard-capped (latest first).
+create or replace function public.get_published_trading_account(
+  p_token text,
+  p_limit int default 1000
+)
 returns jsonb
 language plpgsql
 security definer
@@ -438,6 +461,8 @@ declare
   acc public.trading_accounts;
   owner_name text;
   trade_rows jsonb;
+  total_count int;
+  lim int := greatest(1, least(coalesce(p_limit, 1000), 1000));
 begin
   if p_token is null or length(trim(p_token)) < 8 then
     return null;
@@ -458,29 +483,37 @@ begin
   from public.profiles p
   where p.id = acc.user_id;
 
+  select count(*)::int into total_count
+  from public.trades t
+  where t.account_id = acc.id;
+
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
-        'id', t.id,
-        'date', t.date,
-        'symbol', t.symbol,
-        'direction', t.direction,
-        'result', t.result,
-        'pnl_usd', t.pnl_usd,
-        'r_value', t.r_value,
-        'session', t.session,
-        'model', t.model,
-        'notes', t.notes,
-        'account_id', t.account_id,
-        'created_at', t.created_at
+        'id', x.id,
+        'date', x.date,
+        'symbol', x.symbol,
+        'direction', x.direction,
+        'result', x.result,
+        'pnl_usd', x.pnl_usd,
+        'r_value', x.r_value,
+        'session', x.session,
+        'model', x.model,
+        'account_id', x.account_id,
+        'created_at', x.created_at
       )
-      order by t.date desc, t.created_at desc
+      order by x.date desc, x.created_at desc
     ),
     '[]'::jsonb
   )
   into trade_rows
-  from public.trades t
-  where t.account_id = acc.id;
+  from (
+    select t.*
+    from public.trades t
+    where t.account_id = acc.id
+    order by t.date desc, t.created_at desc
+    limit lim
+  ) x;
 
   return jsonb_build_object(
     'account', jsonb_build_object(
@@ -499,13 +532,16 @@ begin
     'owner', jsonb_build_object(
       'display_name', coalesce(owner_name, 'Trader')
     ),
-    'trades', trade_rows
+    'trades', trade_rows,
+    'trade_count', total_count,
+    'trades_returned', jsonb_array_length(trade_rows),
+    'trades_capped', total_count > lim
   );
 end;
 $$;
 
-revoke all on function public.get_published_trading_account(text) from public;
-grant execute on function public.get_published_trading_account(text) to anon, authenticated;
+revoke all on function public.get_published_trading_account(text, int) from public, anon;
+grant execute on function public.get_published_trading_account(text, int) to anon, authenticated;
 
 -- ============================================================
 -- Public leaderboard (published accounts) — also in schema_leaderboard.sql

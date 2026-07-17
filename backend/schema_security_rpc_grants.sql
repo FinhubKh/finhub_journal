@@ -7,6 +7,9 @@
 -- get_public_leaderboard, get_leaderboard.
 -- Admin/owner RPCs: authenticated only (body still checks role).
 --
+-- NOTE: This does NOT change table RLS. Run schema_publish_accounts.sql
+-- to drop open public SELECT policies on trading_accounts / trades.
+--
 -- NOTE: "Leaked Password Protection" is Auth Dashboard only —
 -- Authentication → Password / Providers → enable HaveIBeenPwned.
 -- ============================================================
@@ -30,6 +33,7 @@ begin
           'admin_set_user_role',
           'admin_delete_user',
           'set_trading_account_public',
+          'regenerate_trading_account_share_token',
           'is_admin'
         ) then 'auth_only'
         when p.proname in (
@@ -48,6 +52,7 @@ begin
         'admin_set_user_role',
         'admin_delete_user',
         'set_trading_account_public',
+        'regenerate_trading_account_share_token',
         'is_admin',
         'handle_new_user',
         'prevent_profile_role_escalation',
@@ -69,3 +74,24 @@ begin
 end $$;
 
 notify pgrst, 'reload schema';
+
+-- Verify grants after apply
+select
+  p.proname,
+  pg_get_function_identity_arguments(p.oid) as args,
+  has_function_privilege('anon', p.oid, 'execute') as anon_exec,
+  has_function_privilege('authenticated', p.oid, 'execute') as auth_exec
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in (
+    'get_published_trading_account',
+    'get_public_leaderboard',
+    'get_leaderboard',
+    'set_trading_account_public',
+    'regenerate_trading_account_share_token',
+    'admin_platform_stats',
+    'is_admin',
+    'handle_new_user'
+  )
+order by p.proname;

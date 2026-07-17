@@ -59,8 +59,7 @@ export async function insertTrade(trade) {
 // ── TRADING ACCOUNTS ──
 export async function fetchTradingAccounts() {
   const uid = getUserId();
-  // Always scope to the signed-in user. Public RLS also allows SELECT on
-  // published accounts, which would otherwise flood Settings with everyone else's.
+  // Scope to the signed-in user (owners use their own RLS policy).
   const res = await authFetch(
     `${SUPABASE_URL}/rest/v1/trading_accounts?select=${TRADING_ACCOUNT_SELECT}&user_id=eq.${uid}&order=is_default.desc,created_at.asc`,
     { headers: authHeaders(getToken()) },

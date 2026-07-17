@@ -3,7 +3,7 @@ import {
   insertTradingAccount, deleteTradingAccount, updateTradingAccount,
   recalculateTradesForDenomination, repairCentAccountPnl,
   listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
-  setTradingAccountPublic, getAccountShareUrl,
+  setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
 } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
@@ -272,14 +272,15 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
     if (next) {
       const ok = await confirm({
         title: `Publish "${account.name}"?`,
-        message: 'Anyone with the link can view this account’s stats and full trade history. Sync keys stay private.',
+        message:
+          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session, model). Journal notes and MT5 sync keys stay private. The account also becomes eligible for the public leaderboard.',
         confirmLabel: 'Publish',
       });
       if (!ok) return;
     } else {
       const ok = await confirm({
         title: `Unpublish "${account.name}"?`,
-        message: 'The public link will stop working until you publish again.',
+        message: 'The public link and leaderboard listing will stop working until you publish again. The same link is reused if you publish later (unless you regenerate it).',
         confirmLabel: 'Unpublish',
       });
       if (!ok) return;
@@ -315,6 +316,34 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
       toast.success('Share link copied');
     } catch {
       await alert({ title: 'Share link', message: shareUrl });
+    }
+  }
+
+  async function handleRegenerateLink() {
+    const ok = await confirm({
+      title: 'Regenerate share link?',
+      message: 'The current public URL will stop working immediately. Anyone with the old link will need the new one.',
+      confirmLabel: 'Regenerate',
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      const updated = await regenerateTradingAccountShareToken(account.id);
+      invalidateLeaderboardCache();
+      await onUpdated();
+      const url = getAccountShareUrl(updated) || `${window.location.origin}/share/${updated?.share_token || ''}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('New link copied');
+      } catch {
+        toast.success('Share link regenerated');
+      }
+    } catch (e) {
+      await alert({ title: 'Error', message: e.message || 'Could not regenerate share link.' });
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -450,7 +479,7 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
             </div>
             <p className="text-xs leading-relaxed text-zinc-500">
               {account.is_public
-                ? 'Anyone with the link can view stats and trade history.'
+                ? 'Anyone with the link can view stats and trade history (notes stay private).'
                 : 'Only you can see this account. Publish to share a read-only link.'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -458,9 +487,14 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
                 {account.is_public ? 'Unpublish' : 'Publish'}
               </button>
               {account.is_public && shareUrl ? (
-                <button className={btnOutline} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
-                  Copy link
-                </button>
+                <>
+                  <button className={btnOutline} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
+                    Copy link
+                  </button>
+                  <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
+                    Regenerate link
+                  </button>
+                </>
               ) : null}
             </div>
           </div>

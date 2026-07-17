@@ -104,7 +104,7 @@ const FAQS = [
   { q: 'Is FinhubKH Journal free?', a: 'Yes. Create an account and start journaling at no cost. Your data is private to your account.' },
   { q: 'How does MT5 sync work?', a: 'Generate a sync key per trading account in Settings, paste it into the FinhubKH EA on that MT5 terminal, and closed trades import on startup.' },
   { q: 'Can I use multiple accounts?', a: 'Yes. Each journal account has its own sync key. Use a different key on each MT5 terminal and filter the journal by account.' },
-  { q: 'Is my data shared publicly?', a: 'No. Your trades and stats are private to your account only.' },
+  { q: 'Is my data shared publicly?', a: 'By default, no — trades and stats are private. If you publish a trading account in Settings, anyone with the share link can view that account’s stats and trade history (notes stay private), and it may appear on the public leaderboard. You can unpublish or regenerate the link anytime.' },
 ];
 
 function MockJournal() {
