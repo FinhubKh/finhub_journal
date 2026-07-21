@@ -127,14 +127,14 @@ export default function TabBar({ activeTab, onSwitchTab }) {
   const tabClass = (active) =>
     `group flex w-full items-center justify-center gap-0 rounded-xl px-2 py-2.5 text-left text-sm font-medium transition md:justify-start md:gap-3 md:px-3 ${
       active
-        ? 'bg-violet-100 text-violet-700'
-        : 'bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'
+        ? 'bg-violet-100 text-violet-700 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border dark:border-emerald-500/30'
+        : 'bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200'
     }`;
 
   return (
-    <nav className="flex h-full w-[72px] shrink-0 flex-col border-r border-zinc-200 bg-white px-2 py-4 md:w-56 md:px-3" role="tablist">
+    <nav className="flex h-full w-[72px] shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-4 md:w-56 md:px-3" role="tablist">
       <div className="mb-6 hidden px-2 md:block">
-        <div className="text-sm font-bold text-zinc-900">FinhubKH</div>
+        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">FinhubKH</div>
         <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">Journal</div>
       </div>
 
@@ -148,7 +148,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             aria-selected={activeTab === tab.id}
             onClick={() => onSwitchTab(tab.id)}
           >
-            <span className={activeTab === tab.id ? 'text-violet-600' : 'text-zinc-400 group-hover:text-zinc-600'}>{tab.icon}</span>
+            <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
             <span className="hidden md:inline">{tab.label}</span>
           </button>
         ))}
@@ -164,7 +164,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             aria-selected={activeTab === tab.id}
             onClick={() => onSwitchTab(tab.id)}
           >
-            <span className={activeTab === tab.id ? 'text-violet-600' : 'text-zinc-400 group-hover:text-zinc-600'}>{tab.icon}</span>
+            <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
             <span className="hidden md:inline">{tab.label}</span>
           </button>
         ))}

@@ -128,8 +128,8 @@ export default function ChecklistCard() {
                         <div
                           className={`flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 transition ${
                             isChecked
-                              ? 'border-violet-200 bg-violet-50/60'
-                              : 'border-zinc-100 bg-zinc-50/50 hover:border-zinc-200 hover:bg-white'
+                              ? 'border-emerald-300/40 bg-emerald-500/10 dark:border-emerald-500/30 dark:bg-emerald-950/30'
+                              : 'border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-white dark:hover:bg-zinc-800'
                           }`}
                         >
                           <button
@@ -141,7 +141,7 @@ export default function ChecklistCard() {
                             onKeyDown={(e) => handleKey(e, step.id)}
                           >
                             <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition ${
-                              isChecked ? 'border-violet-600 bg-violet-600' : 'border-zinc-300 bg-white'
+                              isChecked ? 'border-emerald-500 bg-emerald-500' : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'
                             }`}>
                               {isChecked && (
                                 <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden="true">
@@ -149,7 +149,7 @@ export default function ChecklistCard() {
                                 </svg>
                               )}
                             </span>
-                            <span className={`min-w-0 flex-1 text-sm leading-snug ${isChecked ? 'text-zinc-400 line-through' : 'text-zinc-800'}`}>
+                            <span className={`min-w-0 flex-1 text-sm leading-snug ${isChecked ? 'text-zinc-400 line-through' : 'text-zinc-800 dark:text-zinc-200'}`}>
                               {step.title}
                             </span>
                           </button>

@@ -19,11 +19,11 @@ const EMPTY_FILTERS = { result: '', session: '', model: '', account: '', from: '
 const PAGE_SIZE = 50;
 
 const filterControl =
-  'h-9 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15 disabled:cursor-not-allowed disabled:opacity-50';
+  'h-9 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 outline-none transition placeholder:text-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50';
 
 const th =
-  'sticky top-0 z-10 whitespace-nowrap bg-zinc-50 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 shadow-[inset_0_-1px_0_0_rgb(228_228_231)]';
-const td = 'whitespace-nowrap px-4 py-3.5 text-sm text-zinc-700';
+  'sticky top-0 z-10 whitespace-nowrap bg-zinc-50 dark:bg-zinc-900 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-[inset_0_-1px_0_0_rgb(228_228_231)] dark:shadow-[inset_0_-1px_0_0_rgb(39_39_42)]';
+const td = 'whitespace-nowrap px-4 py-3.5 text-sm text-zinc-700 dark:text-zinc-300';
 const tdNum = `${td} text-right font-medium tabular-nums`;
 
 function FilterField({ label, children }) {
@@ -293,8 +293,8 @@ export default function TradeList() {
         )}
 
         {filtered.length > 0 && (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50/80 px-4 py-3 md:px-5">
-            <span className="text-xs text-zinc-500">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90 px-4 py-3 md:px-5">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {filtered.length > PAGE_SIZE
                 ? `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, filtered.length)} of ${filtered.length}`
                 : `${filtered.length} trade${filtered.length === 1 ? '' : 's'}`}

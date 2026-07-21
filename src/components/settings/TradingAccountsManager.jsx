@@ -536,7 +536,7 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 bg-zinc-50/70 px-4 py-3 md:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/80 px-4 py-3 md:px-5">
           <div className="flex flex-wrap gap-2">
             {!account.is_default ? (
               <button className={btnGhost} type="button" disabled={busy} onClick={() => onSetDefault(account.id)}>
