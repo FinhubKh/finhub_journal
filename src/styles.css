@@ -158,80 +158,17 @@ button:active { transform: scale(0.97); }
 
 [data-theme="dark"] body,
 [data-theme="dark"] html {
-  background-color: #0b0b0b !important;
-  color: #ffffff !important;
+  background-color: #0b0b0b;
+  color: #ffffff;
   color-scheme: dark;
-}
-
-[data-theme="dark"] .bg-zinc-50,
-[data-theme="dark"] [class*="bg-zinc-50"] {
-  background-color: #0b0b0b !important;
-}
-
-[data-theme="dark"] .bg-white,
-[data-theme="dark"] [class*="bg-white"] {
-  background-color: #161616 !important;
-}
-
-[data-theme="dark"] .bg-zinc-100,
-[data-theme="dark"] [class*="bg-zinc-100"] {
-  background-color: #1c1c1c !important;
-}
-
-[data-theme="dark"] .bg-zinc-200,
-[data-theme="dark"] .bg-zinc-300,
-[data-theme="dark"] [class*="bg-zinc-200"],
-[data-theme="dark"] [class*="bg-zinc-300"] {
-  background-color: #242424 !important;
-}
-
-[data-theme="dark"] .border-zinc-100,
-[data-theme="dark"] .border-zinc-200,
-[data-theme="dark"] .border-zinc-300,
-[data-theme="dark"] [class*="border-zinc-100"],
-[data-theme="dark"] [class*="border-zinc-200"],
-[data-theme="dark"] [class*="border-zinc-300"] {
-  border-color: rgba(255, 255, 255, 0.10) !important;
-}
-
-[data-theme="dark"] .text-zinc-900,
-[data-theme="dark"] .text-zinc-800,
-[data-theme="dark"] [class*="text-zinc-900"],
-[data-theme="dark"] [class*="text-zinc-800"] {
-  color: #ffffff !important;
-}
-
-[data-theme="dark"] .text-zinc-700,
-[data-theme="dark"] .text-zinc-600,
-[data-theme="dark"] [class*="text-zinc-700"],
-[data-theme="dark"] [class*="text-zinc-600"] {
-  color: #e0e0e0 !important;
-}
-
-[data-theme="dark"] .text-zinc-500,
-[data-theme="dark"] .text-zinc-400,
-[data-theme="dark"] [class*="text-zinc-500"],
-[data-theme="dark"] [class*="text-zinc-400"] {
-  color: #888888 !important;
-}
-
-[data-theme="dark"] .divide-zinc-100 > :not([hidden]) ~ :not([hidden]),
-[data-theme="dark"] .divide-zinc-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
 [data-theme="dark"] select,
 [data-theme="dark"] input,
 [data-theme="dark"] textarea {
-  background-color: #1c1c1c !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
-}
-
-[data-theme="dark"] .hover\:bg-zinc-50:hover,
-[data-theme="dark"] .hover\:bg-zinc-100:hover,
-[data-theme="dark"] [class*="hover:bg-zinc"]:hover {
-  background-color: #222222 !important;
+  background-color: #1c1c1c;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
 /* ── FLUID BACKGROUND + GRAIN ── */

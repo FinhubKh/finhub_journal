@@ -72,7 +72,10 @@ export default function EquityChart({ trades }) {
       return;
     }
 
-    const accentColor = '#7c3aed';
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const accentColor = isDark ? '#4ade80' : '#7c3aed';
+    const fillColor = isDark ? 'rgba(74, 222, 128, 0.10)' : 'rgba(124, 58, 237, 0.06)';
+
     chartRef.current = new Chart(canvas, {
       type: 'line',
       data: {
@@ -87,7 +90,7 @@ export default function EquityChart({ trades }) {
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 2,
           fill: true,
-          backgroundColor: 'rgba(124, 58, 237, 0.06)',
+          backgroundColor: fillColor,
           tension: 0.35,
         }],
       },
