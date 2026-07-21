@@ -4,6 +4,8 @@ import { ToastContainer } from 'react-toastify';
 import { useAuth } from './context/AuthContext';
 import { AppDataProvider } from './context/AppDataContext';
 
+import { useTheme } from './context/ThemeContext';
+
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -13,7 +15,7 @@ const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-zinc-50">
+    <div className="flex min-h-dvh items-center justify-center bg-zinc-50 dark:bg-zinc-950">
       <span
         className="inline-block h-9 w-9 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600"
         aria-hidden
@@ -53,6 +55,7 @@ function AdminRoute({ children }) {
 }
 
 function AppChrome({ children }) {
+  const { theme } = useTheme();
   return (
     <>
       <div id="confetti-container" aria-hidden="true" />
@@ -65,7 +68,7 @@ function AppChrome({ children }) {
         pauseOnFocusLoss
         pauseOnHover
         draggable
-        theme="light"
+        theme={theme === 'dark' ? 'dark' : 'light'}
       />
       {children}
     </>
@@ -74,11 +77,6 @@ function AppChrome({ children }) {
 
 export default function App() {
   const { ready } = useAuth();
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light');
-    localStorage.setItem('nxuu_theme', 'light');
-  }, []);
 
   return (
     !ready ? null : (

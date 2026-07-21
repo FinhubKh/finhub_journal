@@ -6,13 +6,16 @@ import 'react-toastify/dist/ReactToastify.css';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext';
 import { DialogProvider } from './context/DialogContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <DialogProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </DialogProvider>
+    <ThemeProvider>
+      <DialogProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </DialogProvider>
+    </ThemeProvider>
   </StrictMode>
 );

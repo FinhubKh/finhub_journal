@@ -32,11 +32,6 @@ export function AppDataProvider({ children }) {
   const [viewMode, setViewModeState] = useState(readViewMode);
   const [activeAccountId, setActiveAccountIdState] = useState(readActiveAccountId);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light');
-    localStorage.setItem('nxuu_theme', 'light');
-  }, []);
-
   const refreshTrades = useCallback(async () => {
     try {
       const trades = await fetchAllTrades();

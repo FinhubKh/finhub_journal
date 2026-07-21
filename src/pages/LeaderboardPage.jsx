@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getCachedPublicLeaderboard } from '../lib/leaderboardCache';
+import { fetchTeamsLeaderboard, fetchMyTeam, leaveTeam, updateTeamAccount } from '../api/teams';
 import { accountTypeLabel } from '../lib/accounts';
+import { useAuth } from '../context/AuthContext';
+import { useAppData } from '../context/AppDataContext';
+import { useTheme } from '../context/ThemeContext';
+import TeamDetailsModal from '../components/leaderboard/TeamDetailsModal';
+import CreateTeamModal from '../components/leaderboard/CreateTeamModal';
+import JoinTeamModal from '../components/leaderboard/JoinTeamModal';
 import {
   btnOutline,
   btnPrimary,
@@ -56,7 +63,7 @@ function RankBadge({ rank }) {
   );
 }
 
-function LeaderboardTable({ entries, sort, embedded }) {
+function GlobalLeaderboardTable({ entries, sort, embedded }) {
   if (!entries.length) {
     return (
       <div className={`${card} ${emptyState}`}>
@@ -112,9 +119,8 @@ function LeaderboardTable({ entries, sort, embedded }) {
                   </div>
                 </td>
                 <td
-                  className={`${tableTd} text-right tabular-nums font-semibold ${
-                    e.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
-                  }`}
+                  className={`${tableTd} text-right tabular-nums font-semibold ${e.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
+                    }`}
                 >
                   {fmtPnl(e.totalPnl)}
                 </td>
@@ -140,37 +146,171 @@ function LeaderboardTable({ entries, sort, embedded }) {
   );
 }
 
+function TeamLeaderboardTable({ teams, onSelectTeam }) {
+  if (!teams.length) {
+    return (
+      <div className={`${card} ${emptyState}`}>
+        <p>No teams have been created yet.</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Be the first to create a team and start competing!
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${card} overflow-hidden`}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-zinc-200 bg-zinc-50/80">
+              <th className={`${tableTh} w-14`}>#</th>
+              <th className={tableTh}>Team</th>
+              <th className={tableTh}>Leader</th>
+              <th className={`${tableTh} text-center`}>Members</th>
+              <th className={`${tableTh} text-right`}>Win Rate</th>
+              <th className={`${tableTh} text-right`}>Trades</th>
+              <th className={`${tableTh} text-right text-violet-700`}>Combined PnL</th>
+              <th className={`${tableTh} text-right`}> </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {teams.map((t) => (
+              <tr key={t.teamId} className="hover:bg-zinc-50/80 transition">
+                <td className={tableTd}>
+                  <RankBadge rank={t.rank} />
+                </td>
+                <td className={tableTd}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTeam(t.teamId)}
+                    className="flex items-center gap-2 text-left group"
+                  >
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: t.color || '#7c3aed' }}
+                      aria-hidden
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-zinc-900 group-hover:text-violet-600 transition">
+                          {t.teamName}
+                        </span>
+                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600">
+                          [{t.teamTag}]
+                        </span>
+                      </div>
+                      {t.description && (
+                        <p className="text-[11px] text-zinc-400 line-clamp-1 max-w-xs">{t.description}</p>
+                      )}
+                    </div>
+                  </button>
+                </td>
+                <td className={tableTd}>
+                  <span className="font-semibold text-zinc-800">{t.leaderName}</span>
+                </td>
+                <td className={`${tableTd} text-center tabular-nums font-bold text-zinc-700`}>
+                  {t.memberCount}
+                </td>
+                <td className={`${tableTd} text-right tabular-nums`}>{t.winRate}%</td>
+                <td className={`${tableTd} text-right tabular-nums text-zinc-500`}>{t.tradeCount}</td>
+                <td
+                  className={`${tableTd} text-right tabular-nums font-black ${t.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
+                    }`}
+                >
+                  {fmtPnl(t.totalPnl)}
+                </td>
+                <td className={`${tableTd} text-right`}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTeam(t.teamId)}
+                    className="rounded-lg bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+                  >
+                    View Team
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function useSafeAppData() {
+  try {
+    return useAppData();
+  } catch {
+    return { tradingAccounts: [] };
+  }
+}
+
 /**
- * @param {{ embedded?: boolean }} props
- * embedded=true → dashboard tab (no pageShell). false → public /leaderboard page.
+ * LeaderboardPage Component
  */
 export default function LeaderboardPage({ embedded = false }) {
+  const { isAuthenticated } = useAuth();
+  const { tradingAccounts } = useSafeAppData();
+  const { isDark, toggleTheme } = useTheme();
+
+  const [mode, setMode] = useState('global'); // 'global' | 'teams'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [payload, setPayload] = useState(null);
+
+  // Global payload
+  const [globalPayload, setGlobalPayload] = useState(null);
   const [sort, setSort] = useState('pnl');
 
-  useEffect(() => {
-    let cancelled = false;
+  // Teams payload
+  const [teamsPayload, setTeamsPayload] = useState([]);
+  const [userTeam, setUserTeam] = useState(null);
+
+  // Modals state
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [leavingTeam, setLeavingTeam] = useState(false);
+
+  // Load Global Leaderboard
+  const loadGlobal = useCallback(() => {
     setLoading(true);
     setError(null);
     getCachedPublicLeaderboard({ limit: 50, minTrades: 5 })
-      .then((data) => {
-        if (!cancelled) setPayload(data);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message || 'Could not load leaderboard.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((data) => setGlobalPayload(data))
+      .catch((e) => setError(e?.message || 'Could not load global leaderboard.'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const sorted = useMemo(() => {
-    const list = [...(payload?.entries || [])];
+  // Load Teams Leaderboard & User Team
+  const loadTeams = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [teamsData, myTeamData] = await Promise.all([
+        fetchTeamsLeaderboard({ limit: 50 }),
+        isAuthenticated ? fetchMyTeam().catch(() => null) : Promise.resolve(null),
+      ]);
+      setTeamsPayload(teamsData?.entries || []);
+      setUserTeam(myTeamData);
+    } catch (e) {
+      setError(e?.message || 'Could not load teams leaderboard.');
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (mode === 'global') {
+      loadGlobal();
+    } else {
+      loadTeams();
+    }
+  }, [mode, loadGlobal, loadTeams]);
+
+  // Sorted global entries
+  const sortedGlobal = useMemo(() => {
+    const list = [...(globalPayload?.entries || [])];
     if (sort === 'wr') {
       list.sort((a, b) => b.winRate - a.winRate || b.totalPnl - a.totalPnl);
     } else if (sort === 'pf') {
@@ -179,49 +319,222 @@ export default function LeaderboardPage({ embedded = false }) {
       list.sort((a, b) => b.totalPnl - a.totalPnl || b.tradeCount - a.tradeCount);
     }
     return list.map((e, i) => ({ ...e, displayRank: i + 1 }));
-  }, [payload, sort]);
+  }, [globalPayload, sort]);
+
+  const handleLeaveTeam = async () => {
+    if (!window.confirm('Are you sure you want to leave your team?')) return;
+    setLeavingTeam(true);
+    try {
+      await leaveTeam();
+      await loadTeams();
+    } catch (e) {
+      alert(e?.message || 'Could not leave team.');
+    } finally {
+      setLeavingTeam(false);
+    }
+  };
+
+  const handleAccountChange = async (e) => {
+    const accId = e.target.value;
+    try {
+      await updateTeamAccount(accId);
+      await loadTeams();
+    } catch (err) {
+      alert(err?.message || 'Could not update account.');
+    }
+  };
+
+  const publishedAccounts = (tradingAccounts || []).filter((a) => a.is_public);
 
   const body = (
     <>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+      {/* Top Header */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className={`${sectionLabel} !mb-1`}>Community</p>
+          <p className={`${sectionLabel} !mb-1`}>Community Rankings</p>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Leaderboard</h1>
-          <p className="mt-1.5 max-w-xl text-sm text-zinc-500">
-            Rankings of published trading accounts
-            {payload?.minTrades ? ` with at least ${payload.minTrades} trades` : ''}.
-            Open any profile to see full stats and history.
+          <p className="mt-1 max-w-xl text-sm text-zinc-500">
+            {mode === 'global'
+              ? 'Rankings of published trading accounts. Open any profile to view performance stats.'
+              : 'Clan battleground! Teams ranked by combined total PnL across all team members.'}
           </p>
         </div>
-        <div className={pillToggle} role="tablist" aria-label="Sort leaderboard">
-          {SORTS.map((s) => (
+
+        {/* Dual Mode Switch */}
+        <div className="flex items-center gap-3">
+          <div className={pillToggle} role="tablist" aria-label="Leaderboard type">
             <button
-              key={s.id}
               type="button"
               role="tab"
-              aria-selected={sort === s.id}
-              className={pillBtn(sort === s.id)}
-              onClick={() => setSort(s.id)}
+              aria-selected={mode === 'global'}
+              className={pillBtn(mode === 'global')}
+              onClick={() => setMode('global')}
             >
-              {s.label}
+              🌐 Global
             </button>
-          ))}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'teams'}
+              className={pillBtn(mode === 'teams')}
+              onClick={() => setMode('teams')}
+            >
+              📌 Team
+            </button>
+          </div>
+
+          {mode === 'global' && (
+            <div className={pillToggle} role="tablist" aria-label="Sort global leaderboard">
+              {SORTS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={sort === s.id}
+                  className={pillBtn(sort === s.id)}
+                  onClick={() => setSort(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Team Mode Banner & Quick Actions */}
+      {mode === 'teams' && (
+        <div className="mb-6">
+          {userTeam ? (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50/80 via-white to-violet-50/50 p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center gap-3.5">
+                <span
+                  className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-lg text-white shadow-xs"
+                  style={{ backgroundColor: userTeam.teamColor || '#7c3aed' }}
+                >
+                  🛡️
+                </span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-base font-bold text-zinc-900">{userTeam.teamName}</span>
+                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600">
+                      [{userTeam.teamTag}]
+                    </span>
+                    <span className="rounded bg-violet-100 px-2 py-0.5 text-[10px] font-extrabold text-violet-800 uppercase">
+                      {userTeam.role}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500">
+                    <span>
+                      Representing Account:{' '}
+                      <select
+                        value={userTeam.accountId || ''}
+                        onChange={handleAccountChange}
+                        className="ml-1 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-800 focus:outline-none"
+                      >
+                        <option value="">-- None --</option>
+                        {publishedAccounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTeamId(userTeam.teamId)}
+                  className={`${btnPrimary} !px-4 !py-2 text-xs`}
+                >
+                  View My Team Details
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLeaveTeam}
+                  disabled={leavingTeam}
+                  className={`${btnOutline} !px-3 !py-2 text-xs text-rose-600 hover:bg-rose-50 border-rose-200`}
+                >
+                  {leavingTeam ? 'Leaving…' : 'Leave Team'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5">
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900">You are not in a Team</h3>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  Join an existing team or create your own to compete on the Team Leaderboard.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsJoinModalOpen(true)}
+                  className={`${btnOutline} !px-4 !py-2 text-xs`}
+                >
+                  🤝 Join Team
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className={`${btnPrimary} !px-4 !py-2 text-xs`}
+                >
+                  + Create Team
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main Content Area */}
       {loading ? (
-        <p className="text-sm text-zinc-400">Loading leaderboard…</p>
+        <p className="text-sm text-zinc-400">Loading {mode === 'global' ? 'traders' : 'teams'}…</p>
       ) : error ? (
         <div className={`${card} p-5`}>
           <p className="text-sm font-medium text-zinc-900">Could not load leaderboard</p>
           <p className="mt-1 text-sm text-zinc-500">{error}</p>
           <p className="mt-3 text-xs text-zinc-400">
-            Run <code className="rounded bg-zinc-100 px-1 py-0.5">backend/schema_leaderboard.sql</code> in the Supabase SQL Editor, then refresh.
+            Run SQL schemas <code className="rounded bg-zinc-100 px-1 py-0.5">backend/schema_leaderboard.sql</code> and <code className="rounded bg-zinc-100 px-1 py-0.5">backend/schema_teams.sql</code> in Supabase SQL Editor.
           </p>
         </div>
+      ) : mode === 'global' ? (
+        <GlobalLeaderboardTable entries={sortedGlobal} sort={sort} embedded={embedded} />
       ) : (
-        <LeaderboardTable entries={sorted} sort={sort} embedded={embedded} />
+        <TeamLeaderboardTable teams={teamsPayload} onSelectTeam={(id) => setSelectedTeamId(id)} />
       )}
+
+      {/* Modals */}
+      <TeamDetailsModal
+        teamId={selectedTeamId}
+        isOpen={Boolean(selectedTeamId)}
+        onClose={() => setSelectedTeamId(null)}
+      />
+
+      <CreateTeamModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          setIsCreateModalOpen(false);
+          loadTeams();
+        }}
+        tradingAccounts={tradingAccounts}
+      />
+
+      <JoinTeamModal
+        isOpen={isJoinModalOpen}
+        onClose={() => setIsJoinModalOpen(false)}
+        onSuccess={() => {
+          setIsJoinModalOpen(false);
+          loadTeams();
+        }}
+        teams={teamsPayload}
+        tradingAccounts={tradingAccounts}
+      />
     </>
   );
 
@@ -231,12 +544,20 @@ export default function LeaderboardPage({ embedded = false }) {
 
   return (
     <div className={pageShell}>
-      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
         <div className={`${dashboardPageWide} flex flex-wrap items-center justify-between gap-3 !pb-4 !pt-4`}>
-          <Link to="/" className="text-sm font-bold text-zinc-900">
+          <Link to="/" className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
             FinhubKH <span className="font-medium text-zinc-400">Journal</span>
           </Link>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`${btnOutline} !px-3 !py-2 text-xs`}
+              title="Toggle Dark/Light Mode"
+            >
+              {isDark ? '🌙 Dark' : '☀️ Light'}
+            </button>
             <Link to="/login" className={`${btnOutline} !px-4 !py-2 text-xs`}>
               Sign in
             </Link>

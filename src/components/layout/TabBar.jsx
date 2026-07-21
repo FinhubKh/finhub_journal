@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { getUserEmail, getUserDisplayName } from '../../api/auth';
 import { btnGhost } from '../../lib/ui';
 
@@ -117,9 +118,11 @@ function NewsNavGroup({ activeTab, onSwitchTab, tabClass }) {
 
 export default function TabBar({ activeTab, onSwitchTab }) {
   const navigate = useNavigate();
-  const { signOut, isAdmin } = useAuth();
-  const email = getUserEmail();
-  const displayName = getUserDisplayName();
+  const { user, isAdmin, signOut } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
+
+  const email = getUserEmail(user);
+  const displayName = getUserDisplayName(user);
 
   const tabClass = (active) =>
     `group flex w-full items-center justify-center gap-0 rounded-xl px-2 py-2.5 text-left text-sm font-medium transition md:justify-start md:gap-3 md:px-3 ${
@@ -179,7 +182,21 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             <span className="hidden md:inline">Admin panel</span>
           </button>
         )}
-        <button type="button" className={`${btnGhost} w-full justify-center bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 md:justify-start`} onClick={async () => { await signOut(); navigate('/'); }}>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className={`${btnGhost} w-full justify-between hover:bg-zinc-100 dark:hover:bg-zinc-800`}
+          title="Toggle Dark/Light Mode"
+        >
+          <span className="flex items-center gap-2">
+            <span>{isDark ? '🌙' : '☀️'}</span>
+            <span className="hidden text-xs font-semibold md:inline">{isDark ? 'Dark Theme' : 'Light Theme'}</span>
+          </span>
+          <span className="rounded-full bg-zinc-200 dark:bg-zinc-700 px-2 py-0.5 text-[10px] font-bold text-zinc-700 dark:text-zinc-300">
+            {isDark ? 'DARK' : 'LIGHT'}
+          </span>
+        </button>
+        <button type="button" className={`${btnGhost} w-full justify-center bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 md:justify-start`} onClick={async () => { await signOut(); navigate('/'); }}>
           <span className="md:hidden" title="Sign out">Out</span>
           <span className="hidden md:inline">Sign out</span>
         </button>
