@@ -48,16 +48,17 @@ function pfSortValue(v) {
 }
 
 function RankBadge({ rank }) {
-  const podium =
-    rank === 1
-      ? 'bg-amber-100 text-amber-800 ring-amber-200'
-      : rank === 2
-        ? 'bg-zinc-100 text-zinc-700 ring-zinc-200'
-        : rank === 3
-          ? 'bg-orange-50 text-orange-800 ring-orange-200'
-          : 'bg-zinc-50 text-zinc-500 ring-zinc-200';
+  let podium = 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-zinc-700/60';
+  if (rank === 1) {
+    podium = 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-gradient-to-br dark:from-amber-400 dark:to-yellow-500 dark:text-zinc-950 dark:border-amber-300 dark:shadow-[0_0_12px_rgba(245,158,11,0.45)] dark:font-black';
+  } else if (rank === 2) {
+    podium = 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-gradient-to-br dark:from-slate-200 dark:to-zinc-400 dark:text-zinc-950 dark:border-slate-300 dark:shadow-[0_0_8px_rgba(203,213,225,0.3)] dark:font-black';
+  } else if (rank === 3) {
+    podium = 'bg-orange-100 text-orange-900 border-orange-300 dark:bg-gradient-to-br dark:from-amber-600 dark:to-amber-700 dark:text-white dark:border-amber-400 dark:shadow-[0_0_8px_rgba(217,119,6,0.3)] dark:font-bold';
+  }
+
   return (
-    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold tabular-nums ring-1 ring-inset ${podium}`}>
+    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold tabular-nums border ${podium}`}>
       {rank}
     </span>
   );
@@ -85,60 +86,68 @@ function GlobalLeaderboardTable({ entries, sort, embedded }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-zinc-200 bg-zinc-50/80">
-              <th className={`${tableTh} w-14`}>#</th>
-              <th className={tableTh}>Trader</th>
-              <th className={tableTh}>Account</th>
-              <th className={`${tableTh} text-right ${sort === 'pnl' ? 'text-violet-700' : ''}`}>Net PnL</th>
-              <th className={`${tableTh} text-right ${sort === 'wr' ? 'text-violet-700' : ''}`}>Win rate</th>
-              <th className={`${tableTh} text-right ${sort === 'pf' ? 'text-violet-700' : ''}`}>PF</th>
-              <th className={`${tableTh} text-right`}>Trades</th>
+            <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90">
+              <th className={`${tableTh} w-14 text-zinc-500 dark:text-zinc-400`}>#</th>
+              <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Trader</th>
+              <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Account</th>
+              <th className={`${tableTh} text-right ${sort === 'pnl' ? 'text-violet-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>Net PnL</th>
+              <th className={`${tableTh} text-right ${sort === 'wr' ? 'text-violet-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>Win rate</th>
+              <th className={`${tableTh} text-right ${sort === 'pf' ? 'text-violet-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>PF</th>
+              <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Trades</th>
               <th className={`${tableTh} text-right`}> </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {entries.map((e) => (
-              <tr key={e.accountId} className="hover:bg-zinc-50/80">
-                <td className={tableTd}>
-                  <RankBadge rank={e.displayRank} />
-                </td>
-                <td className={tableTd}>
-                  <div className="font-semibold text-zinc-900">{e.displayName}</div>
-                </td>
-                <td className={tableTd}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: e.color || '#7c3aed' }}
-                      aria-hidden
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-zinc-800">{e.accountName}</div>
-                      <div className="text-[11px] text-zinc-400">{accountTypeLabel(e.accountType)}</div>
+          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            {entries.map((e) => {
+              const isFirst = e.displayRank === 1;
+              const rowClass = isFirst
+                ? 'bg-amber-500/[0.02] dark:bg-amber-500/[0.06] hover:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.10]'
+                : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50';
+
+              return (
+                <tr key={e.accountId} className={`transition ${rowClass}`}>
+                  <td className={tableTd}>
+                    <RankBadge rank={e.displayRank} />
+                  </td>
+                  <td className={tableTd}>
+                    <div className="font-semibold text-zinc-900 dark:text-zinc-100">{e.displayName}</div>
+                  </td>
+                  <td className={tableTd}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: e.color || '#7c3aed' }}
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-zinc-800 dark:text-zinc-200">{e.accountName}</div>
+                        <div className="text-[11px] text-zinc-400 dark:text-zinc-500">{accountTypeLabel(e.accountType)}</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td
-                  className={`${tableTd} text-right tabular-nums font-semibold ${e.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
+                  </td>
+                  <td
+                    className={`${tableTd} text-right tabular-nums font-bold ${
+                      e.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}
-                >
-                  {fmtPnl(e.totalPnl)}
-                </td>
-                <td className={`${tableTd} text-right tabular-nums`}>{e.winRate}%</td>
-                <td className={`${tableTd} text-right tabular-nums`}>{fmtPf(e.profitFactor)}</td>
-                <td className={`${tableTd} text-right tabular-nums text-zinc-500`}>{e.tradeCount}</td>
-                <td className={`${tableTd} text-right`}>
-                  {e.shareToken ? (
-                    <Link
-                      to={`/share/${e.shareToken}`}
-                      className="text-xs font-semibold text-violet-600 transition hover:text-violet-500"
-                    >
-                      View
-                    </Link>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
+                  >
+                    {fmtPnl(e.totalPnl)}
+                  </td>
+                  <td className={`${tableTd} text-right tabular-nums text-zinc-800 dark:text-zinc-200 font-medium`}>{e.winRate}%</td>
+                  <td className={`${tableTd} text-right tabular-nums text-zinc-800 dark:text-zinc-200 font-medium`}>{fmtPf(e.profitFactor)}</td>
+                  <td className={`${tableTd} text-right tabular-nums text-zinc-500 dark:text-zinc-400`}>{e.tradeCount}</td>
+                  <td className={`${tableTd} text-right`}>
+                    {e.shareToken ? (
+                      <Link
+                        to={`/share/${e.shareToken}`}
+                        className="text-xs font-semibold text-violet-600 dark:text-emerald-400 transition hover:underline"
+                      >
+                        View
+                      </Link>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -163,74 +172,82 @@ function TeamLeaderboardTable({ teams, onSelectTeam }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-zinc-200 bg-zinc-50/80">
-              <th className={`${tableTh} w-14`}>#</th>
-              <th className={tableTh}>Team</th>
-              <th className={tableTh}>Leader</th>
-              <th className={`${tableTh} text-center`}>Members</th>
-              <th className={`${tableTh} text-right`}>Win Rate</th>
-              <th className={`${tableTh} text-right`}>Trades</th>
-              <th className={`${tableTh} text-right text-violet-700`}>Combined PnL</th>
+            <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90">
+              <th className={`${tableTh} w-14 text-zinc-500 dark:text-zinc-400`}>#</th>
+              <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Team</th>
+              <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Leader</th>
+              <th className={`${tableTh} text-center text-zinc-500 dark:text-zinc-400`}>Members</th>
+              <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Win Rate</th>
+              <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Trades</th>
+              <th className={`${tableTh} text-right text-violet-700 dark:text-emerald-400`}>Combined PnL</th>
               <th className={`${tableTh} text-right`}> </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {teams.map((t) => (
-              <tr key={t.teamId} className="hover:bg-zinc-50/80 transition">
-                <td className={tableTd}>
-                  <RankBadge rank={t.rank} />
-                </td>
-                <td className={tableTd}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectTeam(t.teamId)}
-                    className="flex items-center gap-2 text-left group"
-                  >
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: t.color || '#7c3aed' }}
-                      aria-hidden
-                    />
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-zinc-900 group-hover:text-violet-600 transition">
-                          {t.teamName}
-                        </span>
-                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600">
-                          [{t.teamTag}]
-                        </span>
+          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            {teams.map((t) => {
+              const isFirst = t.rank === 1;
+              const rowClass = isFirst
+                ? 'bg-amber-500/[0.02] dark:bg-amber-500/[0.06] hover:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.10]'
+                : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50';
+
+              return (
+                <tr key={t.teamId} className={`transition ${rowClass}`}>
+                  <td className={tableTd}>
+                    <RankBadge rank={t.rank} />
+                  </td>
+                  <td className={tableTd}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectTeam(t.teamId)}
+                      className="flex items-center gap-2 text-left group"
+                    >
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: t.color || '#7c3aed' }}
+                        aria-hidden
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-emerald-400 transition">
+                            {t.teamName}
+                          </span>
+                          <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600 dark:text-zinc-400">
+                            [{t.teamTag}]
+                          </span>
+                        </div>
+                        {t.description && (
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 line-clamp-1 max-w-xs">{t.description}</p>
+                        )}
                       </div>
-                      {t.description && (
-                        <p className="text-[11px] text-zinc-400 line-clamp-1 max-w-xs">{t.description}</p>
-                      )}
-                    </div>
-                  </button>
-                </td>
-                <td className={tableTd}>
-                  <span className="font-semibold text-zinc-800">{t.leaderName}</span>
-                </td>
-                <td className={`${tableTd} text-center tabular-nums font-bold text-zinc-700`}>
-                  {t.memberCount}
-                </td>
-                <td className={`${tableTd} text-right tabular-nums`}>{t.winRate}%</td>
-                <td className={`${tableTd} text-right tabular-nums text-zinc-500`}>{t.tradeCount}</td>
-                <td
-                  className={`${tableTd} text-right tabular-nums font-black ${t.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
+                    </button>
+                  </td>
+                  <td className={tableTd}>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{t.leaderName}</span>
+                  </td>
+                  <td className={`${tableTd} text-center tabular-nums font-bold text-zinc-700 dark:text-zinc-300`}>
+                    {t.memberCount}
+                  </td>
+                  <td className={`${tableTd} text-right tabular-nums text-zinc-800 dark:text-zinc-200 font-medium`}>{t.winRate}%</td>
+                  <td className={`${tableTd} text-right tabular-nums text-zinc-500 dark:text-zinc-400`}>{t.tradeCount}</td>
+                  <td
+                    className={`${tableTd} text-right tabular-nums font-black ${
+                      t.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}
-                >
-                  {fmtPnl(t.totalPnl)}
-                </td>
-                <td className={`${tableTd} text-right`}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectTeam(t.teamId)}
-                    className="rounded-lg bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
                   >
-                    View Team
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    {fmtPnl(t.totalPnl)}
+                  </td>
+                  <td className={`${tableTd} text-right`}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectTeam(t.teamId)}
+                      className="rounded-lg bg-violet-50 dark:bg-emerald-950/40 border border-violet-200 dark:border-emerald-500/30 px-3 py-1 text-xs font-bold text-violet-700 dark:text-emerald-400 transition hover:bg-violet-100 dark:hover:bg-emerald-900/50"
+                    >
+                      View Team
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

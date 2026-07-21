@@ -10,16 +10,16 @@ function fmtPnl(v) {
 }
 
 function MemberRankBadge({ rank }) {
-  const podium =
-    rank === 1
-      ? 'bg-amber-100 text-amber-800 ring-amber-200'
-      : rank === 2
-        ? 'bg-zinc-100 text-zinc-700 ring-zinc-200'
-        : rank === 3
-          ? 'bg-orange-50 text-orange-800 ring-orange-200'
-          : 'bg-zinc-50 text-zinc-500 ring-zinc-200';
+  let podium = 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-zinc-700/60';
+  if (rank === 1) {
+    podium = 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-gradient-to-br dark:from-amber-400 dark:to-yellow-500 dark:text-zinc-950 dark:border-amber-300 dark:shadow-[0_0_8px_rgba(245,158,11,0.45)] dark:font-black';
+  } else if (rank === 2) {
+    podium = 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-gradient-to-br dark:from-slate-200 dark:to-zinc-400 dark:text-zinc-950 dark:border-slate-300 dark:shadow-[0_0_6px_rgba(203,213,225,0.3)] dark:font-black';
+  } else if (rank === 3) {
+    podium = 'bg-orange-100 text-orange-900 border-orange-300 dark:bg-gradient-to-br dark:from-amber-600 dark:to-amber-700 dark:text-white dark:border-amber-400 dark:shadow-[0_0_6px_rgba(217,119,6,0.3)] dark:font-bold';
+  }
   return (
-    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold tabular-nums ring-1 ring-inset ${podium}`}>
+    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold tabular-nums border ${podium}`}>
       {rank}
     </span>
   );
