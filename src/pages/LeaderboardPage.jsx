@@ -423,7 +423,7 @@ export default function LeaderboardPage({ embedded = false }) {
       {mode === 'teams' && (
         <div className="mb-6">
           {userTeam ? (
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50/80 via-white to-violet-50/50 p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-200 dark:border-zinc-800 bg-gradient-to-r from-violet-50/80 via-white to-violet-50/50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-900 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center gap-3.5">
                 <span
                   className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-lg text-white shadow-xs"
@@ -433,21 +433,21 @@ export default function LeaderboardPage({ embedded = false }) {
                 </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-base font-bold text-zinc-900">{userTeam.teamName}</span>
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600">
+                    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{userTeam.teamName}</span>
+                    <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600 dark:text-zinc-400">
                       [{userTeam.teamTag}]
                     </span>
-                    <span className="rounded bg-violet-100 px-2 py-0.5 text-[10px] font-extrabold text-violet-800 uppercase">
+                    <span className="rounded bg-violet-100 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-extrabold text-violet-800 dark:text-emerald-400 uppercase border border-violet-200/50 dark:border-emerald-500/30">
                       {userTeam.role}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500">
+                  <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
                     <span>
                       Representing Account:{' '}
                       <select
                         value={userTeam.accountId || ''}
                         onChange={handleAccountChange}
-                        className="ml-1 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-800 focus:outline-none"
+                        className="ml-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-0.5 text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none"
                       >
                         <option value="">-- None --</option>
                         {publishedAccounts.map((a) => (
@@ -473,16 +473,16 @@ export default function LeaderboardPage({ embedded = false }) {
                   type="button"
                   onClick={handleLeaveTeam}
                   disabled={leavingTeam}
-                  className={`${btnOutline} !px-3 !py-2 text-xs text-rose-600 hover:bg-rose-50 border-rose-200`}
+                  className={`${btnOutline} !px-3 !py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900/50`}
                 >
                   {leavingTeam ? 'Leaving…' : 'Leave Team'}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4 sm:p-5">
               <div>
-                <h3 className="text-sm font-bold text-zinc-900">You are not in a Team</h3>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">You are not in a Team</h3>
                 <p className="mt-0.5 text-xs text-zinc-500">
                   Join an existing team or create your own to compete on the Team Leaderboard.
                 </p>

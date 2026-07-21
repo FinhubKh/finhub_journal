@@ -69,7 +69,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-zinc-950/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl transition-all">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl transition-all">
         {/* Header Banner */}
         <div
           className="relative px-6 py-6 text-white"
@@ -124,31 +124,31 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
 
         {/* Stats Strip */}
         {!loading && !error && (
-          <div className="grid grid-cols-4 border-b border-zinc-100 bg-zinc-50/80 text-center text-xs">
-            <div className="border-r border-zinc-100 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Total PnL</div>
-              <div className={`mt-0.5 text-sm font-black tabular-nums ${totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+          <div className="grid grid-cols-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950/80 text-center text-xs">
+            <div className="border-r border-zinc-200 dark:border-zinc-800 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total PnL</div>
+              <div className={`mt-0.5 text-sm font-black tabular-nums ${totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {fmtPnl(totalPnl)}
               </div>
             </div>
-            <div className="border-r border-zinc-100 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Members</div>
-              <div className="mt-0.5 text-sm font-bold text-zinc-800">{members.length}</div>
+            <div className="border-r border-zinc-200 dark:border-zinc-800 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Members</div>
+              <div className="mt-0.5 text-sm font-bold text-zinc-800 dark:text-zinc-100">{members.length}</div>
             </div>
-            <div className="border-r border-zinc-100 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Avg Win Rate</div>
-              <div className="mt-0.5 text-sm font-bold text-zinc-800">{avgWinRate}%</div>
+            <div className="border-r border-zinc-200 dark:border-zinc-800 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Avg Win Rate</div>
+              <div className="mt-0.5 text-sm font-bold text-zinc-800 dark:text-zinc-100">{avgWinRate}%</div>
             </div>
             <div className="p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Total Trades</div>
-              <div className="mt-0.5 text-sm font-bold text-zinc-800">{totalTrades}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total Trades</div>
+              <div className="mt-0.5 text-sm font-bold text-zinc-800 dark:text-zinc-100">{totalTrades}</div>
             </div>
           </div>
         )}
 
         {/* Member Rankings List */}
-        <div className="max-h-[380px] overflow-y-auto p-5">
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <div className="max-h-[380px] overflow-y-auto p-5 bg-white dark:bg-zinc-900">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
             Team Member Rankings
           </h3>
 
@@ -161,29 +161,29 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
               <p className="text-xs text-zinc-400">No members in this team yet.</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+            <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-zinc-200 bg-zinc-50/80 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                    <th className={`${tableTh} w-10`}>#</th>
-                    <th className={tableTh}>Trader</th>
-                    <th className={tableTh}>Account</th>
-                    <th className={`${tableTh} text-right`}>Win Rate</th>
-                    <th className={`${tableTh} text-right`}>Trades</th>
-                    <th className={`${tableTh} text-right`}>Net PnL</th>
+                  <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-400">
+                    <th className={`${tableTh} w-10 text-zinc-500 dark:text-zinc-400`}>#</th>
+                    <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Trader</th>
+                    <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Account</th>
+                    <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Win Rate</th>
+                    <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Trades</th>
+                    <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Net PnL</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100 text-xs">
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 text-xs">
                   {members.map((m) => (
-                    <tr key={m.memberId} className="hover:bg-zinc-50/80">
+                    <tr key={m.memberId} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
                       <td className={tableTd}>
                         <MemberRankBadge rank={m.rank} />
                       </td>
                       <td className={tableTd}>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-zinc-900">{m.displayName}</span>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{m.displayName}</span>
                           {m.role === 'leader' && (
-                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-amber-800">
+                            <span className="rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-amber-800 dark:text-amber-300 border border-amber-300/40 dark:border-amber-500/40">
                               Leader
                             </span>
                           )}
@@ -192,7 +192,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
                       <td className={tableTd}>
                         {m.accountName ? (
                           <div>
-                            <span className="font-medium text-zinc-700">{m.accountName}</span>
+                            <span className="font-medium text-zinc-700 dark:text-zinc-300">{m.accountName}</span>
                             <span className="ml-1 text-[10px] text-zinc-400">({accountTypeLabel(m.accountType)})</span>
                           </div>
                         ) : (
