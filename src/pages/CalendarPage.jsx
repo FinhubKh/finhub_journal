@@ -24,18 +24,18 @@ const TRADING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
 function cellClass(tone, today, tall = false) {
   const base = `relative flex flex-col rounded-xl border p-2 text-xs transition ${tall ? 'min-h-[88px] h-full' : 'min-h-[72px]'}`;
-  if (tone === 'win') return `${base} border-emerald-300/40 bg-emerald-50/80 dark:border-emerald-500/30 dark:bg-emerald-950/40 ${today ? 'ring-2 ring-emerald-400' : ''}`;
-  if (tone === 'loss') return `${base} border-rose-300/40 bg-rose-50/80 dark:border-rose-500/30 dark:bg-rose-950/40 ${today ? 'ring-2 ring-rose-400' : ''}`;
-  if (tone === 'be') return `${base} border-amber-300/40 bg-amber-50/80 dark:border-amber-500/30 dark:bg-amber-950/40 ${today ? 'ring-2 ring-amber-400' : ''}`;
-  return `${base} border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${today ? 'ring-2 ring-emerald-400' : ''}`;
+  if (tone === 'win') return `${base} border-violet-200 bg-violet-50 ${today ? 'ring-2 ring-violet-400' : ''}`;
+  if (tone === 'loss') return `${base} border-rose-200 bg-rose-50 ${today ? 'ring-2 ring-rose-400' : ''}`;
+  if (tone === 'be') return `${base} border-amber-200 bg-amber-50 ${today ? 'ring-2 ring-amber-400' : ''}`;
+  return `${base} border-zinc-200/80 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${today ? 'ring-2 ring-violet-400' : ''}`;
 }
 
 function miniCellClass(tone, today) {
   const base = 'flex h-5 w-5 items-center justify-center rounded text-[9px] font-medium';
-  if (tone === 'win') return `${base} bg-emerald-500 text-white`;
+  if (tone === 'win') return `${base} bg-violet-500 text-white`;
   if (tone === 'loss') return `${base} bg-rose-500 text-white`;
   if (tone === 'be') return `${base} bg-amber-400 text-white`;
-  if (today) return `${base} ring-1 ring-emerald-400 text-zinc-600 dark:text-zinc-300`;
+  if (today) return `${base} ring-1 ring-violet-400 text-zinc-600 dark:text-zinc-300`;
   return `${base} text-zinc-500 dark:text-zinc-400`;
 }
 
@@ -308,7 +308,7 @@ function MonthDetailView({
               {weeks.map((week) => (
                 <div className="grid min-h-[92px] flex-1 grid-cols-6 gap-2" key={week.index}>
                   {week.days.map((ds, idx) => {
-                    if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-50/80" />;
+                    if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-50/80 dark:bg-zinc-900/40" />;
                     const dts = tradeMap[ds] || [];
                     const override = useOverrides ? overrideMap[ds] : null;
                     const dayPnl = resolveDayPnl(dts, override);
@@ -321,7 +321,7 @@ function MonthDetailView({
                     const inner = (
                       <>
                         <span className="flex w-full items-start justify-between gap-1">
-                          <span className="text-xs font-medium text-zinc-700">{dayNum}</span>
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{dayNum}</span>
                           {manual && <span className="text-[9px] font-bold text-violet-600">M</span>}
                         </span>
                         {active && (
@@ -359,12 +359,12 @@ function MonthDetailView({
                   })}
                   <div className={`flex h-full flex-col items-center justify-center rounded-xl border p-2 text-center ${
                     !week.weekActive
-                      ? 'border-zinc-100 bg-zinc-50'
+                      ? 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60'
                       : week.weekPnl >= 0
                         ? 'border-violet-200 bg-violet-50'
                         : 'border-rose-200 bg-rose-50'
                   }`}>
-                    <span className="text-[10px] font-medium text-zinc-500">{weekRangeLabel(week.days)}</span>
+                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{weekRangeLabel(week.days)}</span>
                     <span className={`mt-1 text-sm font-bold ${!week.weekActive ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
                       {week.weekActive ? fmtPnl(week.weekPnl) : '—'}
                     </span>

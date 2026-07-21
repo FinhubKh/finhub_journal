@@ -121,7 +121,7 @@ export default function TradeList() {
         </div>
       </div>
 
-      <div className="relative z-20 shrink-0 border-b border-zinc-200 bg-zinc-50/90 px-4 py-3 md:px-5">
+      <div className="relative z-20 shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-zinc-900/90 px-4 py-3 md:px-5">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           <FilterField label="Result">
             <CustomDropdown

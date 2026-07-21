@@ -88,11 +88,11 @@ function SettingsRow({ title, sub, children }) {
 function SettingsTabBar({ activeTab, onChange }) {
   return (
     <nav
-      className="sticky top-0 z-10 -mx-4 bg-zinc-50/95 px-4 py-3 backdrop-blur-sm md:-mx-6 md:px-6"
+      className="sticky top-0 z-10 -mx-4 bg-zinc-50/95 dark:bg-zinc-950/95 px-4 py-3 backdrop-blur-sm md:-mx-6 md:px-6"
       role="tablist"
       aria-label="Settings sections"
     >
-      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-zinc-200 bg-zinc-100/80 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/80 dark:bg-zinc-900/80 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {SETTINGS_TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -103,12 +103,12 @@ function SettingsTabBar({ activeTab, onChange }) {
               aria-selected={active}
               className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98] ${
                 active
-                  ? 'bg-white text-violet-700 shadow-sm ring-1 ring-zinc-200/80'
-                  : 'text-zinc-500 hover:bg-white/60 hover:text-zinc-800'
+                  ? 'bg-white dark:bg-zinc-800 text-violet-700 dark:text-emerald-400 shadow-sm ring-1 ring-zinc-200/80 dark:ring-zinc-700/60'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:bg-white/60 dark:hover:bg-zinc-800/50 hover:text-zinc-800 dark:hover:text-zinc-200'
               }`}
               onClick={() => onChange(tab.id)}
             >
-              <span className={`shrink-0 ${active ? 'text-violet-600' : 'text-zinc-400'}`}>{tab.icon}</span>
+              <span className={`shrink-0 ${active ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400'}`}>{tab.icon}</span>
               <span className="truncate">{tab.label}</span>
             </button>
           );

@@ -219,6 +219,69 @@ button:active { transform: scale(0.97); }
   background-color: #222222 !important;
 }
 
+/* Precise Dark Mode Accent Mapping: Replace violet highlights with emerald green #4ade80 */
+[data-theme="dark"] .text-violet-600,
+[data-theme="dark"] .text-violet-700,
+[data-theme="dark"] .text-violet-500,
+[data-theme="dark"] .hover\:text-violet-600:hover,
+[data-theme="dark"] .hover\:text-violet-700:hover {
+  color: #4ade80 !important;
+}
+
+[data-theme="dark"] .bg-violet-600,
+[data-theme="dark"] .bg-violet-500,
+[data-theme="dark"] .hover\:bg-violet-500:hover,
+[data-theme="dark"] .hover\:bg-violet-600:hover {
+  background-color: #22c55e !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .bg-violet-100,
+[data-theme="dark"] .bg-violet-50,
+[data-theme="dark"] .hover\:bg-violet-50:hover,
+[data-theme="dark"] .hover\:bg-violet-100:hover {
+  background-color: rgba(74, 222, 128, 0.14) !important;
+}
+
+[data-theme="dark"] .border-violet-600,
+[data-theme="dark"] .border-violet-300,
+[data-theme="dark"] .border-violet-200,
+[data-theme="dark"] .focus\:border-violet-500:focus {
+  border-color: rgba(74, 222, 128, 0.4) !important;
+}
+
+/* Loss / Rose Dark Mode mapping */
+[data-theme="dark"] .bg-rose-50,
+[data-theme="dark"] .bg-rose-100 {
+  background-color: rgba(244, 114, 182, 0.14) !important;
+}
+
+[data-theme="dark"] .border-rose-200,
+[data-theme="dark"] .border-rose-300 {
+  border-color: rgba(244, 114, 182, 0.3) !important;
+}
+
+[data-theme="dark"] .text-rose-600,
+[data-theme="dark"] .text-rose-500 {
+  color: #f472b6 !important;
+}
+
+/* Break Even / Amber Dark Mode mapping */
+[data-theme="dark"] .bg-amber-50,
+[data-theme="dark"] .bg-amber-100 {
+  background-color: rgba(251, 191, 36, 0.14) !important;
+}
+
+[data-theme="dark"] .border-amber-200,
+[data-theme="dark"] .border-amber-300 {
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+[data-theme="dark"] .text-amber-600,
+[data-theme="dark"] .text-amber-700 {
+  color: #fbbf24 !important;
+}
+
 /* ── FLUID BACKGROUND + GRAIN ── */
 .fluid-bg {
   position: fixed; inset: 0; z-index: -2;
