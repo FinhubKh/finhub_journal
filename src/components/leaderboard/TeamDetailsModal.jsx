@@ -70,7 +70,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-zinc-950/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl transition-all">
+      <div className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl transition-all">
         {/* Header Banner */}
         <div
           className="relative px-6 py-6 text-white"
@@ -148,7 +148,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
         )}
 
         {/* Member Rankings List */}
-        <div className="max-h-[380px] overflow-y-auto p-5 bg-white dark:bg-zinc-900">
+        <div className="max-h-[420px] overflow-y-auto p-6 bg-white dark:bg-zinc-900">
           <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
             Team Member Rankings
           </h3>
@@ -162,11 +162,11 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
               <p className="text-xs text-zinc-400">No members in this team yet.</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-              <table className="w-full text-left">
+            <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs">
+              <table className="w-full text-left min-w-[540px]">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-400">
-                    <th className={`${tableTh} w-10 text-zinc-500 dark:text-zinc-400`}>#</th>
+                    <th className={`${tableTh} w-12 text-zinc-500 dark:text-zinc-400`}>#</th>
                     <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Trader</th>
                     <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Account</th>
                     <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Win Rate</th>
@@ -200,15 +200,15 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
                           <span className="italic text-zinc-400">No account linked</span>
                         )}
                       </td>
-                      <td className={`${tableTd} text-right tabular-nums font-medium text-zinc-700`}>
+                      <td className={`${tableTd} text-right tabular-nums font-medium text-zinc-700 dark:text-zinc-300`}>
                         {m.winRate}%
                       </td>
-                      <td className={`${tableTd} text-right tabular-nums text-zinc-500`}>
+                      <td className={`${tableTd} text-right tabular-nums text-zinc-500 dark:text-zinc-400`}>
                         {m.tradeCount}
                       </td>
                       <td
                         className={`${tableTd} text-right tabular-nums font-bold ${
-                          m.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
+                          m.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                         }`}
                       >
                         {fmtPnl(m.totalPnl)}
@@ -222,8 +222,8 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end border-t border-zinc-100 bg-zinc-50 px-5 py-3">
-          <button type="button" onClick={onClose} className={`${btnOutline} !px-4 !py-1.5 text-xs`}>
+        <div className="flex justify-end border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-6 py-4">
+          <button type="button" onClick={onClose} className={`${btnOutline} !px-5 !py-2 text-xs`}>
             Close
           </button>
         </div>
