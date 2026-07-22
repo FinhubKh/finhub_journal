@@ -88,6 +88,7 @@ function secondsUntilExpiry() {
 
 export async function updateUserDisplayName(name) {
   await ensureFreshSession();
+  const userId = getUserId();
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     method: 'PUT',
     headers: authHeaders(getToken()),
@@ -103,6 +104,26 @@ export async function updateUserDisplayName(name) {
     persistSession();
     notify();
   }
+
+  if (userId) {
+    try {
+      await authFetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders(getToken()),
+          Prefer: 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify({
+          id: userId,
+          email: getUserEmail(),
+          display_name: name,
+        }),
+      });
+    } catch (e) {
+      console.warn('Could not sync display_name to profiles table:', e);
+    }
+  }
+
   return updated;
 }
 
