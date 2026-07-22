@@ -8,11 +8,13 @@ import { appShell } from '../lib/ui';
 const OverviewPage = lazy(() => import('./OverviewPage'));
 const LogPage = lazy(() => import('./LogPage'));
 const CalendarPage = lazy(() => import('./CalendarPage'));
-const EconomicCalendarPage = lazy(() => import('./EconomicCalendarPage'));
-const WorldNewsPage = lazy(() => import('./WorldNewsPage'));
+// News temporarily disabled
+// const EconomicCalendarPage = lazy(() => import('./EconomicCalendarPage'));
+// const WorldNewsPage = lazy(() => import('./WorldNewsPage'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
 const ChecklistPage = lazy(() => import('./ChecklistPage'));
 const CompoundingPage = lazy(() => import('./CompoundingPage'));
+const AiCoachPage = lazy(() => import('./AiCoachPage'));
 const LeaderboardPage = lazy(() => import('./LeaderboardPage'));
 
 function TabFallback() {
@@ -36,7 +38,10 @@ export default function DashboardPage() {
     if (location.state?.tab) {
       let tab = location.state.tab;
       let section = location.state.section || null;
-      if (tab === 'news') tab = 'economic-calendar';
+      // News temporarily disabled — send any news deep-links back to overview
+      if (tab === 'news' || tab === 'economic-calendar' || tab === 'world-news') {
+        tab = 'overview';
+      }
       if (tab === 'setup') {
         tab = 'settings';
         section = section || 'mt5-setup';
@@ -54,7 +59,7 @@ export default function DashboardPage() {
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50">
           <div
             className={`flex h-full min-h-0 min-w-0 flex-col ${
-              activeTab === 'log' || activeTab === 'world-news'
+              activeTab === 'log' || activeTab === 'checklist' || activeTab === 'compound'
                 ? 'overflow-hidden'
                 : 'overflow-y-auto overscroll-contain'
             }`}
@@ -65,9 +70,12 @@ export default function DashboardPage() {
               {activeTab === 'calendar' && <CalendarPage />}
               {activeTab === 'checklist' && <ChecklistPage />}
               {activeTab === 'compound' && <CompoundingPage />}
+              {activeTab === 'ai-coach' && <AiCoachPage />}
               {activeTab === 'leaderboard' && <LeaderboardPage embedded />}
+              {/* News temporarily disabled
               {activeTab === 'economic-calendar' && <EconomicCalendarPage />}
               {activeTab === 'world-news' && <WorldNewsPage />}
+              */}
               {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}
             </Suspense>
           </div>

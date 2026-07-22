@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LuTriangleAlert, LuX } from 'react-icons/lu';
 import { joinTeam } from '../../api/teams';
 import { btnOutline, btnPrimary } from '../../lib/ui';
 
@@ -53,8 +54,9 @@ export default function JoinTeamModal({ isOpen, onClose, onSuccess, teams = [], 
               type="button"
               onClick={onClose}
               className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+              aria-label="Close"
             >
-              ✕
+              <LuX className="h-4 w-4" aria-hidden />
             </button>
           </div>
           <p className="mt-1 text-xs text-zinc-500">
@@ -163,8 +165,11 @@ export default function JoinTeamModal({ isOpen, onClose, onSuccess, teams = [], 
               Representing Account
             </label>
             {publishedAccounts.length === 0 ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
-                ⚠️ You don't have any published trading accounts yet. You can join the team now, and link a published account later in Settings.
+              <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
+                <LuTriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                  You don't have any published trading accounts yet. You can join the team now, and link a published account later in Settings.
+                </span>
               </div>
             ) : (
               <select

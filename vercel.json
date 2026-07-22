@@ -8,6 +8,10 @@
     { "source": "/v1/market/economic-calendar", "destination": "/api/v1/market/economic-calendar" },
     { "source": "/v1/market/news", "destination": "/api/v1/market/news" },
     { "source": "/v1/ai/checklist", "destination": "/api/v1/ai/checklist" },
+    { "source": "/v1/ai/performance/insights", "destination": "/api/v1/ai/performance/insights" },
+    { "source": "/v1/ai/performance/report", "destination": "/api/v1/ai/performance/report" },
+    { "source": "/v1/ai/performance/chat", "destination": "/api/v1/ai/performance/chat" },
+    { "source": "/v1/ai/performance/reports", "destination": "/api/v1/ai/performance/reports" },
     { "source": "/health", "destination": "/api/health" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
@@ -23,6 +27,18 @@
     },
     "api/v1/ai/checklist.js": {
       "maxDuration": 60
+    },
+    "api/v1/ai/performance/insights.js": {
+      "maxDuration": 60
+    },
+    "api/v1/ai/performance/report.js": {
+      "maxDuration": 60
+    },
+    "api/v1/ai/performance/chat.js": {
+      "maxDuration": 60
+    },
+    "api/v1/ai/performance/reports.js": {
+      "maxDuration": 15
     }
   }
 }

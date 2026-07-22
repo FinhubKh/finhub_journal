@@ -46,7 +46,7 @@ export async function adminDeleteTradingAccount(id) {
 
 export async function adminFetchSyncKeys() {
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?select=id,user_id,trading_account_id,created_at&order=created_at.desc`,
+    `${SUPABASE_URL}/rest/v1/sync_keys?select=id,user_id,trading_account_id,created_at,last_synced_at&order=created_at.desc`,
     { headers: authHeaders(getToken()) },
   );
   if (!res.ok) throw new Error(await res.text());

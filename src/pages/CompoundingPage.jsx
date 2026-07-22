@@ -259,13 +259,15 @@ export default function CompoundingPage() {
 
   if (selectedId) {
     return (
-      <CompoundingAccountView
-        accountId={selectedId}
-        onBack={() => {
-          setSelectedId(null);
-          void reload();
-        }}
-      />
+      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+        <CompoundingAccountView
+          accountId={selectedId}
+          onBack={() => {
+            setSelectedId(null);
+            void reload();
+          }}
+        />
+      </div>
     );
   }
 

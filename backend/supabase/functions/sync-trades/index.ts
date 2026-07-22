@@ -122,10 +122,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
     }
 
+    const syncedAt = new Date().toISOString();
+    await supabase
+      .from('sync_keys')
+      .update({ last_synced_at: syncedAt })
+      .eq('trading_account_id', tradingAccountId);
+
     return new Response(JSON.stringify({
       received: trades.length,
       inserted: data?.length || 0,
       account: matchedAccount.name,
+      last_synced_at: syncedAt,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e) {

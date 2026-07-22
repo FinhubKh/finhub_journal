@@ -5,7 +5,7 @@ import { useDialog } from '../../context/DialogContext';
 import { deleteTrade } from '../../api';
 import { fmtR, fmtDateShort, capitalize } from '../../lib/format';
 import {
-  btnGhost, btnDanger, btnSm, btnPrimary, card, cardHd, cardTitle, emptyState, tradeResultBadge,
+  btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
 import ManualTradeModal from '../modals/ManualTradeModal';
@@ -97,8 +97,8 @@ export default function TradeList() {
   }
 
   return (
-    <div className={`${card} flex h-full min-h-0 w-full flex-col`}>
-      <div className={`${cardHd} shrink-0`}>
+    <div className="flex h-full min-h-0 w-full flex-col bg-white">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3.5 md:px-6">
         <div>
           <h3 className={`${cardTitle} flex items-center gap-2`}>
             Trade History
@@ -205,7 +205,7 @@ export default function TradeList() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-2xl">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {filtered.length === 0 ? (
           <div className={`${emptyState} min-h-0 flex-1`}>
             {visibleTrades.length === 0 ? 'No trades yet. Log a manual trade or sync from MT5.' : 'No trades match your filters.'}

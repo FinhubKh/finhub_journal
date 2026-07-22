@@ -3,7 +3,7 @@ import { useDialog } from '../../context/DialogContext';
 import { useCompoundingAccount } from '../../hooks/useCompoundingAccount';
 import { formatLocalDate } from '../../lib/compounding/calendarPnL';
 import { formatMoney } from '../../lib/compounding/formatMoney';
-import { btnDanger, btnGhost, dashboardPageWide, msgError, pillBtn, pillToggle } from '../../lib/ui';
+import { btnDanger, btnGhost, dashboardPageWide, dashboardPageWideFull, msgError, pillBtn, pillToggle } from '../../lib/ui';
 import { MetricCard, SectionBlock } from './CompoundingUI';
 import ProgressSection from './ProgressSection';
 import TradesToGoalSummary from './TradesToGoalSummary';
@@ -65,8 +65,8 @@ export default function CompoundingAccountView({ accountId, onBack }) {
         : 'No streak';
 
   return (
-    <div className={dashboardPageWide}>
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+    <div className={`${dashboardPageWideFull} ${activeTab === 'pnl' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}>
+      <div className="mb-5 flex shrink-0 flex-wrap items-center gap-2">
         <button type="button" className={btnGhost} onClick={onBack}>
           Back to plans
         </button>
@@ -87,7 +87,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 shrink-0">
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-violet-600">{account.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
           {formatMoney(config.startingBalance)} → {formatMoney(config.targetBalance)}
@@ -99,7 +99,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
         </p>
       </div>
 
-      <div className={`${pillToggle} mb-6`}>
+      <div className={`${pillToggle} mb-6 shrink-0`}>
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -172,13 +172,15 @@ export default function CompoundingAccountView({ accountId, onBack }) {
       )}
 
       {activeTab === 'pnl' && (
-        <CompoundingPnLCalendar
-          trades={trades}
-          config={config}
-          currentBalance={stats.currentBalance}
-          selectedDate={selectedLogDate}
-          onSelectDate={setSelectedLogDate}
-        />
+        <div className="min-h-0 flex-1">
+          <CompoundingPnLCalendar
+            trades={trades}
+            config={config}
+            currentBalance={stats.currentBalance}
+            selectedDate={selectedLogDate}
+            onSelectDate={setSelectedLogDate}
+          />
+        </div>
       )}
 
       {activeTab === 'analytics' && <AnalyticsPanel config={config} trades={trades} stats={stats} />}

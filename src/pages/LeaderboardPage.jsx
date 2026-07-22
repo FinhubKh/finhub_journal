@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { LuGlobe, LuHandshake, LuMoon, LuShield, LuSun, LuUsers } from 'react-icons/lu';
 import { getCachedPublicLeaderboard } from '../lib/leaderboardCache';
 import { fetchTeamsLeaderboard, fetchMyTeam, leaveTeam, updateTeamAccount } from '../api/teams';
 import { accountTypeLabel } from '../lib/accounts';
@@ -387,7 +388,10 @@ export default function LeaderboardPage({ embedded = false }) {
               className={pillBtn(mode === 'global')}
               onClick={() => setMode('global')}
             >
-              🌐 Global
+              <span className="inline-flex items-center gap-1.5">
+                <LuGlobe className="h-3.5 w-3.5" aria-hidden />
+                Global
+              </span>
             </button>
             <button
               type="button"
@@ -396,7 +400,10 @@ export default function LeaderboardPage({ embedded = false }) {
               className={pillBtn(mode === 'teams')}
               onClick={() => setMode('teams')}
             >
-              📌 Team
+              <span className="inline-flex items-center gap-1.5">
+                <LuUsers className="h-3.5 w-3.5" aria-hidden />
+                Team
+              </span>
             </button>
           </div>
 
@@ -426,10 +433,10 @@ export default function LeaderboardPage({ embedded = false }) {
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-200 dark:border-zinc-800 bg-gradient-to-r from-violet-50/80 via-white to-violet-50/50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-900 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center gap-3.5">
                 <span
-                  className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-lg text-white shadow-xs"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
                   style={{ backgroundColor: userTeam.teamColor || '#7c3aed' }}
                 >
-                  🛡️
+                  <LuShield className="h-5 w-5" aria-hidden />
                 </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -493,7 +500,10 @@ export default function LeaderboardPage({ embedded = false }) {
                   onClick={() => setIsJoinModalOpen(true)}
                   className={`${btnOutline} !px-4 !py-2 text-xs`}
                 >
-                  🤝 Join Team
+                  <span className="inline-flex items-center gap-1.5">
+                    <LuHandshake className="h-3.5 w-3.5" aria-hidden />
+                    Join Team
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -573,7 +583,10 @@ export default function LeaderboardPage({ embedded = false }) {
               className={`${btnOutline} !px-3 !py-2 text-xs`}
               title="Toggle Dark/Light Mode"
             >
-              {isDark ? '🌙 Dark' : '☀️ Light'}
+              <span className="inline-flex items-center gap-1.5">
+                {isDark ? <LuMoon className="h-3.5 w-3.5" aria-hidden /> : <LuSun className="h-3.5 w-3.5" aria-hidden />}
+                {isDark ? 'Dark' : 'Light'}
+              </span>
             </button>
             <Link to="/login" className={`${btnOutline} !px-4 !py-2 text-xs`}>
               Sign in

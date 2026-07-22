@@ -107,6 +107,16 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
   }
   const saved = await upsertRes.json();
 
+  const syncedAt = new Date().toISOString();
+  await fetch(
+    `${supabaseUrl}/rest/v1/sync_keys?trading_account_id=eq.${encodeURIComponent(tradingAccountId)}`,
+    {
+      method: 'PATCH',
+      headers: supabaseHeaders(serviceKey),
+      body: JSON.stringify({ last_synced_at: syncedAt }),
+    },
+  );
+
   return {
     status: 200,
     body: {
@@ -115,6 +125,7 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
       updated: saved.length,
       account: accountLabel,
       pnl_denomination: accountDenomination(matchedAccount),
+      last_synced_at: syncedAt,
     },
   };
 }

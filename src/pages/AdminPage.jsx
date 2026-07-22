@@ -349,6 +349,7 @@ export default function AdminPage() {
                         <th className={tableTh}>User</th>
                         <th className={tableTh}>Trading account</th>
                         <th className={tableTh}>Created</th>
+                        <th className={tableTh}>Last synced</th>
                         <th className={`${tableTh} text-right`}>Actions</th>
                       </tr>
                     </thead>
@@ -358,6 +359,7 @@ export default function AdminPage() {
                           <td className={tableTd}>{userById[key.user_id]?.email || key.user_id?.slice(0, 8)}</td>
                           <td className={tableTd}>{accountById[key.trading_account_id]?.name || key.trading_account_id?.slice(0, 8)}</td>
                           <td className={tableTd}>{key.created_at ? new Date(key.created_at).toLocaleString() : '—'}</td>
+                          <td className={tableTd}>{key.last_synced_at ? new Date(key.last_synced_at).toLocaleString() : '—'}</td>
                           <td className={`${tableTd} text-right`}>
                             <button
                               className={btnDanger}

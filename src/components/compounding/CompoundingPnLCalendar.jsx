@@ -32,28 +32,28 @@ export default function CompoundingPnLCalendar({
   };
 
   return (
-    <div className={`${card} ${cardBody} mx-auto w-full max-w-5xl space-y-5`}>
-      <div className="flex items-center justify-between gap-3">
+    <div className={`${card} ${cardBody} flex h-full min-h-0 w-full flex-col gap-4`}>
+      <div className="flex shrink-0 items-center justify-between gap-3">
         <button type="button" className={btnGhost} onClick={() => changeMonth(-1)} aria-label="Previous month">
           Prev
         </button>
-        <h3 className="text-base font-semibold text-zinc-900">{monthName}</h3>
+        <h3 className="text-base font-semibold text-zinc-900 sm:text-lg">{monthName}</h3>
         <button type="button" className={btnGhost} onClick={() => changeMonth(1)} aria-label="Next month">
           Next
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid shrink-0 grid-cols-7 gap-1.5 sm:gap-2">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-          <div key={`${day}-${i}`} className="py-1 text-center text-xs font-semibold text-zinc-400">
+          <div key={`${day}-${i}`} className="py-1 text-center text-xs font-semibold text-zinc-400 sm:text-sm">
             {day}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-1.5 sm:gap-2">
         {weekRows.flat().map((day, idx) => {
-          if (day === null) return <div key={`empty-${idx}`} className="h-14 sm:h-16" />;
+          if (day === null) return <div key={`empty-${idx}`} className="min-h-0" />;
           const dateStr = formatLocalDate(new Date(year, month, day));
           const dayData = dailyData[dateStr];
           const isSelected = dateStr === selectedDate;
@@ -63,7 +63,7 @@ export default function CompoundingPnLCalendar({
               key={dateStr}
               type="button"
               onClick={() => onSelectDate(dateStr)}
-              className={`h-14 rounded-xl border text-center text-xs transition sm:h-16 ${
+              className={`flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border text-center text-xs transition sm:min-h-0 sm:text-sm ${
                 isSelected
                   ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-200'
                   : 'border-zinc-200 bg-white hover:border-violet-200 hover:bg-zinc-50'
@@ -71,7 +71,7 @@ export default function CompoundingPnLCalendar({
             >
               <div className="font-semibold text-zinc-800">{day}</div>
               {dayData ? (
-                <div className={`mt-0.5 tabular-nums ${pnlToneClass(dayData.amount)}`}>
+                <div className={`mt-1 tabular-nums ${pnlToneClass(dayData.amount)}`}>
                   {formatMoney(dayData.amount, { compact: true })}
                 </div>
               ) : null}
@@ -80,7 +80,7 @@ export default function CompoundingPnLCalendar({
         })}
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+      <div className="shrink-0 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
         <div className="font-medium text-zinc-900">Selected: {selectedDate}</div>
         {selectedEntry ? (
           <p className="mt-1">

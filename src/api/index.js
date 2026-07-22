@@ -380,7 +380,7 @@ async function sha256Hex(text) {
 
 export async function listAccountSyncKeys() {
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?select=trading_account_id,id&user_id=eq.${getUserId()}`,
+    `${SUPABASE_URL}/rest/v1/sync_keys?select=trading_account_id,id,last_synced_at&user_id=eq.${getUserId()}`,
     { headers: authHeaders(getToken()) },
   );
   if (!res.ok) throw new Error(await res.text());

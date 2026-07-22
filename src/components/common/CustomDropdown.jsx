@@ -58,7 +58,7 @@ export default function CustomDropdown({
   }
 
   const defaultButton =
-    'inline-flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-900 transition hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98]';
+    'inline-flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100 transition hover:border-violet-300 dark:hover:border-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/40 active:scale-[0.98]';
 
   return (
     <div className={`relative ${className}`} ref={rootRef}>
@@ -76,7 +76,7 @@ export default function CustomDropdown({
 
       {open && (
         <div
-          className={`absolute left-0 top-[calc(100%+6px)] z-40 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg ${menuClassName}`}
+          className={`absolute left-0 top-[calc(100%+6px)] z-40 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-1 shadow-lg ${menuClassName}`}
           role="listbox"
           aria-label={ariaLabel}
         >
@@ -90,8 +90,8 @@ export default function CustomDropdown({
                 aria-selected={isSelected}
                 className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
                   isSelected
-                    ? 'bg-violet-100 text-violet-700'
-                    : 'bg-white text-zinc-700 hover:bg-zinc-100'
+                    ? 'bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300'
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
                 onClick={() => pick(item.value)}
               >

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LuX } from 'react-icons/lu';
 import { fetchTeamDetails } from '../../api/teams';
 import { accountTypeLabel } from '../../lib/accounts';
 import { btnOutline, emptyState, tableTd, tableTh } from '../../lib/ui';
@@ -83,7 +84,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
             className="absolute right-4 top-4 rounded-full bg-black/20 p-1.5 text-white/80 transition hover:bg-black/40 hover:text-white"
             aria-label="Close"
           >
-            ✕
+            <LuX className="h-4 w-4" aria-hidden />
           </button>
           {loading ? (
             <div className="h-16 animate-pulse" />

@@ -36,6 +36,20 @@ function accountToForm(account) {
   };
 }
 
+function formatLastSynced(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function Badge({ children, tone = 'neutral' }) {
   const tones = {
     neutral: 'bg-zinc-100 text-zinc-600',
@@ -261,7 +275,7 @@ function SyncKeyModal({ account, syncKey, onClose }) {
   );
 }
 
-function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onKeysChanged }) {
+function AccountCard({ account, hasSyncKey, lastSyncedAt, onEdit, onSetDefault, onUpdated, onKeysChanged }) {
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [revealedKey, setRevealedKey] = useState(null);
@@ -509,6 +523,11 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
                 ? 'A sync key is active for this account. Show it to reconnect the EA if needed.'
                 : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
             </p>
+            {hasSyncKey ? (
+              <p className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700' : 'text-zinc-400'}`}>
+                {lastSyncedAt ? `Last synced: ${formatLastSynced(lastSyncedAt)}` : 'Not synced yet'}
+              </p>
+            ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {hasSyncKey ? (
                 <>
@@ -570,14 +589,21 @@ function AccountCard({ account, hasSyncKey, onEdit, onSetDefault, onUpdated, onK
 
 export default function TradingAccountsManager({ tradingAccounts, onUpdated, onSetDefault }) {
   const [modal, setModal] = useState(null);
-  const [keyAccountIds, setKeyAccountIds] = useState(new Set());
+  const [syncKeyByAccount, setSyncKeyByAccount] = useState({});
 
   async function refreshSyncKeys() {
     try {
       const rows = await listAccountSyncKeys();
-      setKeyAccountIds(new Set(rows.map((r) => r.trading_account_id)));
+      const map = {};
+      for (const row of rows) {
+        map[row.trading_account_id] = {
+          id: row.id,
+          last_synced_at: row.last_synced_at || null,
+        };
+      }
+      setSyncKeyByAccount(map);
     } catch {
-      setKeyAccountIds(new Set());
+      setSyncKeyByAccount({});
     }
   }
 
@@ -615,7 +641,8 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
             <AccountCard
               key={account.id}
               account={account}
-              hasSyncKey={keyAccountIds.has(account.id)}
+              hasSyncKey={Boolean(syncKeyByAccount[account.id])}
+              lastSyncedAt={syncKeyByAccount[account.id]?.last_synced_at}
               onEdit={(acc) => setModal({ mode: 'edit', account: acc })}
               onSetDefault={onSetDefault}
               onUpdated={onUpdated}

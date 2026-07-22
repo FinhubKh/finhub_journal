@@ -10,6 +10,13 @@ import { loadEnv } from './load-env.mjs';
 import { handleEaSync } from './sync-handler.mjs';
 import { fetchEconomicCalendar, fetchMarketNews } from './market-handler.mjs';
 import { handleAiChecklistRequest } from './ai-checklist-handler.mjs';
+import {
+  handlePerformanceInsights,
+  handlePerformanceReport,
+  handlePerformanceChat,
+  handleListPerformanceReports,
+  handleDeletePerformanceReport,
+} from './ai-performance-handler.mjs';
 
 const env = loadEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL?.replace(/\/$/, '');
@@ -98,6 +105,43 @@ const server = createServer(async (req, res) => {
       sealionApiKey,
       model: sealionModel,
     });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (url.pathname.startsWith('/v1/ai/performance/')) {
+    if (!anonKey) {
+      sendJson(res, 500, { error: 'Supabase anon key is not configured' });
+      return;
+    }
+    const deps = {
+      supabaseUrl,
+      anonKey,
+      sealionApiKey,
+      model: sealionModel,
+    };
+    if (['POST'].includes(req.method) && url.pathname !== '/v1/ai/performance/reports') {
+      const body = await readBody(req);
+      req.body = body || {};
+    }
+
+    let result;
+    if (url.pathname === '/v1/ai/performance/insights' && req.method === 'POST') {
+      result = await handlePerformanceInsights(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/report' && req.method === 'POST') {
+      result = await handlePerformanceReport(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/chat' && req.method === 'POST') {
+      result = await handlePerformanceChat(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/reports' && req.method === 'GET') {
+      result = await handleListPerformanceReports(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/reports' && req.method === 'DELETE') {
+      const body = await readBody(req);
+      req.body = body || {};
+      result = await handleDeletePerformanceReport(req, deps);
+    } else {
+      sendJson(res, 405, { error: 'Method not allowed' });
+      return;
+    }
     sendJson(res, result.status, result.body);
     return;
   }

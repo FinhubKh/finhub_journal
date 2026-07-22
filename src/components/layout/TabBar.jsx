@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LuMoon, LuSun } from 'react-icons/lu';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getUserEmail, getUserDisplayName } from '../../api/auth';
 import { btnGhost } from '../../lib/ui';
 
-const NEWS_TAB_IDS = ['economic-calendar', 'world-news'];
+// News temporarily disabled
+// const NEWS_TAB_IDS = ['economic-calendar', 'world-news'];
 
 function Chevron({ open, className = '' }) {
   return (
@@ -28,9 +30,20 @@ const PRIMARY_TABS = [
   { id: 'calendar', label: 'Calendar', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
   { id: 'checklist', label: 'Checklist', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'compound', label: 'Compound', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
+  {
+    id: 'ai-coach',
+    label: 'Coach',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M8 2a3.2 3.2 0 00-3.2 3.2v1c0 .4-.15.8-.4 1.1L3.3 9.2A1.2 1.2 0 004.4 11.2h7.2a1.2 1.2 0 001.1-2l-1.1-1.9c-.25-.3-.4-.7-.4-1.1v-1A3.2 3.2 0 008 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M6.4 11.6c.3 1 1 1.6 1.6 1.6s1.3-.6 1.6-1.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
   { id: 'leaderboard', label: 'Leaderboard', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13h10M5 13V8.5M8 13V4.5M11 13v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /><path d="M5.5 6.5l2.5-3 2.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
 ];
 
+/* News temporarily disabled
 const NEWS_GROUP = {
   id: 'news',
   label: 'News',
@@ -50,11 +63,13 @@ const NEWS_GROUP = {
     },
   ],
 };
+*/
 
 const TRAILING_TABS = [
   { id: 'settings', label: 'Settings', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" /><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
 ];
 
+/* News temporarily disabled
 function isNewsTab(activeTab) {
   return NEWS_TAB_IDS.includes(activeTab);
 }
@@ -115,6 +130,7 @@ function NewsNavGroup({ activeTab, onSwitchTab, tabClass }) {
     </div>
   );
 }
+*/
 
 export default function TabBar({ activeTab, onSwitchTab }) {
   const navigate = useNavigate();
@@ -146,6 +162,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             className={tabClass(activeTab === tab.id)}
             role="tab"
             aria-selected={activeTab === tab.id}
+            title={tab.id === 'ai-coach' ? 'AI Coach' : tab.label}
             onClick={() => onSwitchTab(tab.id)}
           >
             <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
@@ -153,7 +170,9 @@ export default function TabBar({ activeTab, onSwitchTab }) {
           </button>
         ))}
 
+        {/* News temporarily disabled
         <NewsNavGroup activeTab={activeTab} onSwitchTab={onSwitchTab} tabClass={tabClass} />
+        */}
 
         {TRAILING_TABS.map((tab) => (
           <button
@@ -189,7 +208,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
           title="Toggle Dark/Light Mode"
         >
           <span className="flex items-center gap-2">
-            <span>{isDark ? '🌙' : '☀️'}</span>
+            {isDark ? <LuMoon className="h-4 w-4" aria-hidden /> : <LuSun className="h-4 w-4" aria-hidden />}
             <span className="hidden text-xs font-semibold md:inline">{isDark ? 'Dark Theme' : 'Light Theme'}</span>
           </span>
           <span className="rounded-full bg-zinc-200 dark:bg-zinc-700 px-2 py-0.5 text-[10px] font-bold text-zinc-700 dark:text-zinc-300">

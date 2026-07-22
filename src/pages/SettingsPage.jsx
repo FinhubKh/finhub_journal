@@ -5,7 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
 import { getUserDisplayName, getUserEmail } from '../api/auth';
 import {
-  btnDanger, btnGhost, btnPrimary, btnSecondary, card, cardBody, dashboardPageWide, emptyState,
+  btnDanger, btnGhost, btnPrimary, btnSecondary, card, cardBody, emptyState,
   input, label, msgError, msgSuccess, sectionLabel,
 } from '../lib/ui';
 import {
@@ -216,7 +216,7 @@ export default function SettingsPage({ focusSection = null }) {
   }
 
   return (
-    <div className="flex h-full min-h-[calc(100dvh-3rem)] w-full min-w-0 flex-col p-4 pb-6 md:p-6">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col px-4 pb-6 pt-4 md:px-6 md:pt-6">
       <div className="mb-4 shrink-0">
         <h1 className="text-lg font-bold text-zinc-900">Settings</h1>
         <p className="mt-1 text-sm text-zinc-500">Trading accounts and journal preferences.</p>
