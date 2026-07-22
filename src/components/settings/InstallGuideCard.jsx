@@ -70,38 +70,38 @@ export default function InstallGuideCard({ defaultOpen = true, compact = false, 
       </div>
 
       {(standalone || open) && (
-        <div className={`${cardBody} border-t border-zinc-100 pt-5 ${standalone ? 'flex-1 overflow-y-auto' : 'space-y-6'}`}>
+        <div className={`${cardBody} border-t border-zinc-100 dark:border-zinc-800 pt-5 ${standalone ? 'flex-1 overflow-y-auto' : 'space-y-6'}`}>
           <div className="grid gap-4 lg:grid-cols-2 lg:gap-6 h-full">
             <ol className="space-y-3">
               {STEPS.map((step) => (
-                <li key={step.n} className="flex gap-3 rounded-xl border border-zinc-100 bg-zinc-50/60 px-4 py-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-xs font-bold text-violet-700">
+                <li key={step.n} className="flex gap-3 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 px-4 py-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-emerald-950/80 text-xs font-bold text-violet-700 dark:text-emerald-400 border border-transparent dark:border-emerald-800/40">
                     {step.n}
                   </span>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-zinc-900">{step.title}</div>
-                    <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">{step.desc}</p>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{step.title}</div>
+                    <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{step.desc}</p>
                   </div>
                 </li>
               ))}
             </ol>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">EA download</div>
-                <p className="mt-1 text-sm font-medium text-zinc-800">FinhubJournal_TradeSync.ex5</p>
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">EA download</div>
+                <p className="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">FinhubJournal_TradeSync.ex5</p>
                 <a className={`${btnPrimary} mt-3 inline-flex`} href={EA_DOWNLOAD_URL} download>
                   Download EA
                 </a>
               </div>
 
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">WebRequest URL</div>
-                <p className="mt-2 break-all rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-800">
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">WebRequest URL</div>
+                <p className="mt-2 break-all rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-800 dark:text-zinc-200">
                   {EA_WEBREQUEST_ORIGIN}
                 </p>
-                <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Sync endpoint</p>
-                <p className="mt-1 break-all font-mono text-xs text-zinc-600">{EA_SYNC_ENDPOINT}</p>
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Sync endpoint</p>
+                <p className="mt-1 break-all font-mono text-xs text-zinc-600 dark:text-zinc-400">{EA_SYNC_ENDPOINT}</p>
               </div>
 
               <div className="flex flex-wrap gap-2">
