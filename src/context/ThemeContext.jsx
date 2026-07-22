@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 
 const ThemeContext = createContext(null);
 
@@ -24,11 +25,18 @@ function applyThemeToDocument(theme) {
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(getInitialTheme);
+  const auth = useAuth();
+  const isAuthenticated = Boolean(auth?.isAuthenticated);
+
+  // Unauthenticated users always see light theme. Authenticated users see their chosen theme.
+  const effectiveTheme = isAuthenticated ? theme : 'light';
 
   useEffect(() => {
-    applyThemeToDocument(theme);
-    localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+    applyThemeToDocument(effectiveTheme);
+    if (isAuthenticated) {
+      localStorage.setItem(THEME_KEY, theme);
+    }
+  }, [theme, isAuthenticated, effectiveTheme]);
 
   const toggleTheme = useCallback(() => {
     setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -41,7 +49,7 @@ export function ThemeProvider({ children }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark: theme === 'dark', toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme: effectiveTheme, userTheme: theme, isDark: effectiveTheme === 'dark', toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -52,8 +60,8 @@ export function useTheme() {
   if (!ctx) {
     // Fallback if accessed outside ThemeProvider
     return {
-      theme: 'dark',
-      isDark: true,
+      theme: 'light',
+      isDark: false,
       toggleTheme: () => {},
       setTheme: () => {},
     };

@@ -10,12 +10,12 @@ import { ThemeProvider } from './context/ThemeContext';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ThemeProvider>
-      <DialogProvider>
-        <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <DialogProvider>
           <App />
-        </AuthProvider>
-      </DialogProvider>
-    </ThemeProvider>
+        </DialogProvider>
+      </ThemeProvider>
+    </AuthProvider>
   </StrictMode>
 );
