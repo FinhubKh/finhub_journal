@@ -82,16 +82,25 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
     const chartLabels = [];
     const chartData = [];
 
+    // Track risk amount per 10-period block
+    let currentBlockRisk = null;
+
     for (let period = 1; period <= totalPeriods; period++) {
       const startCap = currentBalance;
+      const isBlockStart = (period - 1) % 10 === 0;
+
+      if (isBlockStart || currentBlockRisk === null) {
+        const baseProfitTarget = isCompound ? startCap * rateDecimal : principal * rateDecimal;
+        currentBlockRisk = isValidEdge ? baseProfitTarget / edgeMultiplier : 10;
+      }
+
       let reqRiskAmount;
       const isOverridden = customRiskOverrides[period] !== undefined;
 
       if (isOverridden) {
         reqRiskAmount = customRiskOverrides[period];
       } else {
-        const baseProfitTarget = isCompound ? startCap * rateDecimal : principal * rateDecimal;
-        reqRiskAmount = isValidEdge ? baseProfitTarget / edgeMultiplier : 10;
+        reqRiskAmount = currentBlockRisk;
       }
 
       const targetProfit = isValidEdge ? reqRiskAmount * edgeMultiplier : 0;
@@ -280,7 +289,7 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
             onClick={() =>
               onCreatePlanFromSimulation({
                 startingBalance: simulation.principal,
-                targetBalance: simulation.finalBalance,
+                targetBalance: Math.min(999999999999, simulation.finalBalance),
                 targetProfitPercent: Number(targetReturn) || 1.5,
                 riskPercent: 1.0,
               })
@@ -454,6 +463,27 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
               </div>
             </div>
 
+            {/* Calculated Strategy Edge & Required Risk Feedback */}
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 dark:text-zinc-400">Net Edge / Period:</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {simulation.isValidEdge ? `+${simulation.edgeMultiplier.toFixed(2)}R` : 'Invalid Edge'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-emerald-500/10 pt-2">
+                <span className="text-zinc-500 dark:text-zinc-400">Required Risk / Trade:</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                  {simulation.isValidEdge && simulation.rows.length > 0
+                    ? `${formatMoney(simulation.rows[0].reqRiskAmount)} (${(
+                        (simulation.rows[0].reqRiskAmount / simulation.principal) *
+                        100
+                      ).toFixed(2)}%)`
+                    : '--'}
+                </span>
+              </div>
+            </div>
+
             {!simulation.isValidEdge && (
               <div className="rounded-lg bg-rose-500/10 p-2.5 text-xs font-medium text-rose-600 dark:text-rose-400">
                 Warning: Current Win Rate and RR result in a negative or zero strategy edge.
@@ -546,14 +576,14 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
                         <span className="text-xs text-zinc-400">$</span>
                         <input
                           type="number"
-                          step="1"
+                          step="any"
                           min="0"
                           className={`w-28 rounded border px-2 py-1 text-right text-xs font-mono transition-colors focus:outline-none focus:border-blue-500 ${
                             row.isOverridden
                               ? 'border-amber-500/80 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold'
                               : 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100'
                           }`}
-                          value={row.reqRiskAmount.toFixed(2)}
+                          value={row.reqRiskAmount < 1 ? row.reqRiskAmount.toFixed(4) : row.reqRiskAmount.toFixed(2)}
                           onChange={(e) => handleRiskChange(row.period, e.target.value)}
                         />
                       </div>

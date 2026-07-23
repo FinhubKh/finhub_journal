@@ -69,14 +69,25 @@ function PlanCard({ account, linkedName, onOpen, onDelete }) {
 }
 
 function CreatePlanModal({ tradingAccounts, initialData, onClose, onCreated }) {
-  const [form, setForm] = useState(() => ({
-    name: initialData?.name || '',
-    startingBalance: initialData?.startingBalance ? String(initialData.startingBalance) : String(DEFAULT_CONFIG.startingBalance),
-    targetBalance: initialData?.targetBalance ? String(initialData.targetBalance) : String(DEFAULT_CONFIG.targetBalance),
-    targetProfitPercent: initialData?.targetProfitPercent ? String(initialData.targetProfitPercent) : String(DEFAULT_CONFIG.targetProfitPercent),
-    riskPercent: initialData?.riskPercent ? String(initialData.riskPercent) : String(DEFAULT_CONFIG.riskPercent),
-    tradingAccountId: '',
-  }));
+  const [form, setForm] = useState(() => {
+    const rawTarget = initialData?.targetBalance;
+    const clampedTarget =
+      rawTarget != null && Number.isFinite(Number(rawTarget))
+        ? Math.min(999999999999, Math.max(0, Number(rawTarget)))
+        : DEFAULT_CONFIG.targetBalance;
+    const targetStr = Number.isFinite(clampedTarget)
+      ? clampedTarget.toFixed(2)
+      : String(DEFAULT_CONFIG.targetBalance);
+
+    return {
+      name: initialData?.name || '',
+      startingBalance: initialData?.startingBalance ? String(initialData.startingBalance) : String(DEFAULT_CONFIG.startingBalance),
+      targetBalance: targetStr,
+      targetProfitPercent: initialData?.targetProfitPercent ? String(initialData.targetProfitPercent) : String(DEFAULT_CONFIG.targetProfitPercent),
+      riskPercent: initialData?.riskPercent ? String(initialData.riskPercent) : String(DEFAULT_CONFIG.riskPercent),
+      tradingAccountId: '',
+    };
+  });
   const [saving, setSaving] = useState(false);
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -104,6 +115,10 @@ function CreatePlanModal({ tradingAccounts, initialData, onClose, onCreated }) {
     }
     if (!Number.isFinite(targetBalance) || targetBalance <= startingBalance) {
       toast.error('Target must be greater than starting capital');
+      return;
+    }
+    if (targetBalance > 999999999999) {
+      toast.error('Target balance exceeds maximum database limit ($999.9B)');
       return;
     }
     if (!Number.isFinite(targetProfitPercent) || targetProfitPercent <= 0 || targetProfitPercent > 100) {
@@ -283,102 +298,104 @@ export default function CompoundingPage() {
   }
 
   return (
-    <div className={dashboardPageWide}>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Compounding</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Build compounding growth plans and model multi-period strategy schedules.
-          </p>
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain">
+      <div className={dashboardPageWide}>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Compounding</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Build compounding growth plans and model multi-period strategy schedules.
+            </p>
+          </div>
+          {activeMainTab === 'plans' && (
+            <button
+              type="button"
+              className={btnPrimary}
+              onClick={() => {
+                setCreateInitialData(null);
+                setShowCreate(true);
+              }}
+            >
+              New plan
+            </button>
+          )}
         </div>
-        {activeMainTab === 'plans' && (
+
+        {/* Main View Toggle */}
+        <div className={`${pillToggle} mb-6 shrink-0`}>
           <button
             type="button"
-            className={btnPrimary}
-            onClick={() => {
-              setCreateInitialData(null);
+            className={pillBtn(activeMainTab === 'plans')}
+            onClick={() => setActiveMainTab('plans')}
+          >
+            My Plans ({accounts.length})
+          </button>
+          <button
+            type="button"
+            className={pillBtn(activeMainTab === 'simulator')}
+            onClick={() => setActiveMainTab('simulator')}
+          >
+            Growth Schedule Simulator
+          </button>
+        </div>
+
+        {activeMainTab === 'plans' ? (
+          loading ? (
+            <p className="text-sm text-zinc-400">Loading…</p>
+          ) : accounts.length === 0 ? (
+            <div className={`${card} ${emptyState}`}>
+              No compounding plans yet. Create one or model a plan in the Growth Schedule Simulator.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {accounts.map((account) => (
+                <PlanCard
+                  key={account.id}
+                  account={account}
+                  linkedName={tradingNameById.get(account.tradingAccountId)}
+                  onOpen={() => setSelectedId(account.id)}
+                  onDelete={async () => {
+                    const ok = await confirm({
+                      title: 'Delete plan?',
+                      message: `Delete “${account.name}” and all of its compounding trades?`,
+                      confirmLabel: 'Delete',
+                      destructive: true,
+                    });
+                    if (!ok) return;
+                    try {
+                      await deleteCompoundingAccount(account.id);
+                      toast.success('Plan deleted');
+                      await reload();
+                    } catch (e) {
+                      toast.error(e?.message || 'Delete failed');
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          <GrowthScheduleSimulator
+            onCreatePlanFromSimulation={(simData) => {
+              setCreateInitialData(simData);
               setShowCreate(true);
             }}
-          >
-            New plan
-          </button>
+          />
         )}
+
+        {showCreate ? (
+          <CreatePlanModal
+            tradingAccounts={tradingAccounts}
+            initialData={createInitialData}
+            onClose={() => setShowCreate(false)}
+            onCreated={(created) => {
+              setShowCreate(false);
+              setActiveMainTab('plans');
+              setSelectedId(created.id);
+            }}
+          />
+        ) : null}
       </div>
-
-      {/* Main View Toggle */}
-      <div className={`${pillToggle} mb-6 shrink-0`}>
-        <button
-          type="button"
-          className={pillBtn(activeMainTab === 'plans')}
-          onClick={() => setActiveMainTab('plans')}
-        >
-          My Plans ({accounts.length})
-        </button>
-        <button
-          type="button"
-          className={pillBtn(activeMainTab === 'simulator')}
-          onClick={() => setActiveMainTab('simulator')}
-        >
-          Growth Schedule Simulator
-        </button>
-      </div>
-
-      {activeMainTab === 'plans' ? (
-        loading ? (
-          <p className="text-sm text-zinc-400">Loading…</p>
-        ) : accounts.length === 0 ? (
-          <div className={`${card} ${emptyState}`}>
-            No compounding plans yet. Create one or model a plan in the Growth Schedule Simulator.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {accounts.map((account) => (
-              <PlanCard
-                key={account.id}
-                account={account}
-                linkedName={tradingNameById.get(account.tradingAccountId)}
-                onOpen={() => setSelectedId(account.id)}
-                onDelete={async () => {
-                  const ok = await confirm({
-                    title: 'Delete plan?',
-                    message: `Delete “${account.name}” and all of its compounding trades?`,
-                    confirmLabel: 'Delete',
-                    destructive: true,
-                  });
-                  if (!ok) return;
-                  try {
-                    await deleteCompoundingAccount(account.id);
-                    toast.success('Plan deleted');
-                    await reload();
-                  } catch (e) {
-                    toast.error(e?.message || 'Delete failed');
-                  }
-                }}
-              />
-            ))}
-          </div>
-        )
-      ) : (
-        <GrowthScheduleSimulator
-          onCreatePlanFromSimulation={(simData) => {
-            setCreateInitialData(simData);
-            setShowCreate(true);
-          }}
-        />
-      )}
-
-      {showCreate ? (
-        <CreatePlanModal
-          tradingAccounts={tradingAccounts}
-          initialData={createInitialData}
-          onClose={() => setShowCreate(false)}
-          onCreated={(created) => {
-            setShowCreate(false);
-            setActiveMainTab('plans');
-            setSelectedId(created.id);
-          }}
-        />
-      ) : null}
     </div>
   );
 }
