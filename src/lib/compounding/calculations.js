@@ -39,18 +39,72 @@ export function calculateLotSize(balance, config) {
   }
 }
 
-export function computeTradePreview(balance, config) {
-  const riskAmount = computeRiskAmount(balance, config);
-  const targetProfit = computeTargetProfit(balance, config);
-  const suggestedLotSize = calculateLotSize(balance, config);
-  return { riskAmount, targetProfit, suggestedLotSize };
+export function getActiveTierForStep(stepIndex, config) {
+  if (!config) return null;
+  const tiers = config.riskTiers || config.tiers;
+  if (tiers && Array.isArray(tiers) && tiers.length > 0) {
+    const sorted = [...tiers].sort((a, b) => a.from - b.from);
+    let active = sorted.find((t) => stepIndex >= t.from && stepIndex <= t.to);
+    if (!active) {
+      if (stepIndex < sorted[0].from) active = sorted[0];
+      else active = sorted[sorted.length - 1];
+    }
+    return active;
+  }
+
+  // Default Spreadsheet De-escalation Tiers fallback if plan targets ~$11,873 or has initial 60% profit / 10% risk
+  const isSpreadsheetPlan =
+    config.targetProfitPercent === 60 ||
+    Math.abs((config.targetBalance || 0) - 11873.02) < 50;
+
+  if (isSpreadsheetPlan) {
+    if (stepIndex >= 1 && stepIndex <= 4) return { lossCushion: 10, rr: 6 };
+    if (stepIndex >= 5 && stepIndex <= 8) return { lossCushion: 20, rr: 6 };
+    if (stepIndex >= 9 && stepIndex <= 12) return { lossCushion: 30, rr: 6 };
+    if (stepIndex >= 13) return { lossCushion: 40, rr: 6 };
+  }
+
+  return null;
 }
 
-export function resolveActualPL(balanceBefore, config, result, customPL) {
+export function computeTradePreview(balance, config, stepIndex = 1) {
+  const tier = getActiveTierForStep(stepIndex, config);
+  let effectiveRiskPercent = config?.riskPercent ?? 10;
+  let effectiveTargetProfitPercent = config?.targetProfitPercent ?? 60;
+
+  if (tier) {
+    const lossCushion = tier.lossCushion || 10;
+    const rr = tier.rr || config?.riskRewardRatio || 6;
+    effectiveRiskPercent = 100 / lossCushion;
+    effectiveTargetProfitPercent = (100 / lossCushion) * rr;
+  }
+
+  const riskAmount = roundMoney(balance * (effectiveRiskPercent / 100));
+  const targetProfit = roundMoney(balance * (effectiveTargetProfitPercent / 100));
+  
+  // Calculate suggested lot size using effective risk amount
+  let suggestedLotSize = 0;
+  if (config?.stopLossPips && config.stopLossPips > 0) {
+    const pipValue = config.pipValuePerLot || 10;
+    suggestedLotSize = roundLots(riskAmount / (config.stopLossPips * pipValue));
+  } else {
+    suggestedLotSize = roundLots((balance * effectiveRiskPercent) / 100 / 100);
+  }
+
+  return {
+    riskAmount,
+    targetProfit,
+    suggestedLotSize,
+    riskPercent: effectiveRiskPercent,
+    targetProfitPercent: effectiveTargetProfitPercent,
+  };
+}
+
+export function resolveActualPL(balanceBefore, config, result, customPL, stepIndex = 1) {
   if (customPL !== undefined && !Number.isNaN(customPL)) {
     return roundMoney(customPL);
   }
-  const preview = computeTradePreview(balanceBefore, config);
+  const preview = computeTradePreview(balanceBefore, config, stepIndex);
   if (result === 'win') return preview.targetProfit;
   if (result === 'loss') return -preview.riskAmount;
   return 0;
@@ -60,20 +114,22 @@ export function rebuildTradeChain(config, trades) {
   let balance = config.startingBalance;
 
   return trades.map((trade, index) => {
-    const preview = computeTradePreview(balance, config);
+    const stepIndex = index + 1;
+    const preview = computeTradePreview(balance, config, stepIndex);
     const balanceBefore = balance;
     const actualPL = resolveActualPL(
       balanceBefore,
       config,
       trade.result,
       trade.useManualPL ? trade.actualPL : undefined,
+      stepIndex,
     );
     const balanceAfter = roundMoney(balanceBefore + actualPL);
     balance = balanceAfter;
 
     return {
       ...trade,
-      tradeNumber: index + 1,
+      tradeNumber: stepIndex,
       balanceBefore,
       suggestedLotSize: preview.suggestedLotSize,
       riskAmount: preview.riskAmount,

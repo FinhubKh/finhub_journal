@@ -4,7 +4,7 @@ export function buildSpreadsheetRows(config, trades, projectionCount = 15) {
   const rows = [];
 
   for (const trade of trades) {
-    const preview = computeTradePreview(trade.balanceBefore, config);
+    const preview = computeTradePreview(trade.balanceBefore, config, trade.tradeNumber);
     rows.push({
       tradeNumber: trade.tradeNumber,
       balanceBefore: trade.balanceBefore,
@@ -43,7 +43,7 @@ export function buildSpreadsheetRows(config, trades, projectionCount = 15) {
   const maxRows = Math.min(500, Math.max(startNumber, targetHorizon));
 
   while (tradeNumber <= maxRows) {
-    const preview = computeTradePreview(balance, config);
+    const preview = computeTradePreview(balance, config, tradeNumber);
     const isCurrent = tradeNumber === startNumber;
 
     rows.push({
