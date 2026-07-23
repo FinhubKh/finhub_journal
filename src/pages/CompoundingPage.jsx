@@ -24,6 +24,8 @@ import {
 import CustomDropdown from '../components/common/CustomDropdown';
 import CompoundingAccountView from '../components/compounding/CompoundingAccountView';
 import { ModalActions, PlanModalShell } from '../components/compounding/CompoundingUI';
+import GrowthScheduleSimulator from '../components/compounding/GrowthScheduleSimulator';
+import { pillBtn, pillToggle } from '../lib/ui';
 
 const EMPTY_FORM = {
   name: '',
@@ -41,15 +43,15 @@ function PlanCard({ account, linkedName, onOpen, onDelete }) {
   return (
     <div className={`${card} ${cardBody}`}>
       <div>
-        <h2 className="text-base font-semibold text-zinc-900">{account.name}</h2>
-        <p className="mt-1 text-sm tabular-nums text-zinc-600">
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{account.name}</h2>
+        <p className="mt-1 text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
           {formatMoney(account.startingBalance)} → {formatMoney(account.targetBalance)}
         </p>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           {account.targetProfitPercent}% / win · {account.riskPercent}% risk · ~{winsNeeded} wins if all win
         </p>
         {account.tradingAccountId ? (
-          <p className="mt-2 text-xs text-violet-600">Linked: {linkedName || 'Trading account'}</p>
+          <p className="mt-2 text-xs text-violet-600 dark:text-violet-400">Linked: {linkedName || 'Trading account'}</p>
         ) : (
           <p className="mt-2 text-xs text-zinc-400">Standalone plan</p>
         )}
@@ -66,8 +68,15 @@ function PlanCard({ account, linkedName, onOpen, onDelete }) {
   );
 }
 
-function CreatePlanModal({ tradingAccounts, onClose, onCreated }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+function CreatePlanModal({ tradingAccounts, initialData, onClose, onCreated }) {
+  const [form, setForm] = useState(() => ({
+    name: initialData?.name || '',
+    startingBalance: initialData?.startingBalance ? String(initialData.startingBalance) : String(DEFAULT_CONFIG.startingBalance),
+    targetBalance: initialData?.targetBalance ? String(initialData.targetBalance) : String(DEFAULT_CONFIG.targetBalance),
+    targetProfitPercent: initialData?.targetProfitPercent ? String(initialData.targetProfitPercent) : String(DEFAULT_CONFIG.targetProfitPercent),
+    riskPercent: initialData?.riskPercent ? String(initialData.riskPercent) : String(DEFAULT_CONFIG.riskPercent),
+    tradingAccountId: '',
+  }));
   const [saving, setSaving] = useState(false);
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -228,7 +237,9 @@ export default function CompoundingPage() {
   const [tradingAccounts, setTradingAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [createInitialData, setCreateInitialData] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [activeMainTab, setActiveMainTab] = useState('plans'); // 'plans' | 'simulator'
 
   const tradingNameById = useMemo(() => {
     const map = new Map();
@@ -275,57 +286,95 @@ export default function CompoundingPage() {
     <div className={dashboardPageWide}>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Compounding</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Build a compound growth plan: capital → target, with profit % and risk % per step.
+          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Compounding</h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Build compounding growth plans and model multi-period strategy schedules.
           </p>
         </div>
-        <button type="button" className={btnPrimary} onClick={() => setShowCreate(true)}>
-          New plan
+        {activeMainTab === 'plans' && (
+          <button
+            type="button"
+            className={btnPrimary}
+            onClick={() => {
+              setCreateInitialData(null);
+              setShowCreate(true);
+            }}
+          >
+            New plan
+          </button>
+        )}
+      </div>
+
+      {/* Main View Toggle */}
+      <div className={`${pillToggle} mb-6 shrink-0`}>
+        <button
+          type="button"
+          className={pillBtn(activeMainTab === 'plans')}
+          onClick={() => setActiveMainTab('plans')}
+        >
+          My Plans ({accounts.length})
+        </button>
+        <button
+          type="button"
+          className={pillBtn(activeMainTab === 'simulator')}
+          onClick={() => setActiveMainTab('simulator')}
+        >
+          Growth Schedule Simulator
         </button>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-zinc-400">Loading…</p>
-      ) : accounts.length === 0 ? (
-        <div className={`${card} ${emptyState}`}>
-          No compounding plans yet. Create one to generate your trade-by-trade compound table.
-        </div>
+      {activeMainTab === 'plans' ? (
+        loading ? (
+          <p className="text-sm text-zinc-400">Loading…</p>
+        ) : accounts.length === 0 ? (
+          <div className={`${card} ${emptyState}`}>
+            No compounding plans yet. Create one or model a plan in the Growth Schedule Simulator.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {accounts.map((account) => (
+              <PlanCard
+                key={account.id}
+                account={account}
+                linkedName={tradingNameById.get(account.tradingAccountId)}
+                onOpen={() => setSelectedId(account.id)}
+                onDelete={async () => {
+                  const ok = await confirm({
+                    title: 'Delete plan?',
+                    message: `Delete “${account.name}” and all of its compounding trades?`,
+                    confirmLabel: 'Delete',
+                    destructive: true,
+                  });
+                  if (!ok) return;
+                  try {
+                    await deleteCompoundingAccount(account.id);
+                    toast.success('Plan deleted');
+                    await reload();
+                  } catch (e) {
+                    toast.error(e?.message || 'Delete failed');
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {accounts.map((account) => (
-            <PlanCard
-              key={account.id}
-              account={account}
-              linkedName={tradingNameById.get(account.tradingAccountId)}
-              onOpen={() => setSelectedId(account.id)}
-              onDelete={async () => {
-                const ok = await confirm({
-                  title: 'Delete plan?',
-                  message: `Delete “${account.name}” and all of its compounding trades?`,
-                  confirmLabel: 'Delete',
-                  destructive: true,
-                });
-                if (!ok) return;
-                try {
-                  await deleteCompoundingAccount(account.id);
-                  toast.success('Plan deleted');
-                  await reload();
-                } catch (e) {
-                  toast.error(e?.message || 'Delete failed');
-                }
-              }}
-            />
-          ))}
-        </div>
+        <GrowthScheduleSimulator
+          onCreatePlanFromSimulation={(simData) => {
+            setCreateInitialData(simData);
+            setShowCreate(true);
+          }}
+        />
       )}
 
       {showCreate ? (
         <CreatePlanModal
           tradingAccounts={tradingAccounts}
+          initialData={createInitialData}
           onClose={() => setShowCreate(false)}
           onCreated={(created) => {
             setShowCreate(false);
+            setActiveMainTab('plans');
             setSelectedId(created.id);
           }}
         />
@@ -333,3 +382,4 @@ export default function CompoundingPage() {
     </div>
   );
 }
+

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Compounding & Risk Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Custom scrollbar for the table */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                Trading Growth Schedule
+            </h1>
+            <p class="text-slate-400 mt-2 text-sm">Interactive compound modeling & risk scheduling</p>
+        </header>
+
+        <!-- Main Controls Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Parameters -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Account Parameters Box -->
+                <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Account Parameters
+                    </h2>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Starting Capital ($)</label>
+                            <input type="number" id="capital" value="10000" min="100" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Target Return</label>
+                                <span id="returnLabel" class="text-xs font-bold text-blue-400">1.5%</span>
+                            </div>
+                            <input type="range" id="targetReturn" min="0.1" max="20" step="0.1" value="1.5" class="w-full accent-blue-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Frequency</label>
+                                <select id="frequency" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm">
+                                    <option value="week">Per Week</option>
+                                    <option value="month">Per Month</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Growth Type</label>
+                                <select id="growthType" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm">
+                                    <option value="compound">Compound</option>
+                                    <option value="fixed">Fixed (Simple)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Time Horizon</label>
+                                <span id="timeLabel" class="text-xs font-bold text-blue-400">52</span>
+                            </div>
+                            <input type="range" id="timeHorizon" min="1" max="6240" step="1" value="52" class="w-full accent-blue-500">
+                            
+                            <!-- Fine-tuning controls -->
+                            <div class="flex justify-between mt-2 gap-2">
+                                <div class="flex gap-1">
+                                    <button id="btnSub10" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs font-mono transition-colors">-10</button>
+                                    <button id="btnSub1" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs font-mono transition-colors">-1</button>
+                                </div>
+                                <select id="timeUnit" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none">
+                                    <option value="weeks">Weeks</option>
+                                    <option value="months">Months</option>
+                                    <option value="years">Years</option>
+                                </select>
+                                <div class="flex gap-1">
+                                    <button id="btnAdd1" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs font-mono transition-colors">+1</button>
+                                    <button id="btnAdd10" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs font-mono transition-colors">+10</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategy & Risk Profile -->
+                <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        Global Strategy Edge
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Trades / Period</label>
+                                <input type="number" id="globalTrades" value="10" min="1" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Win Rate %</label>
+                                <input type="number" id="globalWinRate" value="40" min="1" max="100" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Avg Reward / Risk (RR)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-slate-500 font-mono">1 :</span>
+                                <input type="number" id="globalRR" value="2.5" min="0.1" step="0.1" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Visualization -->
+            <div class="lg:col-span-2 space-y-6 flex flex-col">
+                
+                <!-- Summary HUD -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-panel p-4 rounded-xl text-center">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Final Balance</p>
+                        <p id="hudFinalBalance" class="text-2xl font-bold text-white font-mono">--</p>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl text-center">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Total Return</p>
+                        <p id="hudTotalReturn" class="text-2xl font-bold text-emerald-400 font-mono">--</p>
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="glass-panel p-4 rounded-2xl shadow-xl flex-grow flex flex-col relative min-h-[300px]">
+                    <div class="absolute top-4 right-4 bg-slate-800/80 px-3 py-1 rounded-full text-xs font-semibold text-blue-300 border border-blue-500/30">
+                        Growth Curve
+                    </div>
+                    <div class="relative w-full h-full flex-grow min-h-[250px]">
+                        <canvas id="growthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Schedule Table -->
+        <div class="glass-panel rounded-2xl shadow-xl overflow-hidden mt-8 border border-slate-700">
+            <div class="bg-slate-800/80 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    Detailed Growth Schedule
+                </h2>
+                <div class="text-xs text-slate-400">
+                    * Modifying a Risk $ applies it to the end of its 10-period block.
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-[600px]">
+                <table class="w-full text-left border-collapse relative">
+                    <thead class="sticky top-0 bg-slate-900 shadow z-10">
+                        <tr class="text-xs text-slate-400 uppercase tracking-wider border-b border-slate-700">
+                            <th class="px-6 py-4 font-medium">Period</th>
+                            <th class="px-6 py-4 font-medium">Start Cap</th>
+                            <th class="px-6 py-4 font-medium text-center">Req. Risk per Trade ($)</th>
+                            <th class="px-6 py-4 font-medium text-right">Target Profit</th>
+                            <th class="px-6 py-4 font-medium text-right">Target Return %</th>
+                            <th class="px-6 py-4 font-medium text-right">End Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleBody" class="text-sm font-mono divide-y divide-slate-800">
+                        <!-- Rows generated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const els = {
+                capital: document.getElementById('capital'),
+                targetReturn: document.getElementById('targetReturn'),
+                returnLabel: document.getElementById('returnLabel'),
+                frequency: document.getElementById('frequency'),
+                growthType: document.getElementById('growthType'),
+                timeHorizon: document.getElementById('timeHorizon'),
+                timeLabel: document.getElementById('timeLabel'),
+                timeUnit: document.getElementById('timeUnit'),
+                btnSub10: document.getElementById('btnSub10'),
+                btnSub1: document.getElementById('btnSub1'),
+                btnAdd1: document.getElementById('btnAdd1'),
+                btnAdd10: document.getElementById('btnAdd10'),
+                globalTrades: document.getElementById('globalTrades'),
+                globalWinRate: document.getElementById('globalWinRate'),
+                globalRR: document.getElementById('globalRR'),
+                hudFinal: document.getElementById('hudFinalBalance'),
+                hudReturn: document.getElementById('hudTotalReturn'),
+                scheduleBody: document.getElementById('scheduleBody'),
+                ctx: document.getElementById('growthChart').getContext('2d')
+            };
+
+            let chartInstance = null;
+            
+            // Store custom risk overrides. Key = period number, Value = { riskAmt: number }
+            let customRowData = {};
+
+            // --- Currency Formatter ---
+            const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            const pctFormatter = new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            // --- STREAMING_CHUNK:Building the Time Horizon logic... ---
+            // Unit conversion bounds
+            const timeBounds = {
+                weeks: { min: 1, max: 6240 }, // up to 120 years
+                months: { min: 1, max: 120 }, // 10 years
+                years: { min: 1, max: 30 }
+            };
+
+            function updateTimeSliderBounds() {
+                const unit = els.timeUnit.value;
+                const bounds = timeBounds[unit];
+                els.timeHorizon.min = bounds.min;
+                els.timeHorizon.max = bounds.max;
+                
+                // clamp current value to new bounds if necessary
+                let currentVal = parseInt(els.timeHorizon.value);
+                if (currentVal > bounds.max) els.timeHorizon.value = bounds.max;
+                if (currentVal < bounds.min) els.timeHorizon.value = bounds.min;
+            }
+
+            function adjustTime(amount) {
+                const current = parseInt(els.timeHorizon.value);
+                const min = parseInt(els.timeHorizon.min);
+                const max = parseInt(els.timeHorizon.max);
+                let next = current + amount;
+                
+                if (next < min) next = min;
+                if (next > max) next = max;
+                
+                els.timeHorizon.value = next;
+                updateCalculator();
+            }
+
+            // --- STREAMING_CHUNK:Building the core Calculation Engine... ---
+            function updateCalculator() {
+                // Get inputs
+                const principal = parseFloat(els.capital.value) || 0;
+                const ratePct = parseFloat(els.targetReturn.value) || 0;
+                const rateDecimal = ratePct / 100;
+                const freq = els.frequency.value;
+                const isCompound = els.growthType.value === 'compound';
+                const timeValue = parseInt(els.timeHorizon.value) || 1;
+                const unit = els.timeUnit.value;
+
+                const globalTrades = parseInt(els.globalTrades.value) || 1;
+                const globalWinRate = (parseFloat(els.globalWinRate.value) || 0) / 100;
+                const globalRR = parseFloat(els.globalRR.value) || 1;
+
+                // Update Labels
+                els.returnLabel.textContent = `${ratePct}%`;
+                els.timeLabel.textContent = `${timeValue} ${unit}`;
+
+                // Calculate total periods (standardized to chart points)
+                let totalPeriods = timeValue;
+                if (unit === 'years') {
+                    totalPeriods = freq === 'week' ? timeValue * 52 : timeValue * 12;
+                } else if (unit === 'months' && freq === 'week') {
+                    totalPeriods = timeValue * 4; // Approx 4 weeks per month
+                } else if (unit === 'weeks' && freq === 'month') {
+                    totalPeriods = Math.ceil(timeValue / 4);
+                }
+
+                // Protect against massive loops freezing browser
+                if (totalPeriods > 6240) totalPeriods = 6240;
+
+                const chartLabels = [];
+                const chartData = [];
+                let currentBalance = principal;
+                
+                let tableHTML = '';
+
+                // Generate sequence
+                for (let period = 1; period <= totalPeriods; period++) {
+                    let startCap = currentBalance;
+                    
+                    // Determine risk directly from customRowData for this specific period
+                    let reqRiskAmount;
+                    if (customRowData[period]?.riskAmt !== undefined) {
+                        reqRiskAmount = customRowData[period].riskAmt;
+                    } else {
+                        // Default logic if no override exists
+                        let targetProfit = isCompound ? (startCap * rateDecimal) : (principal * rateDecimal);
+                        let edge = (globalTrades * globalWinRate * globalRR) - (globalTrades * (1 - globalWinRate));
+                        reqRiskAmount = edge > 0 ? (targetProfit / edge) : 10;
+                    }
+                    
+                    let edgeMultiplier = (globalTrades * globalWinRate * globalRR) - (globalTrades * (1 - globalWinRate));
+                    let targetProfit = edgeMultiplier > 0 ? (reqRiskAmount * edgeMultiplier) : 0;
+                    let targetReturnPct = startCap > 0 ? (targetProfit / startCap) * 100 : 0;
+                    
+                    let riskStr = edgeMultiplier > 0 
+                        ? `<div class="flex items-center justify-center gap-1">
+                               <span class="text-slate-500 font-bold">$</span>
+                               <input type="number" step="1" min="0" class="risk-input w-24 bg-slate-800 border ${customRowData[period]?.riskAmt !== undefined ? 'border-amber-500 text-amber-400' : 'border-slate-600 text-slate-200'} rounded px-2 py-1 text-sm font-mono focus:outline-none focus:border-blue-500 text-right transition-colors" data-period="${period}" value="${reqRiskAmount.toFixed(2)}">
+                           </div>`
+                        : `<span class="text-red-400 text-xs font-semibold">Invalid Edge</span>`;
+                    
+                    currentBalance += targetProfit;
+
+                    chartLabels.push(`${freq === 'week' ? 'Wk' : 'Mo'} ${period}`);
+                    chartData.push(currentBalance);
+
+                    // Only render table rows for the first 500 periods to prevent DOM lag
+                    if (period <= 500) {
+                        tableHTML += `
+                            <tr class="hover:bg-slate-800/50 transition-colors">
+                                <td class="px-6 py-3 font-medium text-slate-300 border-r border-slate-800">${period}</td>
+                                <td class="px-6 py-3 text-slate-300 border-r border-slate-800">${formatter.format(startCap)}</td>
+                                <td class="px-6 py-3 border-r border-slate-800">${riskStr}</td>
+                                <td class="px-6 py-3 text-right text-emerald-400 border-r border-slate-800">+${formatter.format(targetProfit)}</td>
+                                <td class="px-6 py-3 text-right text-slate-400 border-r border-slate-800">${pctFormatter.format(targetReturnPct)}%</td>
+                                <td class="px-6 py-3 text-right font-bold text-white">${formatter.format(currentBalance)}</td>
+                            </tr>
+                        `;
+                    }
+                }
+
+                els.scheduleBody.innerHTML = tableHTML;
+                attachTableListeners();
+
+                // Update HUD
+                els.hudFinal.textContent = formatter.format(currentBalance);
+                const totalReturnPct = principal > 0 ? ((currentBalance - principal) / principal) * 100 : 0;
+                els.hudReturn.textContent = `+${pctFormatter.format(totalReturnPct)}%`;
+
+                renderChart(chartLabels, chartData);
+            }
+
+            // --- STREAMING_CHUNK:Setting up 10-week block cascade logic... ---
+            function attachTableListeners() {
+                // Listen for changes on Risk inputs (Dollar amounts)
+                document.querySelectorAll('.risk-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        let period = parseInt(e.target.dataset.period);
+                        let val = parseFloat(e.target.value);
+                        
+                        // Determine the end of the current 10-week block (10, 20, 30, etc.)
+                        let blockEnd = Math.ceil(period / 10) * 10;
+                        
+                        if (isNaN(val) || e.target.value === '') {
+                            // Clear overrides from this period to the end of the 10-week block
+                            for(let i = period; i <= blockEnd; i++) {
+                                if(customRowData[i]) delete customRowData[i].riskAmt;
+                            }
+                        } else {
+                            // Cascade the exact dollar value down to the end of the current 10-week block
+                            for(let i = period; i <= blockEnd; i++) {
+                                if (!customRowData[i]) customRowData[i] = {};
+                                customRowData[i].riskAmt = val;
+                            }
+                        }
+                        updateCalculator();
+                    });
+                });
+            }
+
+            // --- STREAMING_CHUNK:Setting up Chart.js... ---
+            function renderChart(labels, data) {
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                // Gradient Fill
+                let gradient = els.ctx.createLinearGradient(0, 0, 0, 400);
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); // Blue
+                gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+                chartInstance = new Chart(els.ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Account Balance',
+                            data: data,
+                            borderColor: '#3b82f6', // Tailwind blue-500
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#10b981', // Tailwind emerald-500
+                            fill: true,
+                            tension: 0.4 // Smooth curves
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleColor: '#94a3b8',
+                                bodyColor: '#fff',
+                                bodyFont: { family: 'monospace', size: 14 },
+                                padding: 12,
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function(context) {
+                                        return formatter.format(context.parsed.y);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: {
+                                    color: '#64748b',
+                                    maxTicksLimit: 10
+                                }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: {
+                                    color: '#64748b',
+                                    callback: function(value) {
+                                        if (value >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+                                        if (value >= 1000) return '$' + (value / 1000).toFixed(0) + 'k';
+                                        return '$' + value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- STREAMING_CHUNK:Attaching standard Event Listeners... ---
+            els.capital.addEventListener('input', updateCalculator);
+            els.targetReturn.addEventListener('input', updateCalculator);
+            els.frequency.addEventListener('change', updateCalculator);
+            els.growthType.addEventListener('change', updateCalculator);
+            els.timeHorizon.addEventListener('input', updateCalculator);
+            
+            els.globalTrades.addEventListener('input', updateCalculator);
+            els.globalWinRate.addEventListener('input', updateCalculator);
+            els.globalRR.addEventListener('input', updateCalculator);
+
+            els.timeUnit.addEventListener('change', () => {
+                updateTimeSliderBounds();
+                updateCalculator();
+            });
+
+            els.btnSub10.addEventListener('click', () => adjustTime(-10));
+            els.btnSub1.addEventListener('click', () => adjustTime(-1));
+            els.btnAdd1.addEventListener('click', () => adjustTime(1));
+            els.btnAdd10.addEventListener('click', () => adjustTime(10));
+
+            // Initialize
+            updateTimeSliderBounds();
+            updateCalculator();
+        });
+    </script>
+</body>
+</html>
