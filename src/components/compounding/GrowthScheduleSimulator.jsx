@@ -691,6 +691,12 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
                   </td>
                 </tr>
               ))}
+              {/* Bottom spacer row so final row is fully visible */}
+              <tr className="border-none bg-transparent">
+                <td colSpan={8} className="py-6 text-center text-xs text-zinc-400 font-medium select-none">
+                  End of schedule simulation
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

@@ -195,6 +195,12 @@ export default function CompoundingSpreadsheet({
                 </tr>
               );
             })}
+            {/* Bottom spacer row so last trade step is fully visible without clipping */}
+            <tr className="border-none bg-transparent">
+              <td colSpan={10} className="py-6 text-center text-xs text-zinc-400 font-medium select-none">
+                End of plan projection steps
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
