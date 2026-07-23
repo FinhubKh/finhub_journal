@@ -46,6 +46,29 @@ No trade placement or broker advice. Coaching only.
 Reply in the requested language (en or km), or match the user's message language if clearer.
 Return ONLY valid JSON: {"reply":"your answer"}`;
 
+const ANALYZE_SYSTEM = `You are a trading performance coach for FinHubKH Journal.
+Return ONLY valid JSON with this exact shape:
+{
+  "insights":[{"title":"Short title","detail":"1-2 sentences","tone":"positive|warning|neutral"}],
+  "report":{
+    "title":"Short report title",
+    "summary":"...",
+    "working":["..."],
+    "hurting":["..."],
+    "habits":["..."],
+    "action_plan":["..."],
+    "focus_next":"One line focus"
+  }
+}
+
+Rules:
+- 3 to 5 insights
+- 2 to 4 items in working, hurting, habits, action_plan
+- Base everything on the provided stats summary only
+- Be direct and practical; no fluff, no markdown, no code fences
+- Do not invent trades or numbers not in the summary
+- Write in the requested language (en or km)`;
+
 function extractJsonObject(text) {
   const raw = String(text || '').trim();
   if (!raw) throw new Error('Empty AI response');
@@ -113,7 +136,14 @@ async function readBody(req) {
   return readJsonBody(req);
 }
 
-async function sealionChat({ apiKey, model, system, user, temperature = 0.35 }) {
+async function sealionChat({
+  apiKey,
+  model,
+  system,
+  user,
+  temperature = 0.3,
+  maxTokens = 900,
+}) {
   if (!apiKey) {
     return { status: 500, body: { error: 'SEA-LION API key is not configured' } };
   }
@@ -128,6 +158,12 @@ async function sealionChat({ apiKey, model, system, user, temperature = 0.35 }) 
     body: JSON.stringify({
       model: model || DEFAULT_MODEL,
       temperature,
+      max_tokens: maxTokens,
+      // Qwen-SEA-LION defaults to long reasoning; turn it off for latency.
+      chat_template_kwargs: {
+        enable_thinking: false,
+        thinking_mode: 'off',
+      },
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -166,43 +202,40 @@ async function fetchAccountAndTrades({
   fromDate,
   toDate,
 }) {
-  const accountRes = await fetch(
-    `${supabaseUrl}/rest/v1/trading_accounts?select=id,name&id=eq.${encodeURIComponent(accountId)}&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
-    {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  );
+  const headers = {
+    apikey: anonKey,
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  const [accountRes, tradesRes] = await Promise.all([
+    fetch(
+      `${supabaseUrl}/rest/v1/trading_accounts?select=id,name&id=eq.${encodeURIComponent(accountId)}&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      { headers },
+    ),
+    fetch(
+      `${supabaseUrl}/rest/v1/trades?select=${TRADE_SELECT}`
+        + `&user_id=eq.${encodeURIComponent(userId)}`
+        + `&account_id=eq.${encodeURIComponent(accountId)}`
+        + `&date=gte.${fromDate}&date=lte.${toDate}`
+        + `&order=date.desc&limit=500`,
+      { headers },
+    ),
+  ]);
+
   if (!accountRes.ok) {
     const text = await accountRes.text();
     return { error: { status: 500, body: { error: text || 'Failed to load account' } } };
   }
-  const accounts = await accountRes.json();
-  const account = accounts?.[0];
-  if (!account) {
-    return { error: { status: 404, body: { error: 'Trading account not found' } } };
-  }
-
-  const tradesRes = await fetch(
-    `${supabaseUrl}/rest/v1/trades?select=${TRADE_SELECT}`
-      + `&user_id=eq.${encodeURIComponent(userId)}`
-      + `&account_id=eq.${encodeURIComponent(accountId)}`
-      + `&date=gte.${fromDate}&date=lte.${toDate}`
-      + `&order=date.desc&limit=500`,
-    {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  );
   if (!tradesRes.ok) {
     const text = await tradesRes.text();
     return { error: { status: 500, body: { error: text || 'Failed to load trades' } } };
   }
-  const trades = await tradesRes.json();
+
+  const [accounts, trades] = await Promise.all([accountRes.json(), tradesRes.json()]);
+  const account = accounts?.[0];
+  if (!account) {
+    return { error: { status: 404, body: { error: 'Trading account not found' } } };
+  }
   return { account, trades: Array.isArray(trades) ? trades : [] };
 }
 
@@ -329,6 +362,7 @@ export async function handlePerformanceInsights(req, deps) {
     model: deps.model,
     system: INSIGHTS_SYSTEM,
     user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
+    maxTokens: 700,
   });
   if (ai.status !== 200) return ai;
 
@@ -341,33 +375,7 @@ export async function handlePerformanceInsights(req, deps) {
   }
 }
 
-export async function handlePerformanceReport(req, deps) {
-  const ctx = await prepareContext(req, deps);
-  if (ctx.error) return ctx.error;
-
-  if (ctx.summary.trade_count === 0) {
-    return { status: 400, body: { error: 'No trades in this account and date range' } };
-  }
-  if (!checkRateLimit(ctx.user.id, 'report', 12)) {
-    return { status: 429, body: { error: 'Too many report requests. Try again later.' } };
-  }
-
-  const ai = await sealionChat({
-    apiKey: deps.sealionApiKey,
-    model: deps.model,
-    system: REPORT_SYSTEM,
-    user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
-    temperature: 0.4,
-  });
-  if (ai.status !== 200) return ai;
-
-  let report;
-  try {
-    report = normalizeReport(extractJsonObject(ai.content));
-  } catch (err) {
-    return { status: 502, body: { error: err.message || 'Could not parse report' } };
-  }
-
+async function savePerformanceReport(deps, ctx, report) {
   const insertRes = await fetch(`${deps.supabaseUrl}/rest/v1/ai_performance_reports`, {
     method: 'POST',
     headers: {
@@ -396,15 +404,95 @@ export async function handlePerformanceReport(req, deps) {
 
   if (!insertRes.ok) {
     const text = await insertRes.text();
-    return { status: 500, body: { error: text || 'Failed to save report' } };
+    return { error: { status: 500, body: { error: text || 'Failed to save report' } } };
   }
 
   const rows = await insertRes.json();
-  const saved = rows?.[0] || null;
+  return { saved: rows?.[0] || null };
+}
+
+export async function handlePerformanceReport(req, deps) {
+  const ctx = await prepareContext(req, deps);
+  if (ctx.error) return ctx.error;
+
+  if (ctx.summary.trade_count === 0) {
+    return { status: 400, body: { error: 'No trades in this account and date range' } };
+  }
+  if (!checkRateLimit(ctx.user.id, 'report', 12)) {
+    return { status: 429, body: { error: 'Too many report requests. Try again later.' } };
+  }
+
+  const ai = await sealionChat({
+    apiKey: deps.sealionApiKey,
+    model: deps.model,
+    system: REPORT_SYSTEM,
+    user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
+    temperature: 0.35,
+    maxTokens: 900,
+  });
+  if (ai.status !== 200) return ai;
+
+  let report;
+  try {
+    report = normalizeReport(extractJsonObject(ai.content));
+  } catch (err) {
+    return { status: 502, body: { error: err.message || 'Could not parse report' } };
+  }
+
+  const savedRes = await savePerformanceReport(deps, ctx, report);
+  if (savedRes.error) return savedRes.error;
+
   return {
     status: 200,
     body: {
-      report: saved,
+      report: savedRes.saved,
+      title: report.title,
+      content: report.content,
+      summary: ctx.summary,
+    },
+  };
+}
+
+/** One SEA-LION call for insights + report (used by Get analysis). */
+export async function handlePerformanceAnalyze(req, deps) {
+  const ctx = await prepareContext(req, deps);
+  if (ctx.error) return ctx.error;
+
+  if (ctx.summary.trade_count === 0) {
+    return { status: 400, body: { error: 'No trades in this account and date range' } };
+  }
+  if (!checkRateLimit(ctx.user.id, 'analyze', 12)) {
+    return { status: 429, body: { error: 'Too many analysis requests. Try again later.' } };
+  }
+
+  const ai = await sealionChat({
+    apiKey: deps.sealionApiKey,
+    model: deps.model,
+    system: ANALYZE_SYSTEM,
+    user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
+    temperature: 0.3,
+    maxTokens: 1400,
+  });
+  if (ai.status !== 200) return ai;
+
+  let insights;
+  let report;
+  try {
+    const parsed = extractJsonObject(ai.content);
+    insights = normalizeInsights(parsed);
+    report = normalizeReport(parsed.report || parsed);
+  } catch (err) {
+    return { status: 502, body: { error: err.message || 'Could not parse analysis' } };
+  }
+
+  const savedRes = await savePerformanceReport(deps, ctx, report);
+  if (savedRes.error) return savedRes.error;
+
+  return {
+    status: 200,
+    body: {
+      insights,
+      report: savedRes.saved,
       title: report.title,
       content: report.content,
       summary: ctx.summary,
@@ -443,7 +531,8 @@ export async function handlePerformanceChat(req, deps) {
       historyText ? `Recent chat:\n${historyText}` : '',
       `User: ${message}`,
     ].filter(Boolean).join('\n\n'),
-    temperature: 0.45,
+    temperature: 0.4,
+    maxTokens: 500,
   });
   if (ai.status !== 200) return ai;
 

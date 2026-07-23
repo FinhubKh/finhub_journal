@@ -12,6 +12,7 @@ import {
   LuTrash2,
 } from 'react-icons/lu';
 import {
+  analyzeAiPerformance,
   chatAiPerformance,
   deleteAiPerformanceReport,
   fetchAiPerformanceInsights,
@@ -444,60 +445,44 @@ export default function AiCoachPage() {
     if (analysisBusy || insightsBusy || reportBusy) return;
 
     setAnalysisOpen(true);
-    setAnalysisPercent(5);
-    setAnalysisLabel('Preparing your trade data…');
+    setAnalysisPercent(12);
+    setAnalysisLabel('Preparing trade stats…');
     setInsightsError('');
     setReportError('');
 
-    let insightsOk = false;
-    let reportOk = false;
-
     try {
-      setAnalysisPercent(15);
-      setAnalysisLabel('Generating insights…');
-      try {
-        const data = await fetchAiPerformanceInsights({ accountId, from, to, language });
-        setInsights(data.insights);
-        insightsOk = data.insights.length > 0;
-        if (!insightsOk) setInsightsError('No insights returned.');
-      } catch (err) {
-        setInsights([]);
-        setInsightsError(err.message || 'Could not generate insights.');
-      }
+      setAnalysisPercent(35);
+      setAnalysisLabel('Running coach analysis…');
 
-      setAnalysisPercent(55);
-      setAnalysisLabel('Writing performance report…');
-      try {
-        const data = await generateAiPerformanceReport({ accountId, from, to, language });
-        const next = data.report || {
-          id: null,
-          title: data.title,
-          content: data.content,
-          from_date: from,
-          to_date: to,
-          language,
-          created_at: new Date().toISOString(),
-        };
-        setReport(next);
-        setSelectedHistoryId(next.id || null);
-        await refreshHistory(accountId);
-        reportOk = true;
-      } catch (err) {
-        setReportError(err.message || 'Could not generate report.');
-      }
+      const data = await analyzeAiPerformance({ accountId, from, to, language });
+      setAnalysisPercent(85);
+      setAnalysisLabel('Saving report…');
+
+      const nextInsights = Array.isArray(data.insights) ? data.insights : [];
+      setInsights(nextInsights);
+      if (nextInsights.length === 0) setInsightsError('No insights returned.');
+
+      const next = data.report || {
+        id: null,
+        title: data.title,
+        content: data.content,
+        from_date: from,
+        to_date: to,
+        language,
+        created_at: new Date().toISOString(),
+      };
+      setReport(next);
+      setSelectedHistoryId(next.id || null);
+      await refreshHistory(accountId);
 
       setAnalysisPercent(100);
-      setAnalysisLabel('Analysis complete');
-      await new Promise((resolve) => setTimeout(resolve, 350));
-
-      if (insightsOk || reportOk) {
-        setActiveSection(insightsOk ? 'insights' : 'report');
-        if (insightsOk && reportOk) toast.success('Insights and report ready');
-        else if (insightsOk) toast.success('Insights ready');
-        else toast.success('Report ready');
-      } else {
-        toast.error('Analysis failed. Try again.');
-      }
+      setAnalysisLabel('Done');
+      setActiveSection(nextInsights.length > 0 ? 'insights' : 'report');
+      toast.success('Insights and report ready');
+    } catch (err) {
+      setInsightsError(err.message || 'Could not generate analysis.');
+      setReportError(err.message || 'Could not generate analysis.');
+      toast.error(err.message || 'Analysis failed. Try again.');
     } finally {
       setAnalysisOpen(false);
       setAnalysisPercent(0);

@@ -3,6 +3,7 @@ import { handleAiChecklistRequest } from './backend/api/ai-checklist-handler.mjs
 import {
   handlePerformanceInsights,
   handlePerformanceReport,
+  handlePerformanceAnalyze,
   handlePerformanceChat,
   handleListPerformanceReports,
   handleDeletePerformanceReport,
@@ -62,6 +63,8 @@ export function aiDevApiPlugin() {
             result = await handlePerformanceInsights(req, deps);
           } else if (pathname === '/v1/ai/performance/report' && req.method === 'POST') {
             result = await handlePerformanceReport(req, deps);
+          } else if (pathname === '/v1/ai/performance/analyze' && req.method === 'POST') {
+            result = await handlePerformanceAnalyze(req, deps);
           } else if (pathname === '/v1/ai/performance/chat' && req.method === 'POST') {
             result = await handlePerformanceChat(req, deps);
           } else if (pathname === '/v1/ai/performance/reports' && req.method === 'GET') {

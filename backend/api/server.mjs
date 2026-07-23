@@ -13,6 +13,7 @@ import { handleAiChecklistRequest } from './ai-checklist-handler.mjs';
 import {
   handlePerformanceInsights,
   handlePerformanceReport,
+  handlePerformanceAnalyze,
   handlePerformanceChat,
   handleListPerformanceReports,
   handleDeletePerformanceReport,
@@ -130,6 +131,8 @@ const server = createServer(async (req, res) => {
       result = await handlePerformanceInsights(req, deps);
     } else if (url.pathname === '/v1/ai/performance/report' && req.method === 'POST') {
       result = await handlePerformanceReport(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/analyze' && req.method === 'POST') {
+      result = await handlePerformanceAnalyze(req, deps);
     } else if (url.pathname === '/v1/ai/performance/chat' && req.method === 'POST') {
       result = await handlePerformanceChat(req, deps);
     } else if (url.pathname === '/v1/ai/performance/reports' && req.method === 'GET') {

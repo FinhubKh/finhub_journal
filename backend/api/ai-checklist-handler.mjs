@@ -111,7 +111,12 @@ export async function generateChecklistSteps({ prompt, apiKey, model }) {
     },
     body: JSON.stringify({
       model: model || DEFAULT_MODEL,
-      temperature: 0.4,
+      temperature: 0.35,
+      max_tokens: 900,
+      chat_template_kwargs: {
+        enable_thinking: false,
+        thinking_mode: 'off',
+      },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         {

@@ -1,14 +1,12 @@
 import { authFetch, getToken } from './auth';
-import { EA_WEBREQUEST_ORIGIN } from './env';
 
 function resolveAiApiBase() {
   if (import.meta.env.VITE_AI_API_URL) {
     return import.meta.env.VITE_AI_API_URL.replace(/\/$/, '');
   }
-  if (import.meta.env.DEV) {
-    return '';
-  }
-  return EA_WEBREQUEST_ORIGIN || '';
+  // Same-origin in both Vite dev (plugin) and Vercel prod (rewrites).
+  // Avoids CORS when the site is served from journal.finhubkh.com.
+  return '';
 }
 
 const AI_API_BASE = resolveAiApiBase();
@@ -80,6 +78,26 @@ export async function generateAiPerformanceReport({ accountId, from, to, languag
     body: JSON.stringify(performancePayload({ accountId, from, to, language })),
   });
   return parseAiResponse(res);
+}
+
+/** Single request: insights + report in one SEA-LION call. */
+export async function analyzeAiPerformance({ accountId, from, to, language }) {
+  const res = await authFetch(`${AI_API_BASE}/v1/ai/performance/analyze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify(performancePayload({ accountId, from, to, language })),
+  });
+  const body = await parseAiResponse(res);
+  return {
+    insights: Array.isArray(body?.insights) ? body.insights : [],
+    report: body?.report || null,
+    title: body?.title,
+    content: body?.content,
+    summary: body?.summary || null,
+  };
 }
 
 export async function chatAiPerformance({ accountId, from, to, language, message, history = [] }) {

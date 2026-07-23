@@ -4,10 +4,8 @@ function resolveMarketApiBase() {
   if (import.meta.env.VITE_MARKET_API_URL) {
     return import.meta.env.VITE_MARKET_API_URL.replace(/\/$/, '');
   }
-  if (import.meta.env.DEV) {
-    return '';
-  }
-  return EA_WEBREQUEST_ORIGIN || '';
+  // Same-origin via Vite/Vercel rewrites (avoids CORS on custom domains).
+  return '';
 }
 
 const MARKET_API_BASE = resolveMarketApiBase();

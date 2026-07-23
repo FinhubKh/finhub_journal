@@ -3,8 +3,8 @@
  * No trade notes are included.
  */
 
-const MAX_SAMPLE = 50;
-const MAX_GROUP_KEYS = 12;
+const MAX_SAMPLE = 20;
+const MAX_GROUP_KEYS = 8;
 
 function round(n, digits = 2) {
   const x = Number(n);

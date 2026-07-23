@@ -1,6 +1,10 @@
+import { handleCorsPreflight, applyCors } from '../../../_cors.js';
 import { handlePerformanceChat, getPerformanceDepsFromEnv } from '../../../../backend/api/ai-performance-handler.mjs';
 
 export default async function handler(req, res) {
+  if (handleCorsPreflight(req, res)) return;
+  applyCors(req, res);
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
