@@ -68,10 +68,10 @@ export default function CompoundingSpreadsheet({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] min-h-[350px]">
         <table className="w-full min-w-[800px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-zinc-100">
+          <thead className="sticky top-0 bg-white dark:bg-zinc-900 shadow-xs z-10">
+            <tr className="border-b border-zinc-100 dark:border-zinc-800">
               <th className={`${tableTh} text-left`}>Trade #</th>
               <th className={`${tableTh} text-left`}>Date</th>
               <th className={`${tableTh} text-right`}>Balance Before</th>
