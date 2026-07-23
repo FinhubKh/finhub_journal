@@ -29,8 +29,14 @@ export function buildSpreadsheetRows(config, trades, projectionCount = 15) {
   let balance = getCurrentBalance(config, trades);
   const startNumber = trades.length + 1;
   let tradeNumber = startNumber;
+  const maxRows = Math.max(52, startNumber + projectionCount - 1);
 
-  while (tradeNumber <= startNumber + projectionCount - 1 && balance < config.targetBalance) {
+  while (tradeNumber <= maxRows && tradeNumber <= 500) {
+    // If we reached target balance and already have at least 52 rows, stop
+    if (balance >= config.targetBalance && rows.length >= 52) {
+      break;
+    }
+
     const preview = computeTradePreview(balance, config);
     const isCurrent = tradeNumber === startNumber;
 
