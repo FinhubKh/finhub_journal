@@ -308,7 +308,7 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Loss Cushion & Risk De-escalation Simulator
+            Risk De-escalation Simulator
           </h2>
           <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
             Risk = Capital / Loss Buffer. Scale up your loss cushion as capital grows to protect your account.
@@ -517,7 +517,7 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
                 Loss Cushion Tiers (Consecutive Losses to Blow Capital)
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Loss Cushion = Max consecutive losing trades to blow account ($Risk/Trade = Start Cap / Loss Cushion).
+                Max consecutive losing trades to blow account
               </p>
             </div>
           </div>
@@ -626,7 +626,7 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
               Detailed Growth Schedule
             </h3>
             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-              * Modifying a Risk ($) applies through the end of its 10-period block.
+              Risk Management Made Easy
             </p>
           </div>
 
@@ -668,11 +668,10 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
                         type="number"
                         step="any"
                         min="0"
-                        className={`w-28 rounded border px-2 py-1 text-right text-xs font-mono transition-colors focus:outline-none focus:border-blue-500 ${
-                          row.isOverridden
+                        className={`w-28 rounded border px-2 py-1 text-right text-xs font-mono transition-colors focus:outline-none focus:border-blue-500 ${row.isOverridden
                             ? 'border-amber-500/80 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold'
                             : 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100'
-                        }`}
+                          }`}
                         value={row.riskPerTrade < 1 ? row.riskPerTrade.toFixed(4) : row.riskPerTrade.toFixed(2)}
                         onChange={(e) => handleRiskChange(row.period, e.target.value)}
                       />
