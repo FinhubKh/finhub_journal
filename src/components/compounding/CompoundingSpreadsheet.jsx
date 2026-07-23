@@ -68,7 +68,7 @@ export default function CompoundingSpreadsheet({
         </div>
       </div>
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] min-h-[350px]">
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] min-h-[350px] pb-12">
         <table className="w-full min-w-[800px] border-collapse text-sm">
           <thead className="sticky top-0 bg-white dark:bg-zinc-900 shadow-xs z-10">
             <tr className="border-b border-zinc-100 dark:border-zinc-800">
@@ -84,7 +84,7 @@ export default function CompoundingSpreadsheet({
               <th className={`${tableTh} text-center`}>Day P&L</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="pb-10">
             {rows.map((row) => {
               const isWin = row.result === 'win';
               const isLoss = row.result === 'loss';
@@ -195,9 +195,9 @@ export default function CompoundingSpreadsheet({
                 </tr>
               );
             })}
-            {/* Bottom spacer row so last trade step is fully visible without clipping */}
+            {/* Bottom spacer row so last trade step is fully visible with generous margin */}
             <tr className="border-none bg-transparent">
-              <td colSpan={10} className="py-6 text-center text-xs text-zinc-400 font-medium select-none">
+              <td colSpan={10} className="py-12 text-center text-xs text-zinc-400 font-medium select-none">
                 End of plan projection steps
               </td>
             </tr>
