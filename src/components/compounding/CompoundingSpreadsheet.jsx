@@ -30,7 +30,7 @@ export default function CompoundingSpreadsheet({
   title = 'Trading plan',
 }) {
   const pct = config.targetProfitPercent;
-  const rows = useMemo(() => buildSpreadsheetRows(config, trades, 20), [config, trades]);
+  const rows = useMemo(() => buildSpreadsheetRows(config, trades, 500), [config, trades]);
   const currentBalance = getCurrentBalance(config, trades);
   const planPreview = computeTradePreview(currentBalance, config);
   const dayByDate = useMemo(() => aggregateTradesByDate(trades), [trades]);
