@@ -160,39 +160,59 @@ function InsightsGroupedView({ insights }) {
   const grouped = groupInsights(insights);
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       {INSIGHT_GROUPS.map((group) => {
         const Icon = group.icon;
         const items = grouped[group.tone];
+        const borderTopClass =
+          group.tone === 'positive'
+            ? 'border-t-emerald-500'
+            : group.tone === 'warning'
+              ? 'border-t-amber-500'
+              : 'border-t-violet-500';
+
         return (
           <section
             key={group.id}
-            className={`rounded-2xl border border-zinc-200 border-l-4 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${group.accent}`}
+            className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200/80 border-t-4 bg-white shadow-xs transition-all duration-200 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${borderTopClass}`}
           >
-            <div className="flex items-center gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-              <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${group.iconWrap}`}>
-                <Icon className="h-4 w-4" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className={`text-sm font-semibold ${group.title}`}>{group.label}</h3>
+            {/* Column Header */}
+            <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-2.5">
+                <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${group.iconWrap}`}>
+                  <Icon className="h-4 w-4" aria-hidden />
+                </span>
+                <h3 className={`text-sm font-bold tracking-tight ${group.title}`}>{group.label}</h3>
               </div>
-              <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+              <span className="rounded-full bg-zinc-200/60 px-2.5 py-0.5 text-xs font-bold tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                 {items.length}
               </span>
             </div>
 
-            {items.length === 0 ? (
-              <p className="px-4 py-5 text-sm text-zinc-400 dark:text-zinc-500">{group.empty}</p>
-            ) : (
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {items.map((item) => (
-                  <li key={`${group.id}-${item.title}-${item.detail}`} className="px-4 py-3.5">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{item.title}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{item.detail}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* Column Content */}
+            <div className="flex-1 p-4">
+              {items.length === 0 ? (
+                <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-zinc-200 p-4 text-center dark:border-zinc-800">
+                  <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500">{group.empty}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {items.map((item, idx) => (
+                    <div
+                      key={`${group.id}-${idx}-${item.title}`}
+                      className="group/item rounded-xl border border-zinc-100 bg-zinc-50/60 p-4 transition-all hover:border-zinc-200 hover:bg-white dark:border-zinc-800/90 dark:bg-zinc-950/40 dark:hover:border-zinc-700/80 dark:hover:bg-zinc-900"
+                    >
+                      <h4 className="text-sm font-bold text-zinc-900 transition-colors group-hover/item:text-violet-600 dark:text-zinc-100 dark:group-hover/item:text-violet-400">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                        {item.detail}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         );
       })}
@@ -247,58 +267,90 @@ function ReportBody({ content }) {
   );
 }
 
+const ROTATING_STATUSES = [
+  'Evaluating win rate & risk multipliers…',
+  'Analyzing trade risk-to-reward consistency…',
+  'Scanning loss streaks & drawdown patterns…',
+  'Synthesizing actionable performance insights…',
+  'Finalizing AI performance report…',
+];
+
 function AnalysisProgressModal({ open, percent, label }) {
+  const [subtextIdx, setSubtextIdx] = useState(0);
+
   useEffect(() => {
     if (!open) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
+    const interval = setInterval(() => {
+      setSubtextIdx((i) => (i + 1) % ROTATING_STATUSES.length);
+    }, 2200);
+
     return () => {
       document.body.style.overflow = prev;
+      clearInterval(interval);
     };
   }, [open]);
 
   if (!open) return null;
 
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+  const currentSubtext = ROTATING_STATUSES[subtextIdx];
 
   return (
     <div
-      className="fixed inset-0 z-[220] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[220] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="analysis-progress-title"
     >
-      <div className={`${card} w-full max-w-md shadow-2xl`}>
+      <div className={`${card} w-full max-w-md shadow-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800`}>
         <div className="space-y-5 p-6">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-sm">
-              <LuSparkles className="h-5 w-5 animate-pulse" aria-hidden />
+          <div className="flex items-start gap-3.5">
+            <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-md shadow-violet-500/20">
+              <LuSparkles className="h-6 w-6 animate-pulse" aria-hidden />
+              <span className="absolute -inset-1 rounded-2xl border border-violet-400/40 animate-ping" />
             </span>
-            <div>
-              <h2 id="analysis-progress-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                Running analysis
-              </h2>
-              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{label}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 id="analysis-progress-title" className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Running analysis
+                </h2>
+                <span className="flex h-2 w-2 rounded-full bg-violet-500 animate-ping" />
+              </div>
+              <p className="mt-0.5 text-xs font-medium text-violet-600 dark:text-violet-400 transition-all duration-300 animate-pulse">
+                {label || currentSubtext}
+              </p>
             </div>
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between text-xs font-semibold">
-              <span className="text-zinc-500 dark:text-zinc-400">Progress</span>
-              <span className="tabular-nums text-violet-600 dark:text-violet-300">{clamped}%</span>
+              <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
+                {currentSubtext}
+              </span>
+              <span className="tabular-nums font-mono text-violet-600 dark:text-violet-300 font-bold">{clamped}%</span>
             </div>
+
+            {/* Progress Bar Container with Continuous Shimmer */}
             <div
-              className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+              className="relative h-2.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={clamped}
               aria-label="Analysis progress"
             >
+              {/* Progress Fill Bar */}
               <div
-                className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 transition-[width] duration-300 ease-out"
+                className="h-full rounded-full bg-gradient-to-r from-violet-600 via-indigo-500 to-violet-400 transition-[width] duration-300 ease-out shadow-xs"
                 style={{ width: `${clamped}%` }}
               />
+
+              {/* Continuous Light Beam Overlay across full progress bar */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse opacity-75" />
             </div>
           </div>
         </div>
