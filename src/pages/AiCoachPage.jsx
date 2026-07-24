@@ -589,7 +589,7 @@ export default function AiCoachPage() {
         </button>
       </header>
 
-      <section className={`${card} mb-5 overflow-hidden`}>
+      <section className={`${card} mb-5 overflow-visible z-20 relative`}>
         <div className="grid gap-4 border-b border-zinc-100 p-4 dark:border-zinc-800 md:grid-cols-[1.2fr_1fr_auto] md:items-end md:gap-5 md:px-5">
           <div>
             <label className={label}>Account</label>

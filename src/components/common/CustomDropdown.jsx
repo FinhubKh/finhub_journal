@@ -76,7 +76,7 @@ export default function CustomDropdown({
 
       {open && (
         <div
-          className={`absolute left-0 top-[calc(100%+6px)] z-40 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-1 shadow-lg ${menuClassName}`}
+          className={`absolute left-0 top-[calc(100%+6px)] z-50 max-h-64 overflow-y-auto rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-1.5 shadow-xl transition-all ${menuClassName}`}
           role="listbox"
           aria-label={ariaLabel}
         >
@@ -88,14 +88,19 @@ export default function CustomDropdown({
                 type="button"
                 role="option"
                 aria-selected={isSelected}
-                className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
                   isSelected
-                    ? 'bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300'
-                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 font-semibold'
+                    : 'bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/80'
                 }`}
                 onClick={() => pick(item.value)}
               >
-                {item.label}
+                <span className="truncate">{item.label}</span>
+                {isSelected && (
+                  <svg className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </button>
             );
           })}
