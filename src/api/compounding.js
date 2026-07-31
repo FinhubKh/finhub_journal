@@ -126,15 +126,34 @@ export async function deleteCompoundingAccount(id) {
 }
 
 export async function fetchCompoundingTrades(accountId) {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/compounding_trades?compounding_account_id=eq.${accountId}&select=*&order=trade_number.asc`,
-    { headers: authHeaders(getToken()) },
-  );
-  if (!res.ok) {
-    if (res.status === 404) return [];
-    throw new Error(await res.text());
+  const PAGE_SIZE = 1000;
+  const out = [];
+  let from = 0;
+
+  for (;;) {
+    const to = from + PAGE_SIZE - 1;
+    const res = await authFetch(
+      `${SUPABASE_URL}/rest/v1/compounding_trades?compounding_account_id=eq.${accountId}&select=*&order=trade_number.asc`,
+      {
+        headers: {
+          ...authHeaders(getToken()),
+          Range: `${from}-${to}`,
+          Prefer: 'count=exact',
+        },
+      },
+    );
+    if (!res.ok) {
+      if (res.status === 404) return [];
+      throw new Error(await res.text());
+    }
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    out.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
-  return (await res.json()).map(mapTrade);
+
+  return out.map(mapTrade);
 }
 
 export async function insertCompoundingTrade(accountId, trade) {

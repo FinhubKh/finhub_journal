@@ -96,17 +96,17 @@ export default function CompoundingSpreadsheet({
               const dayPnL = rowDate ? dayByDate[rowDate] : null;
               const rowBg =
                 row.status === 'current'
-                  ? 'bg-violet-50'
+                  ? 'bg-emerald-100/60 dark:bg-emerald-950/40'
                   : row.status === 'completed' && isWin
-                    ? 'bg-violet-50/40'
+                    ? 'bg-violet-50/40 dark:bg-violet-950/20'
                     : row.status === 'completed' && isLoss
-                      ? 'bg-rose-50/50'
+                      ? 'bg-rose-50/50 dark:bg-rose-950/20'
                       : row.isProjection
-                        ? 'bg-zinc-50/80 text-zinc-400'
+                        ? 'bg-zinc-50/80 dark:bg-zinc-900/30 text-zinc-400 dark:text-zinc-500'
                         : '';
 
               return (
-                <tr key={`${row.tradeNumber}-${row.tradeId ?? 'proj'}`} className={`border-b border-zinc-50 ${rowBg}`}>
+                <tr key={`${row.tradeNumber}-${row.tradeId ?? 'proj'}`} className={`border-b border-zinc-50 dark:border-zinc-800/50 ${rowBg}`}>
                   <td className={`${tableTd} tabular-nums font-medium`}>{row.tradeNumber}</td>
                   <td className={`${tableTd} tabular-nums text-xs text-zinc-500`}>
                     {row.status === 'completed' && row.date

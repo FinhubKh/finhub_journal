@@ -453,7 +453,7 @@ drop function if exists public.get_published_trading_account(text);
 -- Public bundle: no notes / sync keys / email. Trades hard-capped (latest first).
 create or replace function public.get_published_trading_account(
   p_token text,
-  p_limit int default 1000
+  p_limit int default 50000
 )
 returns jsonb
 language plpgsql
@@ -466,7 +466,7 @@ declare
   owner_name text;
   trade_rows jsonb;
   total_count int;
-  lim int := greatest(1, least(coalesce(p_limit, 1000), 1000));
+  lim int := greatest(1, least(coalesce(p_limit, 50000), 50000));
 begin
   if p_token is null or length(trim(p_token)) < 8 then
     return null;

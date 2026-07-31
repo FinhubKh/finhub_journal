@@ -76,8 +76,8 @@ export default function SettingsPanel({ account, config, trades, stats, onUpdate
     <div className="space-y-4">
       <div className={`${card} ${cardBody} space-y-6`}>
         <div>
-          <h2 className="mb-1 text-sm font-semibold text-zinc-900">Account settings</h2>
-          <p className="text-xs text-zinc-500">
+          <h2 className="mb-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Account settings</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Changes save automatically. Editing balance or % recalculates the trade chain.
           </p>
         </div>

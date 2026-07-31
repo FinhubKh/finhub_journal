@@ -38,7 +38,7 @@ export function MetricCard({ label, value, hint, tone = 'neutral', size = 'md', 
 
 export function PreviewStat({ label, value, tone = 'neutral' }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-4 py-3">
       <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-1 font-semibold tabular-nums ${toneValueClass(tone)}`}>{value}</div>
     </div>
@@ -48,31 +48,31 @@ export function PreviewStat({ label, value, tone = 'neutral' }) {
 export function StatusBadge({ status }) {
   if (status === 'completed') {
     return (
-      <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+      <span className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs text-zinc-600 dark:text-zinc-300">
         Done
       </span>
     );
   }
   if (status === 'current') {
     return (
-      <span className="rounded-md border border-violet-200 bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+      <span className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
         Next
       </span>
     );
   }
   return (
-    <span className="rounded-md border border-zinc-100 px-2 py-0.5 text-xs text-zinc-400">Pending</span>
+    <span className="rounded-md border border-zinc-100 dark:border-zinc-800 px-2 py-0.5 text-xs text-zinc-400 dark:text-zinc-500">Pending</span>
   );
 }
 
 export function DistributionChip({ name, value, color }) {
   return (
     <div
-      className="rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+      className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-4 py-3 text-sm"
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
-      <div className="text-zinc-500">{name}</div>
-      <div className="text-lg font-semibold tabular-nums text-zinc-900">{value}</div>
+      <div className="text-zinc-500 dark:text-zinc-400">{name}</div>
+      <div className="text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{value}</div>
     </div>
   );
 }

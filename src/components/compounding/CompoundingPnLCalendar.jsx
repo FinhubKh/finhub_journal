@@ -37,7 +37,7 @@ export default function CompoundingPnLCalendar({
         <button type="button" className={btnGhost} onClick={() => changeMonth(-1)} aria-label="Previous month">
           Prev
         </button>
-        <h3 className="text-base font-semibold text-zinc-900 sm:text-lg">{monthName}</h3>
+        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 sm:text-lg">{monthName}</h3>
         <button type="button" className={btnGhost} onClick={() => changeMonth(1)} aria-label="Next month">
           Next
         </button>
@@ -65,11 +65,11 @@ export default function CompoundingPnLCalendar({
               onClick={() => onSelectDate(dateStr)}
               className={`flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border text-center text-xs transition sm:min-h-0 sm:text-sm ${
                 isSelected
-                  ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-200'
-                  : 'border-zinc-200 bg-white hover:border-violet-200 hover:bg-zinc-50'
-              } ${isToday && !isSelected ? 'border-violet-200' : ''}`}
+                  ? 'border-violet-400 dark:border-violet-500 bg-violet-50 dark:bg-violet-950/40 ring-2 ring-violet-200 dark:ring-violet-800'
+                  : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-violet-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+              } ${isToday && !isSelected ? 'border-violet-200 dark:border-violet-800' : ''}`}
             >
-              <div className="font-semibold text-zinc-800">{day}</div>
+              <div className="font-semibold text-zinc-800 dark:text-zinc-200">{day}</div>
               {dayData ? (
                 <div className={`mt-1 tabular-nums ${pnlToneClass(dayData.amount)}`}>
                   {formatMoney(dayData.amount, { compact: true })}
@@ -80,8 +80,8 @@ export default function CompoundingPnLCalendar({
         })}
       </div>
 
-      <div className="shrink-0 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-        <div className="font-medium text-zinc-900">Selected: {selectedDate}</div>
+      <div className="shrink-0 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
+        <div className="font-medium text-zinc-900 dark:text-zinc-100">Selected: {selectedDate}</div>
         {selectedEntry ? (
           <p className="mt-1">
             {formatCalendarDaySummary(selectedEntry)} ·{' '}
@@ -90,7 +90,7 @@ export default function CompoundingPnLCalendar({
         ) : (
           <p className="mt-1 text-zinc-400">No compounding trades this day yet.</p>
         )}
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Next step from plan: win {formatMoney(preview.targetProfit)} / risk {formatMoney(-preview.riskAmount)}
         </p>
       </div>

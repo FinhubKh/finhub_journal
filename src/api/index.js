@@ -132,23 +132,43 @@ function pnlResult(pnl) {
   return 'be';
 }
 
+async function fetchPaginated(urlStr, pageSize = TRADE_PAGE_SIZE) {
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const to = from + pageSize - 1;
+    const res = await authFetch(urlStr, {
+      headers: {
+        ...authHeaders(getToken()),
+        Range: `${from}-${to}`,
+        Prefer: 'count=exact',
+      },
+    });
+    if (!res.ok) {
+      if (res.status === 404) return [];
+      throw new Error(await res.text());
+    }
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    out.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+  return out;
+}
+
 async function fetchTradesForAccount(account) {
   const uid = getUserId();
-  const byIdRes = await authFetch(
+  const byIdTrades = await fetchPaginated(
     `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account_id=eq.${account.id}&user_id=eq.${uid}`,
-    { headers: authHeaders(getToken()) },
   );
-  if (!byIdRes.ok) throw new Error(await byIdRes.text());
-
-  const trades = new Map((await byIdRes.json()).map((t) => [t.id, t]));
+  const trades = new Map(byIdTrades.map((t) => [t.id, t]));
 
   if (account.name?.trim()) {
-    const byNameRes = await authFetch(
+    const byNameTrades = await fetchPaginated(
       `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account=eq.${encodeURIComponent(account.name.trim())}&user_id=eq.${uid}`,
-      { headers: authHeaders(getToken()) },
     );
-    if (!byNameRes.ok) throw new Error(await byNameRes.text());
-    (await byNameRes.json()).forEach((t) => trades.set(t.id, t));
+    byNameTrades.forEach((t) => trades.set(t.id, t));
   }
 
   return [...trades.values()];
@@ -195,59 +215,27 @@ export async function repairCentAccountPnl(account) {
 
 export async function fetchAllTrades() {
   const uid = getUserId();
-  const out = [];
-  let from = 0;
-
-  // Page through PostgREST (default max rows) so large journals still load fully,
-  // without pulling unused columns on each page.
-  for (;;) {
-    const to = from + TRADE_PAGE_SIZE - 1;
-    const res = await authFetch(
-      `${SUPABASE_URL}/rest/v1/trades?select=${TRADE_SELECT}&user_id=eq.${uid}&order=date.desc,created_at.desc`,
-      {
-        headers: {
-          ...authHeaders(getToken()),
-          Range: `${from}-${to}`,
-          Prefer: 'count=exact',
-        },
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
-    const batch = await res.json();
-    if (!Array.isArray(batch) || batch.length === 0) break;
-    out.push(...batch);
-    if (batch.length < TRADE_PAGE_SIZE) break;
-    from += TRADE_PAGE_SIZE;
-  }
-
-  return out;
+  return fetchPaginated(
+    `${SUPABASE_URL}/rest/v1/trades?select=${TRADE_SELECT}&user_id=eq.${uid}&order=date.desc,created_at.desc`,
+  );
 }
 
 export async function fetchTradesByMonth(year, month) {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const to = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
-  const res = await authFetch(
+  return fetchPaginated(
     `${SUPABASE_URL}/rest/v1/trades?select=${TRADE_SELECT}&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
-    { headers: authHeaders(getToken()) }
   );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 // ── DAILY PNL ──
 export async function fetchDailyPnlByYear(year) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
-  const res = await authFetch(
+  return fetchPaginated(
     `${SUPABASE_URL}/rest/v1/daily_pnl?select=*&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
-    { headers: authHeaders(getToken()) },
   );
-  if (!res.ok) {
-    if (res.status === 404) return [];
-    throw new Error(await res.text());
-  }
-  return res.json();
 }
 
 export async function upsertDailyPnl({ date, pnl_usd, trade_count, notes }) {

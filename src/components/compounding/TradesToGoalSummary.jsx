@@ -6,24 +6,24 @@ export default function TradesToGoalSummary({ config, currentBalance }) {
   const { atGoal, winsFromStart, winsRemaining } = getTradesToGoalSummary(config, currentBalance);
 
   return (
-    <div className={`${card} ${cardBody} border-violet-100 bg-violet-50/40`}>
+    <div className={`${card} ${cardBody} border-violet-100 dark:border-violet-900/40 bg-violet-50/40 dark:bg-violet-950/20`}>
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
         Trades to reach {formatMoney(config.targetBalance)}
       </p>
       {atGoal ? (
-        <p className="text-lg font-semibold text-violet-700">Goal reached — you hit your target balance.</p>
+        <p className="text-lg font-semibold text-violet-700 dark:text-violet-400">Goal reached — you hit your target balance.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <p className="mb-1 text-xs text-zinc-500">Wins needed from now</p>
-            <p className="text-3xl font-bold tabular-nums text-violet-700">{winsRemaining}</p>
+            <p className="mb-1 text-xs text-zinc-500 dark:text-zinc-400">Wins needed from now</p>
+            <p className="text-3xl font-bold tabular-nums text-violet-700 dark:text-violet-400">{winsRemaining}</p>
             <p className="mt-1 text-xs text-zinc-400">
               If every trade from {formatMoney(currentBalance)} is a win at {config.targetProfitPercent}%
             </p>
           </div>
           <div>
-            <p className="mb-1 text-xs text-zinc-500">Full all-win plan from start</p>
-            <p className="text-3xl font-bold tabular-nums text-zinc-900">{winsFromStart}</p>
+            <p className="mb-1 text-xs text-zinc-500 dark:text-zinc-400">Full all-win plan from start</p>
+            <p className="text-3xl font-bold tabular-nums text-zinc-900 dark:text-zinc-100">{winsFromStart}</p>
             <p className="mt-1 text-xs text-zinc-400">
               {formatMoney(config.startingBalance)} → {formatMoney(config.targetBalance)}
             </p>

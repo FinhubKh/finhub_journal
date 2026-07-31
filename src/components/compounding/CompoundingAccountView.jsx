@@ -89,7 +89,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
 
       <div className="mb-6 shrink-0">
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-violet-600">{account.name}</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
           {formatMoney(config.startingBalance)} → {formatMoney(config.targetBalance)}
         </h1>
         <p className="mt-2 text-sm text-zinc-500">
