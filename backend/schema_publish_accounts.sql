@@ -112,7 +112,7 @@ drop function if exists public.get_published_trading_account(text);
 -- Trades hard-capped (latest first) so large journals cannot dump unbounded payloads.
 create or replace function public.get_published_trading_account(
   p_token text,
-  p_limit int default 50000
+  p_limit int default null
 )
 returns jsonb
 language plpgsql
@@ -125,7 +125,6 @@ declare
   owner_name text;
   trade_rows jsonb;
   total_count int;
-  lim int := greatest(1, least(coalesce(p_limit, 50000), 50000));
 begin
   if p_token is null or length(trim(p_token)) < 8 then
     return null;
@@ -175,7 +174,7 @@ begin
     from public.trades t
     where t.account_id = acc.id
     order by t.date desc, t.created_at desc
-    limit lim
+    limit (case when p_limit is null or p_limit <= 0 then null else p_limit end)
   ) x;
 
   return jsonb_build_object(

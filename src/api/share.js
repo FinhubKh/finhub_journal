@@ -43,7 +43,7 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
   const clean = String(token || '').trim();
   if (!clean) return null;
 
-  const limit = Number.isFinite(opts.limit) ? opts.limit : 50000;
+  const limit = Number.isFinite(opts.limit) ? opts.limit : null;
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_published_trading_account`, {
     method: 'POST',
