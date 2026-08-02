@@ -8,6 +8,7 @@ import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
+import SyncNowButton from '../common/SyncNowButton';
 import ManualTradeModal from '../modals/ManualTradeModal';
 
 function fmtPnlStrict(v) {
@@ -114,6 +115,7 @@ export default function TradeList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <SyncNowButton size="sm" />
           <button className={btnPrimary} type="button" onClick={() => setManualOpen(true)}>
             Log trade
           </button>

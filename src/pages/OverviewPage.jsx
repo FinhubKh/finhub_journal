@@ -8,6 +8,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
+import SyncNowButton from '../components/common/SyncNowButton';
 
 function fmtPnl(v) {
   if (v == null || Number.isNaN(v)) return '—';
@@ -51,7 +52,10 @@ function OverviewHeader() {
         <h1 className="text-xl font-bold tracking-tight text-zinc-900">Overview</h1>
         <p className="mt-1 text-sm text-zinc-500">Performance snapshot for your current view.</p>
       </div>
-      <AccountViewDropdown variant="header" />
+      <div className="flex flex-wrap items-center gap-2">
+        <SyncNowButton />
+        <AccountViewDropdown variant="header" />
+      </div>
     </header>
   );
 }
