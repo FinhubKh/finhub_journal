@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { getRemembered, clearRemembered } from '../api/auth';
 import { btnAuthGoogle, btnAuthSubmit, btnAuthTab, btnText } from '../lib/ui';
+import { BrandLogo } from '../components/BrandLogo';
 
 const PERKS = [
   'Log trades with R-multiples and notes',
@@ -194,7 +195,7 @@ export default function AuthPage() {
             />
 
             <div className="relative">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-violet-200">FinhubKH Journal</p>
+              <BrandLogo size="lg" as="div" tone="onDark" />
               <h1 className="mt-8 text-4xl font-bold tracking-tight">Welcome</h1>
               <p className="mt-3 text-sm leading-relaxed text-violet-100">
                 Your trading journal is ready. Sign in and pick up where you left off.
@@ -213,6 +214,9 @@ export default function AuthPage() {
 
           {/* Right form panel */}
           <div className="flex flex-1 flex-col justify-center px-8 py-10 sm:px-12 md:px-14">
+            <div className="mb-8 md:hidden">
+              <BrandLogo size="md" as="div" />
+            </div>
             {!showReset && remembered && (
               <div className="mb-8 rounded-xl border border-violet-100 bg-violet-50/80 p-4 text-center text-sm text-zinc-600">
                 <span>Welcome back, <strong className="text-zinc-900">{remembered.email}</strong></span>

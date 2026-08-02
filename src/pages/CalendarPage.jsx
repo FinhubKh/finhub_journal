@@ -15,6 +15,7 @@ import {
 } from '../lib/dailyPnl';
 import DailyPnlModal from '../components/modals/DailyPnlModal';
 import YearDropdown from '../components/common/YearDropdown';
+import BackButton from '../components/common/BackButton';
 import { btnGhost, card, cardBody, dashboardPageWide, dashboardPageWideFull } from '../lib/ui';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -263,7 +264,7 @@ function MonthDetailView({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <button className={btnGhost} type="button" onClick={onBack}>Back to {year}</button>
+        <BackButton onClick={onBack} />
         <div className="flex items-center gap-2">
           <button className={btnGhost} type="button" onClick={onPrevMonth}>Prev</button>
           <h2 className="min-w-[160px] text-center text-lg font-semibold text-zinc-900">

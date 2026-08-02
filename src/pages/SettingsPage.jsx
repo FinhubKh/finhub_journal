@@ -126,6 +126,7 @@ export default function SettingsPage({ focusSection = null }) {
     userModels,
     tradingAccounts,
     refreshModels,
+    refreshSteps,
     refreshTradingAccounts,
     refreshTrades,
     allTrades,
@@ -184,8 +185,10 @@ export default function SettingsPage({ focusSection = null }) {
       destructive: true,
     });
     if (!ok) return;
-    try { await deleteModel(id); await refreshModels(); }
-    catch (e) {
+    try {
+      await deleteModel(id);
+      await Promise.all([refreshModels(), refreshSteps()]);
+    } catch (e) {
       await alert({ title: 'Error', message: 'Could not delete model.' });
     }
   }

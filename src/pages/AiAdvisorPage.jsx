@@ -113,7 +113,7 @@ function SectionNav({ activeSection, onChange }) {
     <div
       className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800"
       role="tablist"
-      aria-label="AI Coach sections"
+      aria-label="AI Advisor sections"
     >
       {SECTIONS.map((section) => {
         const Icon = section.icon;
@@ -232,7 +232,7 @@ function ReportBody({ content }) {
   return (
     <div className="space-y-6">
       {content.summary ? (
-        <p className="text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{content.summary}</p>
+        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{content.summary}</p>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -359,7 +359,7 @@ function AnalysisProgressModal({ open, percent, label }) {
   );
 }
 
-export default function AiCoachPage() {
+export default function AiAdvisorPage() {
   const { tradingAccounts, activeAccountId, setActiveAccountId, dataLoading } = useAppData();
   const { confirm } = useDialog();
 
@@ -497,18 +497,13 @@ export default function AiCoachPage() {
     if (analysisBusy || insightsBusy || reportBusy) return;
 
     setAnalysisOpen(true);
-    setAnalysisPercent(12);
-    setAnalysisLabel('Preparing trade stats…');
+    setAnalysisPercent(20);
+    setAnalysisLabel('Analyzing trades…');
     setInsightsError('');
     setReportError('');
 
     try {
-      setAnalysisPercent(35);
-      setAnalysisLabel('Running coach analysis…');
-
       const data = await analyzeAiPerformance({ accountId, from, to, language });
-      setAnalysisPercent(85);
-      setAnalysisLabel('Saving report…');
 
       const nextInsights = Array.isArray(data.insights) ? data.insights : [];
       setInsights(nextInsights);
@@ -525,10 +520,12 @@ export default function AiCoachPage() {
       };
       setReport(next);
       setSelectedHistoryId(next.id || null);
-      await refreshHistory(accountId);
+      if (next?.id) {
+        setHistory((prev) => [next, ...prev.filter((r) => r.id !== next.id)]);
+      } else {
+        void refreshHistory(accountId);
+      }
 
-      setAnalysisPercent(100);
-      setAnalysisLabel('Done');
       setActiveSection(nextInsights.length > 0 ? 'insights' : 'report');
       toast.success('Insights and report ready');
     } catch (err) {
@@ -599,7 +596,7 @@ export default function AiCoachPage() {
   if (dataLoading) {
     return (
       <div className={dashboardPageWide}>
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading AI Coach…</p>
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading AI Advisor…</p>
       </div>
     );
   }
@@ -607,9 +604,9 @@ export default function AiCoachPage() {
   if (tradingAccounts.length === 0) {
     return (
       <div className={dashboardPageWide}>
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">AI Coach</h1>
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">AI Advisor</h1>
         <div className={`${card} ${emptyState} mt-4`}>
-          <p>Add a trading account in Settings before using AI Coach.</p>
+          <p>Add a trading account in Settings before using AI Advisor.</p>
         </div>
       </div>
     );
@@ -623,9 +620,9 @@ export default function AiCoachPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
-            Performance coach
+            Performance advisor
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">AI Coach</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">AI Advisor</h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Review {selectedAccountName} from {from} to {to}
           </p>
@@ -763,7 +760,7 @@ export default function AiCoachPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
             <div>
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Report</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Saved coach write-ups for this account.</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Saved advisor write-ups for this account.</p>
             </div>
             <button
               className={`${btnOutline} !px-4 !py-2 text-xs inline-flex items-center gap-1.5`}
@@ -807,7 +804,7 @@ export default function AiCoachPage() {
               ) : (
                 <EmptyPanel
                   title="No report selected"
-                  detail="Generate a full coach report, or pick one from history on the right."
+                  detail="Generate a full advisor report, or pick one from history on the right."
                   action={(
                     <button
                       type="button"

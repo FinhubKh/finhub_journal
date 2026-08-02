@@ -1,73 +1,115 @@
 /**
- * AI performance coach via SEA-LION.
- * Loads user trades with their JWT (RLS), builds a stats summary, then coaches.
+ * AI performance advisor via SEA-LION.
+ * Loads user trades with their JWT (RLS), builds a stats summary, then advises.
  */
 
 import { verifySupabaseUser, readJsonBody, DEFAULT_MODEL } from './ai-checklist-handler.mjs';
-import { buildPerformanceSummary } from './performance-stats.mjs';
+import {
+  buildPerformanceSummary,
+  buildAdvisorBrief,
+} from './performance-stats.mjs';
 
 const SEA_LION_BASE = 'https://api.sea-lion.ai/v1';
 const MAX_RANGE_DAYS = 180;
 const MAX_CHAT_MSG = 800;
 const MAX_CHAT_HISTORY = 8;
+/** Prefer Gemma for latency — Qwen often hangs past Vercel gateway limits (504). */
+const FAST_MODEL = 'aisingapore/Gemma-SEA-LION-v4-27B-IT';
+const SEALION_TIMEOUT_MS = 55000;
 const TRADE_SELECT = [
-  'id', 'date', 'result', 'r_value', 'pnl_usd', 'model', 'session',
-  'account', 'account_id', 'symbol', 'direction', 'ticket',
+  'date', 'result', 'r_value', 'pnl_usd', 'session', 'symbol', 'direction', 'model',
 ].join(',');
 
 const rateBuckets = new Map();
 
-const INSIGHTS_SYSTEM = `You are a trading performance coach for FinHubKH Journal.
+const INSIGHTS_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
+Traders use this to improve process, risk, and edge — not for motivational fluff.
+
 Return ONLY valid JSON:
-{"insights":[{"title":"Short title","detail":"1-2 sentences","tone":"positive|warning|neutral"}]}
+{"insights":[{"title":"Short title","detail":"2-4 sentences with specific numbers from the stats","tone":"positive|warning|neutral"}]}
 
 Rules:
-- 3 to 6 insights
-- Base every insight on the provided stats summary only
-- Be direct and practical; no fluff, no markdown, no code fences
-- Do not invent trades or numbers not in the summary
+- Return exactly 6 insights with a balanced tone mix: 2 positive, 2 warning, 2 neutral
+- tone mapping: positive = Strengths, warning = Risks, neutral = Focus (actionable next-step items)
+- Cover different angles across the set: edge quality, session/symbol/weekday edge, risk/payoff, streaks/discipline, direction or model bias when data exists
+- positive: relative strengths only (best session/symbol/weekday/direction, payoff bright spots, or least-damaging context) — still cite numbers; never invent wins that are not in the stats
+- warning: concrete leaks and risks with numbers
+- neutral: actionable focus rules for the next period (when to trade, stand down, size, or review) tied to the stats
+- Every insight MUST cite concrete stats (win rate, PnL, avg R, expectancy, session/symbol names, streak counts)
+- Explain WHY it matters for the next trading week and what to change
+- No generic advice like "stay disciplined" unless tied to a number in the data
+- No fluff, no markdown, no code fences
+- Do not invent trades or numbers not in the stats
 - Write in the requested language (en or km)`;
 
-const REPORT_SYSTEM = `You are a trading performance coach for FinHubKH Journal.
+const REPORT_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
+Write a detailed process review a serious discretionary/system trader would actually use.
+
 Return ONLY valid JSON:
-{"title":"Short report title","summary":"...","working":["..."],"hurting":["..."],"habits":["..."],"action_plan":["..."],"focus_next":"One line focus"}
+{"title":"Report title","summary":"...","working":["..."],"hurting":["..."],"habits":["..."],"action_plan":["..."],"focus_next":"Primary focus for next period"}
 
 Rules:
-- Base everything on the provided stats summary only
-- 2 to 5 items in working, hurting, habits, action_plan
-- Action plan items must be concrete next steps
+- summary: 4 to 6 sentences covering net result, expectancy/payoff, strongest and weakest contexts (session/symbol/weekday/direction), and the main process risk
+- working / hurting / habits / action_plan: 4 to 6 items each
+- Each list item must be specific and include numbers from the stats when relevant
+- action_plan items must be concrete process rules (when to trade, when to stand down, size rules, review rules) — not vague tips
+- Base only on provided stats; do not invent numbers
 - No markdown, no code fences
 - Write in the requested language (en or km)`;
 
-const CHAT_SYSTEM = `You are a trading performance coach for FinHubKH Journal.
-Answer using ONLY the provided stats summary for the selected account and date range.
-If the answer is not in the data, say you do not have that information.
-No trade placement or broker advice. Coaching only.
+const CHAT_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
+Answer using ONLY the provided stats for the selected account and date range.
+Be specific with numbers. If the answer is not in the data, say you do not have that information.
+No trade placement or broker advice. Advisory guidance and process review only.
 Reply in the requested language (en or km), or match the user's message language if clearer.
 Return ONLY valid JSON: {"reply":"your answer"}`;
 
-const ANALYZE_SYSTEM = `You are a trading performance coach for FinHubKH Journal.
-Return ONLY valid JSON with this exact shape:
+const ANALYZE_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
+Your job is a serious post-period review that helps the trader improve edge, risk, and process.
+
+Return ONLY valid JSON:
 {
-  "insights":[{"title":"Short title","detail":"1-2 sentences","tone":"positive|warning|neutral"}],
+  "insights":[{"title":"Short title","detail":"2-4 sentences with specific numbers","tone":"positive|warning|neutral"}],
   "report":{
-    "title":"Short report title",
-    "summary":"...",
-    "working":["..."],
-    "hurting":["..."],
-    "habits":["..."],
-    "action_plan":["..."],
-    "focus_next":"One line focus"
+    "title":"Report title",
+    "summary":"4-6 sentences covering results, expectancy/payoff, best/worst contexts, and main process risk",
+    "working":["specific strength with numbers"],
+    "hurting":["specific leak with numbers"],
+    "habits":["behavior or pattern flag with numbers"],
+    "action_plan":["concrete process rule for next period"],
+    "focus_next":"One primary focus for the next period"
   }
 }
 
 Rules:
-- 3 to 5 insights
-- 2 to 4 items in working, hurting, habits, action_plan
-- Base everything on the provided stats summary only
-- Be direct and practical; no fluff, no markdown, no code fences
-- Do not invent trades or numbers not in the summary
+- Exactly 6 insights with a balanced tone mix: 2 positive, 2 warning, 2 neutral
+- tone mapping: positive = Strengths, warning = Risks, neutral = Focus (actionable next-step items)
+- Cover different angles (overall edge, session or weekday, symbol or model, risk/payoff, discipline/streaks)
+- positive: relative strengths only (best context or least-damaging pattern) with numbers — never invent wins not in the stats
+- warning: concrete leaks and risks with numbers
+- neutral: actionable focus rules for the next period tied to the stats
+- working, hurting, habits, action_plan: 4 to 5 items each
+- Every point must reference real stats from the input (WR, PnL, avg R, expectancy, profit factor, streaks, session/symbol/weekday/direction splits)
+- Ban generic lines like "be more disciplined" or "manage risk" unless tied to a specific number and a rule
+- action_plan must be executable rules (e.g. "Stand aside in X session after 2 losses", "Only trade Y when Z WR context holds")
+- Do not invent trades or numbers
+- No markdown, no code fences
 - Write in the requested language (en or km)`;
+
+function userFromAccessToken(token) {
+  if (!token) return null;
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const json = Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const payload = JSON.parse(json);
+    if (!payload?.sub) return null;
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    return { id: payload.sub };
+  } catch {
+    return null;
+  }
+}
 
 function extractJsonObject(text) {
   const raw = String(text || '').trim();
@@ -148,28 +190,48 @@ async function sealionChat({
     return { status: 500, body: { error: 'SEA-LION API key is not configured' } };
   }
 
-  const res = await fetch(`${SEA_LION_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      accept: 'application/json',
-    },
-    body: JSON.stringify({
-      model: model || DEFAULT_MODEL,
-      temperature,
-      max_tokens: maxTokens,
-      // Qwen-SEA-LION defaults to long reasoning; turn it off for latency.
-      chat_template_kwargs: {
-        enable_thinking: false,
-        thinking_mode: 'off',
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SEALION_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(`${SEA_LION_BASE}/chat/completions`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        accept: 'application/json',
       },
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
-  });
+      body: JSON.stringify({
+        model: model || FAST_MODEL || DEFAULT_MODEL,
+        temperature,
+        max_tokens: maxTokens,
+        // Qwen-SEA-LION defaults to long reasoning; turn it off for latency.
+        chat_template_kwargs: {
+          enable_thinking: false,
+          thinking_mode: 'off',
+        },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      return {
+        status: 504,
+        body: { error: 'AI took too long. Please try again.' },
+      };
+    }
+    return {
+      status: 502,
+      body: { error: err?.message || 'SEA-LION request failed' },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 
   const rawText = await res.text();
   if (!res.ok) {
@@ -186,7 +248,12 @@ async function sealionChat({
   let content = '';
   try {
     const data = JSON.parse(rawText);
-    content = data?.choices?.[0]?.message?.content || '';
+    const msg = data?.choices?.[0]?.message || {};
+    content = String(msg.content || '').trim();
+    // Some SEA-LION responses put usable text only in reasoning_content.
+    if (!content) {
+      content = String(msg.reasoning_content || '').trim();
+    }
   } catch {
     content = rawText;
   }
@@ -217,11 +284,14 @@ async function fetchAccountAndTrades({
         + `&user_id=eq.${encodeURIComponent(userId)}`
         + `&account_id=eq.${encodeURIComponent(accountId)}`
         + `&date=gte.${fromDate}&date=lte.${toDate}`
-        + `&order=date.desc&limit=500`,
+        + `&order=date.desc&limit=300`,
       { headers },
     ),
   ]);
 
+  if (accountRes.status === 401 || tradesRes.status === 401) {
+    return { error: { status: 401, body: { error: 'Unauthorized' } } };
+  }
   if (!accountRes.ok) {
     const text = await accountRes.text();
     return { error: { status: 500, body: { error: text || 'Failed to load account' } } };
@@ -262,13 +332,11 @@ function validateScope(body) {
 
 async function prepareContext(req, deps) {
   const token = getBearerToken(req);
-  const auth = await verifySupabaseUser({
-    supabaseUrl: deps.supabaseUrl,
-    anonKey: deps.anonKey,
-    accessToken: token,
-  });
-  if (!auth.ok) {
-    return { error: { status: auth.status, body: { error: auth.error } } };
+  // Decode JWT locally — Supabase RLS still validates the token on data fetch.
+  // Skips an extra auth/v1/user round-trip on every AI request.
+  const user = userFromAccessToken(token);
+  if (!user) {
+    return { error: { status: 401, body: { error: 'Unauthorized' } } };
   }
 
   let body;
@@ -285,7 +353,7 @@ async function prepareContext(req, deps) {
     supabaseUrl: deps.supabaseUrl,
     anonKey: deps.anonKey,
     accessToken: token,
-    userId: auth.user.id,
+    userId: user.id,
     accountId: scope.accountId,
     fromDate: scope.fromDate,
     toDate: scope.toDate,
@@ -300,7 +368,7 @@ async function prepareContext(req, deps) {
   });
 
   return {
-    user: auth.user,
+    user,
     token,
     body,
     language: scope.language,
@@ -315,8 +383,8 @@ function normalizeInsights(payload) {
   const list = Array.isArray(payload?.insights) ? payload.insights : [];
   const insights = [];
   for (const item of list) {
-    const title = String(item?.title || '').trim().slice(0, 80);
-    const detail = String(item?.detail || '').trim().slice(0, 280);
+    const title = String(item?.title || '').trim().slice(0, 100);
+    const detail = String(item?.detail || item?.description || item?.text || '').trim().slice(0, 600);
     let tone = String(item?.tone || 'neutral').trim().toLowerCase();
     if (!['positive', 'warning', 'neutral'].includes(tone)) tone = 'neutral';
     if (!title || !detail) continue;
@@ -327,20 +395,65 @@ function normalizeInsights(payload) {
   return insights;
 }
 
-function normalizeReport(payload) {
-  const title = String(payload?.title || 'Performance report').trim().slice(0, 120);
-  const summary = String(payload?.summary || '').trim().slice(0, 1200);
-  const asList = (v, max = 5) => (Array.isArray(v) ? v : [])
-    .map((x) => String(x || '').trim().slice(0, 200))
+function asReportList(v, max = 6) {
+  return (Array.isArray(v) ? v : [])
+    .map((x) => String(x || '').trim().slice(0, 360))
     .filter(Boolean)
     .slice(0, max);
+}
+
+/** Prefer nested report only when it actually has a summary. */
+function pickReportPayload(parsed) {
+  const nested = parsed?.report;
+  const nestedSummary = nested && typeof nested === 'object'
+    ? String(nested.summary || nested.overview || nested.analysis || '').trim()
+    : '';
+  if (nestedSummary) return nested;
+
+  const topSummary = String(
+    parsed?.summary || parsed?.overview || parsed?.analysis || '',
+  ).trim();
+  if (topSummary) return parsed;
+
+  // Model returned insights but a hollow/missing report — synthesize a usable report.
+  const insights = Array.isArray(parsed?.insights) ? parsed.insights : [];
+  if (insights.length > 0) {
+    const lines = insights
+      .map((i) => {
+        const t = String(i?.title || '').trim();
+        const d = String(i?.detail || i?.description || '').trim();
+        return [t, d].filter(Boolean).join(': ');
+      })
+      .filter(Boolean);
+    return {
+      title: String(parsed?.title || 'Performance report').trim() || 'Performance report',
+      summary: lines.join(' ').slice(0, 1200),
+      working: asReportList(parsed?.working || nested?.working),
+      hurting: asReportList(parsed?.hurting || nested?.hurting),
+      habits: asReportList(parsed?.habits || nested?.habits),
+      action_plan: asReportList(parsed?.action_plan || nested?.action_plan || parsed?.actions),
+      focus_next: String(
+        parsed?.focus_next || nested?.focus_next || insights[0]?.title || '',
+      ).trim(),
+    };
+  }
+
+  if (nested && typeof nested === 'object') return nested;
+  return parsed || {};
+}
+
+function normalizeReport(payload) {
+  const title = String(payload?.title || 'Performance report').trim().slice(0, 140) || 'Performance report';
+  const summary = String(
+    payload?.summary || payload?.overview || payload?.analysis || '',
+  ).trim().slice(0, 2500);
   const content = {
     summary,
-    working: asList(payload?.working),
-    hurting: asList(payload?.hurting),
-    habits: asList(payload?.habits),
-    action_plan: asList(payload?.action_plan),
-    focus_next: String(payload?.focus_next || '').trim().slice(0, 200),
+    working: asReportList(payload?.working),
+    hurting: asReportList(payload?.hurting),
+    habits: asReportList(payload?.habits),
+    action_plan: asReportList(payload?.action_plan || payload?.actions),
+    focus_next: String(payload?.focus_next || payload?.focus || '').trim().slice(0, 320),
   };
   if (!content.summary) throw new Error('AI returned an empty report');
   return { title, content };
@@ -357,11 +470,12 @@ export async function handlePerformanceInsights(req, deps) {
     return { status: 429, body: { error: 'Too many insight requests. Try again later.' } };
   }
 
+  const brief = buildAdvisorBrief(ctx.summary);
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
-    model: deps.model,
+    model: deps.model || FAST_MODEL,
     system: INSIGHTS_SYSTEM,
-    user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
+    user: `Language: ${ctx.language}\nStats:\n${JSON.stringify(brief)}`,
     maxTokens: 700,
   });
   if (ai.status !== 200) return ai;
@@ -411,6 +525,18 @@ async function savePerformanceReport(deps, ctx, report) {
   return { saved: rows?.[0] || null };
 }
 
+function unsavedReportRow(ctx, report) {
+  return {
+    id: null,
+    title: report.title,
+    content: report.content,
+    from_date: ctx.fromDate,
+    to_date: ctx.toDate,
+    language: ctx.language,
+    created_at: new Date().toISOString(),
+  };
+}
+
 export async function handlePerformanceReport(req, deps) {
   const ctx = await prepareContext(req, deps);
   if (ctx.error) return ctx.error;
@@ -422,19 +548,20 @@ export async function handlePerformanceReport(req, deps) {
     return { status: 429, body: { error: 'Too many report requests. Try again later.' } };
   }
 
+  const brief = buildAdvisorBrief(ctx.summary);
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
-    model: deps.model,
+    model: deps.model || FAST_MODEL,
     system: REPORT_SYSTEM,
-    user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
-    temperature: 0.35,
-    maxTokens: 900,
+    user: `Language: ${ctx.language}\nStats:\n${JSON.stringify(brief)}`,
+    temperature: 0.3,
+    maxTokens: 1000,
   });
   if (ai.status !== 200) return ai;
 
   let report;
   try {
-    report = normalizeReport(extractJsonObject(ai.content));
+    report = normalizeReport(pickReportPayload(extractJsonObject(ai.content)));
   } catch (err) {
     return { status: 502, body: { error: err.message || 'Could not parse report' } };
   }
@@ -453,7 +580,9 @@ export async function handlePerformanceReport(req, deps) {
   };
 }
 
-/** One SEA-LION call for insights + report (used by Get analysis). */
+/**
+ * Get analysis: one LLM call for insights + report (compact prompt, fast model).
+ */
 export async function handlePerformanceAnalyze(req, deps) {
   const ctx = await prepareContext(req, deps);
   if (ctx.error) return ctx.error;
@@ -465,13 +594,20 @@ export async function handlePerformanceAnalyze(req, deps) {
     return { status: 429, body: { error: 'Too many analysis requests. Try again later.' } };
   }
 
+  const brief = buildAdvisorBrief(ctx.summary);
+
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
-    model: deps.model,
+    model: deps.model || FAST_MODEL,
     system: ANALYZE_SYSTEM,
-    user: `Language: ${ctx.language}\nStats summary JSON:\n${JSON.stringify(ctx.summary)}`,
-    temperature: 0.3,
-    maxTokens: 1400,
+    user: [
+      `Language: ${ctx.language}`,
+      'Write a detailed trader performance review from these stats.',
+      'Cite numbers. Give executable next-period rules.',
+      `Stats JSON:\n${JSON.stringify(brief)}`,
+    ].join('\n\n'),
+    temperature: 0.35,
+    maxTokens: 1800,
   });
   if (ai.status !== 200) return ai;
 
@@ -480,22 +616,32 @@ export async function handlePerformanceAnalyze(req, deps) {
   try {
     const parsed = extractJsonObject(ai.content);
     insights = normalizeInsights(parsed);
-    report = normalizeReport(parsed.report || parsed);
+    report = normalizeReport(pickReportPayload(parsed));
   } catch (err) {
     return { status: 502, body: { error: err.message || 'Could not parse analysis' } };
   }
 
-  const savedRes = await savePerformanceReport(deps, ctx, report);
-  if (savedRes.error) return savedRes.error;
+  // Prefer returning AI result even if save is slow (avoids gateway 504).
+  let saved = unsavedReportRow(ctx, report);
+  try {
+    const savedRes = await Promise.race([
+      savePerformanceReport(deps, ctx, report),
+      new Promise((resolve) => {
+        setTimeout(() => resolve({ timeout: true }), 2500);
+      }),
+    ]);
+    if (savedRes?.saved) saved = savedRes.saved;
+  } catch {
+    // keep unsaved row
+  }
 
   return {
     status: 200,
     body: {
       insights,
-      report: savedRes.saved,
+      report: saved,
       title: report.title,
       content: report.content,
-      summary: ctx.summary,
     },
   };
 }
@@ -518,27 +664,28 @@ export async function handlePerformanceChat(req, deps) {
 
   const history = Array.isArray(ctx.body?.history) ? ctx.body.history.slice(-MAX_CHAT_HISTORY) : [];
   const historyText = history
-    .map((h) => `${h.role === 'assistant' ? 'Coach' : 'User'}: ${String(h.content || '').slice(0, 400)}`)
+    .map((h) => `${h.role === 'assistant' ? 'Advisor' : 'User'}: ${String(h.content || '').slice(0, 400)}`)
     .join('\n');
 
+  const brief = buildAdvisorBrief(ctx.summary);
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
-    model: deps.model,
+    model: deps.model || FAST_MODEL,
     system: CHAT_SYSTEM,
     user: [
       `Language: ${ctx.language}`,
-      `Stats summary JSON:\n${JSON.stringify(ctx.summary)}`,
+      `Stats:\n${JSON.stringify(brief)}`,
       historyText ? `Recent chat:\n${historyText}` : '',
       `User: ${message}`,
     ].filter(Boolean).join('\n\n'),
-    temperature: 0.4,
-    maxTokens: 500,
+    temperature: 0.35,
+    maxTokens: 600,
   });
   if (ai.status !== 200) return ai;
 
   try {
     const parsed = extractJsonObject(ai.content);
-    const reply = String(parsed?.reply || '').trim().slice(0, 2000);
+    const reply = String(parsed?.reply || '').trim().slice(0, 3500);
     if (!reply) throw new Error('Empty chat reply');
     return { status: 200, body: { reply } };
   } catch (err) {

@@ -405,19 +405,6 @@ export default function CompoundingPage() {
                 Growth Schedule Simulator
               </button>
             </div>
-
-            {activeMainTab === 'plans' && (
-              <button
-                type="button"
-                className={`${btnPrimary} !py-2 !px-4 !text-xs font-semibold shadow-sm`}
-                onClick={() => {
-                  setCreateInitialData(null);
-                  setShowCreate(true);
-                }}
-              >
-                + New Plan
-              </button>
-            )}
           </div>
         </div>
 

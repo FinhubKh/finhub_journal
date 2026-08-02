@@ -14,7 +14,7 @@ const CalendarPage = lazy(() => import('./CalendarPage'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
 const ChecklistPage = lazy(() => import('./ChecklistPage'));
 const CompoundingPage = lazy(() => import('./CompoundingPage'));
-const AiCoachPage = lazy(() => import('./AiCoachPage'));
+const AiAdvisorPage = lazy(() => import('./AiAdvisorPage'));
 const LeaderboardPage = lazy(() => import('./LeaderboardPage'));
 
 function TabFallback() {
@@ -70,7 +70,7 @@ export default function DashboardPage() {
               {activeTab === 'calendar' && <CalendarPage />}
               {activeTab === 'checklist' && <ChecklistPage />}
               {activeTab === 'compound' && <CompoundingPage />}
-              {activeTab === 'ai-coach' && <AiCoachPage />}
+              {activeTab === 'ai-advisor' && <AiAdvisorPage />}
               {activeTab === 'leaderboard' && <LeaderboardPage embedded />}
               {/* News temporarily disabled
               {activeTab === 'economic-calendar' && <EconomicCalendarPage />}

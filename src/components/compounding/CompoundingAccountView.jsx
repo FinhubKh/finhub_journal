@@ -3,7 +3,8 @@ import { useDialog } from '../../context/DialogContext';
 import { useCompoundingAccount } from '../../hooks/useCompoundingAccount';
 import { formatLocalDate } from '../../lib/compounding/calendarPnL';
 import { formatMoney } from '../../lib/compounding/formatMoney';
-import { btnDanger, btnGhost, dashboardPageWide, dashboardPageWideFull, msgError, pillBtn, pillToggle } from '../../lib/ui';
+import { btnDanger, dashboardPageWide, dashboardPageWideFull, msgError, pillBtn, pillToggle } from '../../lib/ui';
+import BackButton from '../common/BackButton';
 import { MetricCard, SectionBlock } from './CompoundingUI';
 import ProgressSection from './ProgressSection';
 import TradesToGoalSummary from './TradesToGoalSummary';
@@ -49,9 +50,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
   if (error || !account || !config || !stats) {
     return (
       <div className={dashboardPageWide}>
-        <button type="button" className={btnGhost} onClick={onBack}>
-          Back
-        </button>
+        <BackButton onClick={onBack} />
         <p className={`mt-4 ${msgError}`}>{error || 'Plan not found.'}</p>
       </div>
     );
@@ -67,9 +66,7 @@ export default function CompoundingAccountView({ accountId, onBack }) {
   return (
     <div className={`${dashboardPageWideFull} ${activeTab === 'pnl' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}>
       <div className="mb-5 flex shrink-0 flex-wrap items-center gap-2">
-        <button type="button" className={btnGhost} onClick={onBack}>
-          Back to plans
-        </button>
+        <BackButton onClick={onBack} />
         {isSaving ? <span className="text-xs text-zinc-400">Saving…</span> : null}
         <button
           type="button"

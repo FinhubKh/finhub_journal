@@ -1,4 +1,4 @@
--- FinhubKH Journal — AI performance coach reports
+-- FinhubKH Journal — AI performance advisor reports
 -- Run in Supabase SQL Editor
 
 create table if not exists ai_performance_reports (

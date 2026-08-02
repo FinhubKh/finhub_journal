@@ -298,11 +298,17 @@ export async function fetchSteps() {
   return res.json();
 }
 
-export async function insertStep(section, title, position) {
+export async function insertStep(section, title, position, entryModelId = null) {
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/checklist_steps`, {
     method: 'POST',
     headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
-    body: JSON.stringify({ user_id: getUserId(), section, title, position }),
+    body: JSON.stringify({
+      user_id: getUserId(),
+      section,
+      title,
+      position,
+      entry_model_id: entryModelId || null,
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

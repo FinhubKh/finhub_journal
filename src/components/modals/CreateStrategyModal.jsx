@@ -1,27 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
-import { insertStep, updateStep } from '../../api';
+import { insertModel } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { btnGhost, btnPrimary, card, input } from '../../lib/ui';
 
-export default function ChecklistStepModal({ isOpen, onClose, step = null, entryModelId = null }) {
-  const { userSteps, refreshSteps } = useAppData();
+export default function CreateStrategyModal({ isOpen, onClose, onCreated }) {
+  const { refreshModels } = useAppData();
   const { alert } = useDialog();
-  const isEdit = Boolean(step);
-
-  const [section, setSection] = useState('');
-  const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const scopedCount = userSteps.filter((s) => (
-    entryModelId ? s.entry_model_id === entryModelId : !s.entry_model_id
-  )).length;
 
   useEffect(() => {
     if (!isOpen) return;
-    setSection(step?.section || '');
-    setTitle(step?.title || '');
-  }, [isOpen, step]);
+    setName('');
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -40,28 +32,21 @@ export default function ChecklistStepModal({ isOpen, onClose, step = null, entry
 
   async function handleSave(e) {
     e.preventDefault();
-    const sec = section.trim();
-    const tit = title.trim();
-
-    if (!sec || !tit) {
-      await alert({ title: 'Missing fields', message: 'Please fill in both section and title.' });
+    const trimmed = name.trim();
+    if (!trimmed) {
+      await alert({ title: 'Missing name', message: 'Please enter a strategy name.' });
       return;
     }
 
     setSaving(true);
     try {
-      if (isEdit) {
-        await updateStep(step.id, { section: sec, title: tit });
-      } else {
-        await insertStep(sec, tit, scopedCount, entryModelId);
-      }
-      await refreshSteps();
+      const rows = await insertModel(trimmed);
+      const created = Array.isArray(rows) ? rows[0] : rows;
+      await refreshModels();
       onClose();
+      if (created?.id && onCreated) onCreated(created);
     } catch (err) {
-      await alert({
-        title: 'Error',
-        message: isEdit ? 'Could not update checklist step.' : 'Could not add checklist step.',
-      });
+      await alert({ title: 'Error', message: 'Could not create strategy.' });
     } finally {
       setSaving(false);
     }
@@ -77,49 +62,36 @@ export default function ChecklistStepModal({ isOpen, onClose, step = null, entry
         className={`${card} w-full max-w-sm shadow-xl`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="checklist-step-title"
+        aria-labelledby="create-strategy-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 id="checklist-step-title" className="text-base font-semibold text-zinc-900">
-            {isEdit ? 'Edit Checklist Step' : 'Add Checklist Step'}
+          <h2 id="create-strategy-title" className="text-base font-semibold text-zinc-900">
+            Create strategy
           </h2>
           <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Close</button>
         </div>
 
         <form className="space-y-4 px-5 py-4" onSubmit={handleSave}>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700" htmlFor="step-section">
-              Section (e.g. HTF Context)
+            <label className="mb-1.5 block text-sm font-medium text-zinc-700" htmlFor="strategy-name">
+              Strategy name
             </label>
             <input
-              id="step-section"
+              id="strategy-name"
               className={input}
               type="text"
-              placeholder="Section name"
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
+              placeholder="e.g. ICT Model"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               autoFocus
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700" htmlFor="step-title">
-              Step Title
-            </label>
-            <input
-              id="step-title"
-              className={input}
-              type="text"
-              placeholder="e.g. Check Daily Bias"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           <div className="mt-2 flex justify-end gap-2 border-t border-zinc-100 pt-4">
             <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Cancel</button>
             <button className={btnPrimary} type="submit" disabled={saving}>
-              {saving ? (isEdit ? 'Saving...' : 'Adding...') : (isEdit ? 'Save changes' : 'Add Step')}
+              {saving ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>

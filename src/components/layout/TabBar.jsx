@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getUserEmail, getUserDisplayName } from '../../api/auth';
 import { btnGhost } from '../../lib/ui';
+import { BrandLogo } from '../BrandLogo';
 
 // News temporarily disabled
 // const NEWS_TAB_IDS = ['economic-calendar', 'world-news'];
@@ -31,8 +32,8 @@ const PRIMARY_TABS = [
   { id: 'checklist', label: 'Checklist', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'compound', label: 'Compound', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   {
-    id: 'ai-coach',
-    label: 'Coach',
+    id: 'ai-advisor',
+    label: 'Advisor',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M8 2a3.2 3.2 0 00-3.2 3.2v1c0 .4-.15.8-.4 1.1L3.3 9.2A1.2 1.2 0 004.4 11.2h7.2a1.2 1.2 0 001.1-2l-1.1-1.9c-.25-.3-.4-.7-.4-1.1v-1A3.2 3.2 0 008 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
@@ -149,9 +150,9 @@ export default function TabBar({ activeTab, onSwitchTab }) {
 
   return (
     <nav className="flex h-full w-[72px] shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-4 md:w-56 md:px-3" role="tablist">
-      <div className="mb-6 hidden px-2 md:block">
-        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">FinhubKH</div>
-        <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">Journal</div>
+      <div className="mb-5 flex justify-center px-1 md:mb-6 md:justify-start md:px-2">
+        <BrandLogo size="md" showWordmark className="hidden md:inline-flex" />
+        <BrandLogo size="sm" showWordmark={false} className="md:hidden" />
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
@@ -162,7 +163,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             className={tabClass(activeTab === tab.id)}
             role="tab"
             aria-selected={activeTab === tab.id}
-            title={tab.id === 'ai-coach' ? 'AI Coach' : tab.label}
+            title={tab.id === 'ai-advisor' ? 'AI Advisor' : tab.label}
             onClick={() => onSwitchTab(tab.id)}
           >
             <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>

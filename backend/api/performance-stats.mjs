@@ -1,5 +1,5 @@
 /**
- * Build a compact performance summary for the AI coach.
+ * Build a compact performance summary for the AI advisor.
  * No trade notes are included.
  */
 
@@ -65,6 +65,166 @@ function calcStreaks(trades) {
   return { best_win_streak: bestWin, worst_loss_streak: worstLoss };
 }
 
+function slimGroup(rows) {
+  return (Array.isArray(rows) ? rows : []).slice(0, MAX_GROUP_KEYS).map((g) => ({
+    name: g.name,
+    trades: g.trades,
+    wins: g.wins,
+    losses: g.losses,
+    wr: g.win_rate,
+    pnl: g.pnl,
+    avg_r: g.avg_r,
+  }));
+}
+
+/** Rich stats brief for SEA-LION advising (still no trade notes). */
+export function buildAdvisorBrief(summary) {
+  const s = summary || {};
+  return {
+    account: s.account_name || null,
+    range: { from: s.from_date, to: s.to_date },
+    overview: {
+      trades: s.trade_count,
+      wins: s.wins,
+      losses: s.losses,
+      breakeven: s.breakeven,
+      win_rate_pct: s.win_rate,
+      net_pnl: s.net_pnl,
+      avg_r: s.avg_r,
+      avg_win: s.avg_win,
+      avg_loss: s.avg_loss,
+      payoff_ratio: s.payoff_ratio,
+      expectancy: s.expectancy,
+      profit_factor: s.profit_factor,
+    },
+    streaks: s.streaks,
+    by_session: slimGroup(s.by_session),
+    by_symbol: slimGroup(s.by_symbol),
+    by_model: slimGroup(s.by_model),
+    by_direction: slimGroup(s.by_direction),
+    by_weekday: slimGroup(s.by_weekday),
+    best_trade: s.best_trade,
+    worst_trade: s.worst_trade,
+    recent_trades: (s.sample_trades || []).slice(0, 15),
+  };
+}
+
+/** Instant insights from stats — no LLM wait on Get analysis. */
+export function buildStatsInsights(summary, language = 'en') {
+  const s = summary || {};
+  const km = language === 'km';
+  const insights = [];
+  const push = (title, detail, tone) => {
+    if (insights.length >= 5) return;
+    insights.push({ title, detail, tone });
+  };
+
+  if (s.trade_count > 0) {
+    if (s.win_rate >= 55) {
+      push(
+        km ? 'Solid win rate' : 'Solid win rate',
+        km
+          ? `Win rate ${s.win_rate}% across ${s.trade_count} trades. Keep the same filter.`
+          : `Win rate is ${s.win_rate}% across ${s.trade_count} trades. Keep the same selection filter.`,
+        'positive',
+      );
+    } else if (s.win_rate < 45) {
+      push(
+        km ? 'Win rate is soft' : 'Win rate is soft',
+        km
+          ? `Win rate ${s.win_rate}%. Tighten entries and skip marginal setups.`
+          : `Win rate is ${s.win_rate}%. Tighten entries and skip marginal setups.`,
+        'warning',
+      );
+    }
+  }
+
+  if (Number(s.expectancy) > 0) {
+    push(
+      'Positive expectancy',
+      km
+        ? `Expectancy ~${s.expectancy} per trade. Keep risk size consistent.`
+        : `Expectancy is about ${s.expectancy} per trade. Keep risk size consistent.`,
+      'positive',
+    );
+  } else if (Number(s.expectancy) < 0) {
+    push(
+      'Negative expectancy',
+      km
+        ? `Expectancy ${s.expectancy}. Review exits and avg loss (${s.avg_loss}).`
+        : `Expectancy is ${s.expectancy}. Review exits and average loss size (${s.avg_loss}).`,
+      'warning',
+    );
+  }
+
+  const sessions = Array.isArray(s.by_session) ? s.by_session : [];
+  if (sessions.length > 0) {
+    const best = [...sessions].sort((a, b) => b.pnl - a.pnl)[0];
+    const worst = [...sessions].sort((a, b) => a.pnl - b.pnl)[0];
+    if (best && best.pnl > 0) {
+      push(
+        `Strong session: ${best.name}`,
+        km
+          ? `${best.name} made ${best.pnl} (WR ${best.win_rate}%). Bias toward this window.`
+          : `${best.name} made ${best.pnl} (WR ${best.win_rate}%). Bias size toward this window.`,
+        'positive',
+      );
+    }
+    if (worst && worst.pnl < 0 && worst.name !== best?.name) {
+      push(
+        `Weak session: ${worst.name}`,
+        km
+          ? `${worst.name} lost ${worst.pnl}. Cut size or stand aside.`
+          : `${worst.name} lost ${worst.pnl}. Cut size or stand aside there.`,
+        'warning',
+      );
+    }
+  }
+
+  const symbols = Array.isArray(s.by_symbol) ? s.by_symbol : [];
+  if (symbols.length > 0) {
+    const top = symbols[0];
+    if (top?.trades >= 3) {
+      push(
+        `Key symbol: ${top.name}`,
+        `${top.name}: ${top.trades} trades, PnL ${top.pnl}, WR ${top.win_rate}%.`,
+        top.pnl >= 0 ? 'positive' : 'warning',
+      );
+    }
+  }
+
+  const streaks = s.streaks || {};
+  if ((streaks.worst_loss_streak || 0) >= 3) {
+    push(
+      'Long losing streak',
+      km
+        ? `Worst loss streak ${streaks.worst_loss_streak}. Pause after 2-3 losses.`
+        : `Worst loss streak is ${streaks.worst_loss_streak}. Add a pause rule after 2-3 losses.`,
+      'warning',
+    );
+  } else if ((streaks.best_win_streak || 0) >= 3) {
+    push(
+      'Healthy win streak',
+      km
+        ? `Best win streak ${streaks.best_win_streak}. Avoid sizing up mid-streak.`
+        : `Best win streak is ${streaks.best_win_streak}. Avoid sizing up mid-streak.`,
+      'neutral',
+    );
+  }
+
+  if (insights.length === 0) {
+    push(
+      'Data ready',
+      km
+        ? `${s.trade_count || 0} trades in range. Use the report for next steps.`
+        : `${s.trade_count || 0} trades in range. Use the report for a concrete action plan.`,
+      'neutral',
+    );
+  }
+
+  return insights;
+}
+
 export function buildPerformanceSummary(trades, meta = {}) {
   const list = Array.isArray(trades) ? trades : [];
   const wins = list.filter((t) => t.result === 'win');
@@ -79,6 +239,14 @@ export function buildPerformanceSummary(trades, meta = {}) {
   const avgWin = wins.length ? grossWin / wins.length : 0;
   const avgLoss = losses.length ? grossLoss / losses.length : 0;
   const expectancy = total ? (wr / 100) * avgWin - ((losses.length / total) * avgLoss) : 0;
+  const payoffRatio = avgLoss > 0 ? avgWin / avgLoss : null;
+
+  const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const byWeekday = groupBy(list, (t) => {
+    const d = new Date(`${String(t.date).slice(0, 10)}T12:00:00Z`);
+    if (Number.isNaN(d.getTime())) return 'Other';
+    return weekdayNames[d.getUTCDay()];
+  });
 
   const sortedByPnl = [...list].sort((a, b) => (Number(b.pnl_usd) || 0) - (Number(a.pnl_usd) || 0));
   const best = sortedByPnl[0];
@@ -112,6 +280,7 @@ export function buildPerformanceSummary(trades, meta = {}) {
     avg_r: round(avgR),
     avg_win: round(avgWin),
     avg_loss: round(avgLoss),
+    payoff_ratio: payoffRatio == null ? null : round(payoffRatio),
     expectancy: round(expectancy),
     profit_factor: grossLoss > 0 ? round(grossWin / grossLoss) : (grossWin > 0 ? null : 0),
     streaks: calcStreaks(list),
@@ -119,6 +288,7 @@ export function buildPerformanceSummary(trades, meta = {}) {
     by_symbol: groupBy(list, (t) => t.symbol),
     by_model: groupBy(list, (t) => t.model),
     by_direction: groupBy(list, (t) => t.direction),
+    by_weekday: byWeekday,
     best_trade: best
       ? { date: best.date, symbol: best.symbol, pnl_usd: round(best.pnl_usd), r_value: round(best.r_value) }
       : null,

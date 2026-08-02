@@ -23,6 +23,7 @@ import {
   tableTd,
   tableTh,
 } from '../lib/ui';
+import { BrandLogo } from '../components/BrandLogo';
 
 const SORTS = [
   { id: 'pnl', label: 'Net PnL' },
@@ -573,9 +574,7 @@ export default function LeaderboardPage({ embedded = false }) {
     <div className={pageShell}>
       <header className="sticky top-0 z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
         <div className={`${dashboardPageWide} flex flex-wrap items-center justify-between gap-3 !pb-4 !pt-4`}>
-          <Link to="/" className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-            FinhubKH <span className="font-medium text-zinc-400">Journal</span>
-          </Link>
+          <BrandLogo size="sm" />
           <div className="flex items-center gap-2">
             <button
               type="button"

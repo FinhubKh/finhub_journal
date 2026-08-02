@@ -5,13 +5,18 @@ import { generateChecklistWithAi } from '../../api/ai';
 import { insertStep } from '../../api';
 import { btnGhost, btnPrimary, btnOutline, input, msgError } from '../../lib/ui';
 
-export default function AiChecklistSidebar({ isOpen, onClose }) {
+export default function AiChecklistSidebar({ isOpen, onClose, entryModelId = null }) {
   const { userSteps, refreshSteps } = useAppData();
   const [prompt, setPrompt] = useState('');
   const [preview, setPreview] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState(null);
+
+  const scopedCount = useMemo(
+    () => userSteps.filter((s) => (entryModelId ? s.entry_model_id === entryModelId : !s.entry_model_id)).length,
+    [userSteps, entryModelId],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,9 +74,9 @@ export default function AiChecklistSidebar({ isOpen, onClose }) {
     setApplying(true);
     setError(null);
     try {
-      let position = userSteps.length;
+      let position = scopedCount;
       for (const step of preview) {
-        await insertStep(step.section, step.title, position);
+        await insertStep(step.section, step.title, position, entryModelId);
         position += 1;
       }
       await refreshSteps();

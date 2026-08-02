@@ -5,6 +5,7 @@ import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
+import { BrandLogo } from '../components/BrandLogo';
 
 const NAV_LINKS = [
   { href: '#platform', label: 'Platform' },
@@ -257,10 +258,7 @@ export default function LandingPage() {
     <div className={pageShell}>
       <header className={`landing-header absolute inset-x-0 top-0 z-20 border-b border-white/30 bg-white/70 backdrop-blur-lg ${headerScrolled ? 'landing-header-scrolled' : ''}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link to="/" className="flex flex-col leading-none no-underline">
-            <span className="text-sm font-bold text-zinc-900">FinhubKH</span>
-            <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">Journal</span>
-          </Link>
+          <BrandLogo size="md" />
           <nav className="hidden items-center gap-6 md:flex">
             {NAV_LINKS.map((l) => (
               <a key={l.href} href={l.href} className="text-sm font-medium text-zinc-600 transition hover:text-violet-600">{l.label}</a>
@@ -576,8 +574,8 @@ export default function LandingPage() {
       <footer className="border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-sm font-bold text-zinc-900">FinhubKH Journal</div>
-            <p className="mt-1 text-xs text-zinc-500">Private trading journal for FinhubKH traders.</p>
+            <BrandLogo size="md" as="div" />
+            <p className="mt-2 text-xs text-zinc-500">Private trading journal for FinhubKH traders.</p>
           </div>
           <div className="flex flex-wrap gap-5 text-sm text-zinc-500">
             <a href="#platform" className="hover:text-violet-600">Platform</a>
