@@ -3,7 +3,8 @@ import { useTradeModal } from '../../context/TradeModalContext';
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, updateTradeAnnotation } from '../../api';
-import { fmtR, fmtPnl, fmtDateLong } from '../../lib/format';
+import { fmtR, fmtPnlStrict, fmtDateLong } from '../../lib/format';
+import { tradePnlDenomination } from '../../lib/accounts';
 import CustomDropdown from '../common/CustomDropdown';
 import TradeScreenshots from '../journal/TradeScreenshots';
 import {
@@ -12,7 +13,7 @@ import {
 
 export default function TradeModal() {
   const { trade, close } = useTradeModal();
-  const { userModels, refreshTrades } = useAppData();
+  const { userModels, refreshTrades, resolveTradeAccount } = useAppData();
   const { alert, confirm } = useDialog();
 
   const [session, setSession] = useState('');
@@ -48,9 +49,10 @@ export default function TradeModal() {
   const t = trade;
   const isApi = t.source === 'api';
   const isManual = !isApi;
+  const denomination = tradePnlDenomination(t, resolveTradeAccount);
   const rDisplay = t.r_value ? fmtR(t.r_value) : '—';
-  const pnlDisplay = t.pnl_usd ? fmtPnl(t.pnl_usd) : '—';
-  const pnlClass = t.pnl_usd >= 0 ? 'text-violet-600' : 'text-rose-600';
+  const pnlDisplay = fmtPnlStrict(t.pnl_usd, denomination);
+  const pnlClass = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
 
   async function handleDelete() {
     const ok = await confirm({

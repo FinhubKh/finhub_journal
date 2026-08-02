@@ -133,7 +133,7 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess, tradingAcc
               <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
                 <LuTriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span>
-                  You don't have any published trading accounts yet. Your team will be created, but to contribute PnL to your team rank, publish an account in <strong>Settings → Trading Accounts</strong>.
+                  You don't have any published trading accounts yet. Your team will be created, but to contribute PnL to your team rank, publish an account in <strong>Accounts</strong>.
                 </span>
               </div>
             ) : (

@@ -138,7 +138,7 @@ export default function AccountViewDropdown({ variant = 'header' }) {
 
   function goManage() {
     setOpen(false);
-    navigate('/dashboard', { state: { tab: 'settings', section: 'trading-accounts' } });
+    navigate('/dashboard/accounts');
   }
 
   const triggerClass =

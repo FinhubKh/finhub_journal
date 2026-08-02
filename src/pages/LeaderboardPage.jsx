@@ -75,8 +75,8 @@ function GlobalLeaderboardTable({ entries, sort, embedded }) {
           Publish an account with enough trades to appear here.
         </p>
         {embedded ? (
-          <Link to="/dashboard" state={{ tab: 'settings', section: 'trading-accounts' }} className={`${btnOutline} mt-4 inline-flex`}>
-            Go to Settings
+          <Link to="/dashboard/accounts" className={`${btnOutline} mt-4 inline-flex`}>
+            Go to Accounts
           </Link>
         ) : null}
       </div>

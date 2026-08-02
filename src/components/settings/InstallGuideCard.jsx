@@ -37,7 +37,7 @@ const STEPS = [
   {
     n: 4,
     title: 'Get your sync key',
-    desc: 'In Finhub open Settings → Account. Create or pick a trading account, then generate a sync key and copy it.',
+    desc: 'In Finhub open Accounts. Create or pick a trading account, then generate a sync key and copy it.',
     tip: 'Use one sync key per MT5 account.',
     action: 'accounts',
     image: '/image/install/step-4.png',
@@ -180,7 +180,7 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
   }
 
   function goAccounts() {
-    navigate('/dashboard', { state: { tab: 'settings', section: 'trading-accounts' } });
+    navigate('/dashboard/accounts');
   }
 
   const slideClass = direction >= 0 ? 'animate-install-in-right' : 'animate-install-in-left';

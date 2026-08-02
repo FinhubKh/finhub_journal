@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { computeStats } from '../lib/stats';
-import { accountTypeLabel, pnlDenominationLabel } from '../lib/accounts';
+import { accountTypeLabel, pnlDenominationLabel, normalizePnlDenomination } from '../lib/accounts';
+import { fmtPnlStrict } from '../lib/format';
 import {
   btnOutline,
   btnPrimary,
@@ -23,12 +24,6 @@ import EquityChart from '../components/dashboard/EquityChart';
 import { BrandLogo } from '../components/BrandLogo';
 
 const PAGE_SIZE = 20;
-
-function fmtPnl(v) {
-  if (v == null || Number.isNaN(Number(v))) return '—';
-  const n = Number(v);
-  return n >= 0 ? `+$${n.toFixed(2)}` : `-$${Math.abs(n).toFixed(2)}`;
-}
 
 function StatTile({ label, value, tone = 'neutral' }) {
   const toneClass =
@@ -119,6 +114,7 @@ export default function PublicSharePage() {
   }
 
   const { account, owner } = data;
+  const denomination = normalizePnlDenomination(account.pnl_denomination);
   const pfNum = stats ? parseFloat(stats.pf) : NaN;
 
   return (
@@ -166,7 +162,7 @@ export default function PublicSharePage() {
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatTile
                   label="Net result"
-                  value={fmtPnl(stats.totalPnl)}
+                  value={fmtPnlStrict(stats.totalPnl, denomination)}
                   tone={stats.totalPnl >= 0 ? 'positive' : 'negative'}
                 />
                 <StatTile
@@ -185,7 +181,7 @@ export default function PublicSharePage() {
 
             <section>
               <h2 className={`${sectionLabel} mb-3`}>Equity</h2>
-              <EquityChart trades={trades} />
+              <EquityChart trades={trades} denomination={denomination} />
             </section>
 
             <section>
@@ -229,7 +225,7 @@ export default function PublicSharePage() {
                               Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                             }`}
                           >
-                            {fmtPnl(t.pnl_usd)}
+                            {fmtPnlStrict(t.pnl_usd, denomination)}
                           </td>
                           <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
                           <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>

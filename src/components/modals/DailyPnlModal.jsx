@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react';
 import { deleteDailyPnl, upsertDailyPnl } from '../../api';
+import { fmtPnlStrict, fromDisplayPnl, moneySymbol, toDisplayPnl } from '../../lib/format';
+import { normalizePnlDenomination } from '../../lib/accounts';
 import { btnDanger, btnGhost, btnPrimary, card, input } from '../../lib/ui';
-
-function fmtPnl(v) {
-  if (v == null || Number.isNaN(v)) return '—';
-  return v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;
-}
 
 export default function DailyPnlModal({
   date,
   tradesSum,
   tradeCount = 0,
   override,
+  denomination = 'usd',
   onClose,
   onSaved,
 }) {
@@ -23,10 +21,14 @@ export default function DailyPnlModal({
 
   const hasOverride = Boolean(override);
   const syncedCount = tradeCount;
+  const denom = normalizePnlDenomination(denomination);
+  const pnlFieldLabel = moneySymbol(denom) === '¢' ? 'PnL (¢)' : 'PnL (USD)';
+  const pnlPlaceholder = denom === 'cent' ? 'e.g. 12500' : 'e.g. 125.50';
 
   useEffect(() => {
-    const initialPnl = hasOverride ? override.pnl_usd : tradesSum;
-    const roundedPnl = typeof initialPnl === 'number' ? Number(initialPnl.toFixed(2)) : Number(Number(initialPnl).toFixed(2));
+    const initialUsd = hasOverride ? override.pnl_usd : tradesSum;
+    const display = toDisplayPnl(initialUsd, denom);
+    const roundedPnl = Number(display.toFixed(2));
     setPnlInput(roundedPnl === 0 && !hasOverride && syncedCount === 0 ? '' : String(roundedPnl));
 
     const initialCount = hasOverride
@@ -36,7 +38,7 @@ export default function DailyPnlModal({
 
     setNotes(override?.notes || '');
     setError('');
-  }, [date, override, tradesSum, hasOverride, syncedCount]);
+  }, [date, override, tradesSum, hasOverride, syncedCount, denom]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -64,9 +66,9 @@ export default function DailyPnlModal({
       return;
     }
 
-    const pnl = parseFloat(rawPnl);
+    const displayPnl = parseFloat(rawPnl);
     const trade_count = parseInt(rawCount, 10);
-    if (Number.isNaN(pnl)) {
+    if (Number.isNaN(displayPnl)) {
       setError('Enter a valid PnL number.');
       return;
     }
@@ -78,7 +80,12 @@ export default function DailyPnlModal({
     setBusy(true);
     setError('');
     try {
-      await upsertDailyPnl({ date, pnl_usd: pnl, trade_count, notes });
+      await upsertDailyPnl({
+        date,
+        pnl_usd: fromDisplayPnl(displayPnl, denom),
+        trade_count,
+        notes,
+      });
       await onSaved();
       onClose();
     } catch (err) {
@@ -136,7 +143,7 @@ export default function DailyPnlModal({
             <p className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
               Synced: <strong className="font-semibold text-zinc-800">{syncedCount} trade{syncedCount !== 1 ? 's' : ''}</strong>
               {' · '}
-              <strong className="font-semibold text-zinc-800">{fmtPnl(tradesSum)}</strong>
+              <strong className="font-semibold text-zinc-800">{fmtPnlStrict(tradesSum, denom)}</strong>
               {hasOverride ? ' — values below override the calendar.' : ''}
             </p>
           )}
@@ -144,14 +151,14 @@ export default function DailyPnlModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-zinc-700" htmlFor="daily-pnl-input">
-                PnL (USD)
+                {pnlFieldLabel}
               </label>
               <input
                 id="daily-pnl-input"
                 className={input}
                 type="number"
                 step="0.01"
-                placeholder="e.g. 125.50"
+                placeholder={pnlPlaceholder}
                 value={pnlInput}
                 onChange={(e) => setPnlInput(e.target.value)}
                 autoFocus

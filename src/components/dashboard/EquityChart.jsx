@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
+import { fmtPnlStrict, moneySymbol, toDisplayPnl } from '../../lib/format';
+import { normalizePnlDenomination } from '../../lib/accounts';
 import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
 
-function buildSeries(trades) {
+function buildSeries(trades, denomination) {
   const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
   const labels = [];
   const dataUsd = [];
@@ -13,7 +15,7 @@ function buildSeries(trades) {
   let cumR = 0;
 
   sorted.forEach((t) => {
-    cumUsd += t.pnl_usd || 0;
+    cumUsd += toDisplayPnl(t.pnl_usd || 0, denomination);
     cumR += t.r_value || 0;
     labels.push(new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
     dataUsd.push(parseFloat(cumUsd.toFixed(2)));
@@ -23,19 +25,21 @@ function buildSeries(trades) {
   return { labels, dataUsd, dataR };
 }
 
-export default function EquityChart({ trades, fill = false }) {
+export default function EquityChart({ trades, denomination = 'usd', fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const denom = normalizePnlDenomination(denomination);
   const [mode, setMode] = useState('usd');
 
   const empty = !trades || trades.length === 0;
+  const moneyModeLabel = moneySymbol(denom) === '¢' ? '¢' : 'USD';
 
   const lastVal = useMemo(() => {
     if (empty) return null;
     return mode === 'usd'
-      ? trades.reduce((s, t) => s + (t.pnl_usd || 0), 0)
+      ? trades.reduce((s, t) => s + toDisplayPnl(t.pnl_usd || 0, denom), 0)
       : trades.reduce((s, t) => s + (t.r_value || 0), 0);
-  }, [trades, mode, empty]);
+  }, [trades, mode, empty, denom]);
 
   useEffect(() => () => {
     if (chartRef.current) {
@@ -56,11 +60,14 @@ export default function EquityChart({ trades, fill = false }) {
       return;
     }
 
-    const { labels, dataUsd, dataR } = buildSeries(trades);
+    const { labels, dataUsd, dataR } = buildSeries(trades, denom);
     const values = mode === 'usd' ? dataUsd : dataR;
     const labelFmt = mode === 'usd'
-      ? (v) => (v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`)
-      : (v) => (v >= 0 ? `+${v.toFixed(2)}R` : `${v.toFixed(2)}R`);
+      ? (v) => {
+          const sym = moneySymbol(denom);
+          return v >= 0 ? `+${sym}${Number(v).toFixed(2)}` : `-${sym}${Math.abs(Number(v)).toFixed(2)}`;
+        }
+      : (v) => (v >= 0 ? `+${Number(v).toFixed(2)}R` : `${Number(v).toFixed(2)}R`);
 
     if (chartRef.current) {
       const chart = chartRef.current;
@@ -124,7 +131,7 @@ export default function EquityChart({ trades, fill = false }) {
         },
       },
     });
-  }, [trades, mode, empty]);
+  }, [trades, mode, empty, denom]);
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
@@ -137,12 +144,15 @@ export default function EquityChart({ trades, fill = false }) {
           {!empty && lastVal != null && (
             <span className={`hidden text-sm font-semibold sm:inline ${lastVal >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
               {mode === 'usd'
-                ? (lastVal >= 0 ? `+$${lastVal.toFixed(2)}` : `-$${Math.abs(lastVal).toFixed(2)}`)
+                ? fmtPnlStrict(
+                    trades.reduce((s, t) => s + (t.pnl_usd || 0), 0),
+                    denom,
+                  )
                 : `${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R`}
             </span>
           )}
           <div className={pillToggle}>
-            <button className={pillBtn(mode === 'usd')} onClick={() => setMode('usd')} type="button">USD</button>
+            <button className={pillBtn(mode === 'usd')} onClick={() => setMode('usd')} type="button">{moneyModeLabel}</button>
             <button className={pillBtn(mode === 'r')} onClick={() => setMode('r')} type="button">R</button>
           </div>
         </div>

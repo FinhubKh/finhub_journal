@@ -23,6 +23,7 @@ import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, msgError, msgSuccess,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
+import PasswordInput from '../common/PasswordInput';
 import InvestorSyncPanel from './InvestorSyncPanel';
 
 const EMPTY_FORM = {
@@ -170,9 +171,7 @@ function AccountFormFields({ form, setField, isCreate }) {
                 inputMode="numeric"
                 autoComplete="off"
               />
-              <input
-                className={input}
-                type="password"
+              <PasswordInput
                 placeholder="Investor (read-only) password"
                 value={form.investorPassword}
                 onChange={(e) => setField('investorPassword', e.target.value)}
@@ -190,15 +189,16 @@ function AccountFormFields({ form, setField, isCreate }) {
         </fieldset>
       ) : (
         <p className="text-xs text-zinc-500">
-          Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker uses cent lots (PnL syncs 100x higher on USD).
-          Manage EA or investor sync on the account card after saving.
+          Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker shows PnL in cents.
+          Sync stores true USD, and the journal displays MT5-style amounts with ¢.
+          Manage EA or investor sync after opening the account.
         </p>
       )}
     </div>
   );
 }
 
-function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) {
+export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) {
   const { alert } = useDialog();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState(() => (isEdit ? accountToForm(account) : EMPTY_FORM));
@@ -290,7 +290,7 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
           } catch (verifyErr) {
             toast.warn(
               verifyErr.message
-                || 'Account created, but investor login failed. Reconnect credentials in Settings.',
+                || 'Account created, but investor login failed. Reconnect credentials on the account page.',
             );
           }
           await onSaved();
@@ -356,7 +356,7 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
   );
 }
 
-function SyncKeyModal({ account, syncKey, onClose }) {
+export function SyncKeyModal({ account, syncKey, onClose }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     function onKey(e) {

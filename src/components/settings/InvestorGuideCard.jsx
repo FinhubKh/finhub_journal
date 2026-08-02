@@ -7,11 +7,11 @@ const STEPS = [
   {
     n: 1,
     title: 'Create or pick an account',
-    desc: 'In Finhub open Settings → Account. Add a trading account, or use one you already have.',
+    desc: 'In Finhub open Accounts. Add a trading account, or use one you already have.',
     tip: 'Choose Investor password when creating the account, or connect it later on the account card.',
     action: 'accounts',
     image: '/image/install/investor/step-1.png',
-    imageAlt: 'Create a trading account in Finhub Settings',
+    imageAlt: 'Create a trading account in Finhub Accounts',
   },
   {
     n: 2,
@@ -131,7 +131,7 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
   }
 
   function goAccounts() {
-    navigate('/dashboard', { state: { tab: 'settings', section: 'trading-accounts' } });
+    navigate('/dashboard/accounts');
   }
 
   const slideClass = direction >= 0 ? 'animate-install-in-right' : 'animate-install-in-left';

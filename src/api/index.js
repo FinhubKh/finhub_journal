@@ -175,15 +175,20 @@ async function fetchTradesForAccount(account) {
 }
 
 async function patchTradePnl(trades, factor) {
-  await Promise.all(trades.map(async (t) => {
-    const pnl = Math.round((Number(t.pnl_usd) || 0) * factor * 100) / 100;
-    const patchRes = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${t.id}`, {
-      method: 'PATCH',
-      headers: authHeaders(getToken()),
-      body: JSON.stringify({ pnl_usd: pnl, result: pnlResult(pnl) }),
-    });
-    if (!patchRes.ok) throw new Error(await patchRes.text());
-  }));
+  // One PATCH per trade — never fire all at once (browsers hit ERR_INSUFFICIENT_RESOURCES).
+  const CONCURRENCY = 8;
+  for (let i = 0; i < trades.length; i += CONCURRENCY) {
+    const chunk = trades.slice(i, i + CONCURRENCY);
+    await Promise.all(chunk.map(async (t) => {
+      const pnl = Math.round((Number(t.pnl_usd) || 0) * factor * 100) / 100;
+      const patchRes = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${t.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(getToken()),
+        body: JSON.stringify({ pnl_usd: pnl, result: pnlResult(pnl) }),
+      });
+      if (!patchRes.ok) throw new Error(await patchRes.text());
+    }));
+  }
 }
 
 /** Adjust stored PnL when switching account between cent and USD. */

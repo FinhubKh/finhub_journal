@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { computeStats } from '../lib/stats';
+import { viewPnlDenomination } from '../lib/accounts';
+import { fmtPnlStrict } from '../lib/format';
 import {
   btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, sectionLabel,
 } from '../lib/ui';
@@ -11,11 +13,6 @@ import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
 import SyncNowButton from '../components/common/SyncNowButton';
-
-function fmtPnl(v) {
-  if (v == null || Number.isNaN(v)) return '—';
-  return v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;
-}
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
   const valueCls =
@@ -116,7 +113,7 @@ function EmptyOverview({ onOpenSetup }) {
   );
 }
 
-function SummarySection({ stats, pfPositive, trades }) {
+function SummarySection({ stats, pfPositive, trades, denomination }) {
   return (
     <section
       aria-labelledby="overview-summary-heading"
@@ -128,7 +125,7 @@ function SummarySection({ stats, pfPositive, trades }) {
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <StatTile
             label="Net result"
-            value={fmtPnl(stats?.totalPnl)}
+            value={fmtPnlStrict(stats?.totalPnl, denomination)}
             hint={`${stats?.total || 0} closed trade${stats?.total !== 1 ? 's' : ''}`}
             tone={stats ? (stats.totalPnl >= 0 ? 'positive' : 'negative') : 'neutral'}
           />
@@ -154,14 +151,14 @@ function SummarySection({ stats, pfPositive, trades }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <h2 className={`${sectionLabel} mb-3 shrink-0`}>Equity</h2>
         <div className="min-h-0 flex-1">
-          <EquityChart trades={trades} fill />
+          <EquityChart trades={trades} denomination={denomination} fill />
         </div>
       </div>
     </section>
   );
 }
 
-function RiskSection({ stats, showAccounts }) {
+function RiskSection({ stats, showAccounts, denomination }) {
   return (
     <section
       aria-labelledby="overview-risk-heading"
@@ -173,7 +170,7 @@ function RiskSection({ stats, showAccounts }) {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <StatTile
             label="Expectancy"
-            value={stats && !Number.isNaN(stats.expectancy) ? fmtPnl(stats.expectancy) : '—'}
+            value={stats && !Number.isNaN(stats.expectancy) ? fmtPnlStrict(stats.expectancy, denomination) : '—'}
             hint="Per trade"
             tone={stats && stats.expectancy >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
           />
@@ -184,18 +181,18 @@ function RiskSection({ stats, showAccounts }) {
           />
           <StatTile
             label="Max drawdown"
-            value={stats && stats.maxDD > 0 ? fmtPnl(-stats.maxDD) : '—'}
+            value={stats && stats.maxDD > 0 ? fmtPnlStrict(-stats.maxDD, denomination) : '—'}
             hint="Peak to trough"
             tone="negative"
           />
           <StatTile
             label="Avg win"
-            value={stats && stats.avgWin > 0 ? fmtPnl(stats.avgWin) : '—'}
+            value={stats && stats.avgWin > 0 ? fmtPnlStrict(stats.avgWin, denomination) : '—'}
             tone="positive"
           />
           <StatTile
             label="Avg loss"
-            value={stats && stats.avgLoss > 0 ? fmtPnl(-stats.avgLoss) : '—'}
+            value={stats && stats.avgLoss > 0 ? fmtPnlStrict(-stats.avgLoss, denomination) : '—'}
             tone="negative"
           />
           <div className={`${card} flex h-full flex-col justify-between p-4`}>
@@ -234,8 +231,9 @@ function RiskSection({ stats, showAccounts }) {
 
 export default function OverviewPage() {
   const navigate = useNavigate();
-  const { visibleTrades, viewMode, dataLoading } = useAppData();
+  const { visibleTrades, viewMode, activeAccount, dataLoading } = useAppData();
   const stats = useMemo(() => computeStats(visibleTrades), [visibleTrades]);
+  const denomination = useMemo(() => viewPnlDenomination(viewMode, activeAccount), [viewMode, activeAccount]);
   const hasTrades = visibleTrades.length > 0;
   const showAccounts = viewMode === 'portfolio';
 
@@ -288,16 +286,17 @@ export default function OverviewPage() {
                     stats={stats}
                     pfPositive={pfPositive}
                     trades={visibleTrades}
+                    denomination={denomination}
                   />
                 )}
 
                 {activeSection === 'risk' && (
-                  <RiskSection stats={stats} showAccounts={showAccounts} />
+                  <RiskSection stats={stats} showAccounts={showAccounts} denomination={denomination} />
                 )}
 
                 {activeSection === 'breakdown' && (
                   <section aria-label="Breakdown" role="tabpanel" className="flex h-full min-h-0 w-full flex-col">
-                    <BreakdownCard trades={visibleTrades} fill />
+                    <BreakdownCard trades={visibleTrades} denomination={denomination} fill />
                   </section>
                 )}
 

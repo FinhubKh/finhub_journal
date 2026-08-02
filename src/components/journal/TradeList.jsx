@@ -3,20 +3,17 @@ import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade } from '../../api';
-import { fmtR, fmtDateShort, capitalize } from '../../lib/format';
+import { fmtR, fmtDateShort, capitalize, fmtPnlStrict } from '../../lib/format';
+import { tradePnlDenomination } from '../../lib/accounts';
 import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
 import SyncNowButton from '../common/SyncNowButton';
+import AccountViewDropdown from '../layout/AccountViewDropdown';
 import ManualTradeModal from '../modals/ManualTradeModal';
 
-function fmtPnlStrict(v) {
-  if (v == null || v === '') return '—';
-  return v > 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;
-}
-
-const EMPTY_FILTERS = { result: '', session: '', model: '', account: '', from: '', to: '' };
+const EMPTY_FILTERS = { result: '', session: '', model: '', from: '', to: '' };
 const PAGE_SIZE = 50;
 
 const filterControl =
@@ -37,7 +34,17 @@ function FilterField({ label, children }) {
 }
 
 export default function TradeList() {
-  const { visibleTrades, viewMode, userModels, resolveTradeAccount, refreshTrades } = useAppData();
+  const {
+    visibleTrades,
+    viewMode,
+    activeAccount,
+    tradingAccounts,
+    setViewMode,
+    setActiveAccountId,
+    userModels,
+    resolveTradeAccount,
+    refreshTrades,
+  } = useAppData();
   const { open } = useTradeModal();
   const { alert, confirm } = useDialog();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -47,22 +54,33 @@ export default function TradeList() {
   function setFilter(key, value) { setFilters((f) => ({ ...f, [key]: value })); }
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
+  const accountSwitchValue = viewMode === 'portfolio' ? 'portfolio' : (activeAccount?.id || '');
+
+  const accountSwitchOptions = useMemo(
+    () => [
+      { value: 'portfolio', label: 'All accounts' },
+      ...tradingAccounts.map((a) => ({ value: a.id, label: a.name })),
+    ],
+    [tradingAccounts],
+  );
+
+  function handleAccountSwitch(value) {
+    if (value === 'portfolio') {
+      setViewMode('portfolio');
+      return;
+    }
+    setActiveAccountId(value);
+  }
+
   const filtered = useMemo(() => {
     let list = visibleTrades;
     if (filters.result) list = list.filter((t) => t.result === filters.result);
     if (filters.session) list = list.filter((t) => t.session === filters.session);
     if (filters.model) list = list.filter((t) => t.model === filters.model);
-    if (viewMode === 'portfolio' && filters.account) {
-      list = list.filter((t) => {
-        const acc = resolveTradeAccount(t);
-        const q = filters.account.toLowerCase();
-        return (acc?.name || t.account || '').toLowerCase().includes(q);
-      });
-    }
     if (filters.from) list = list.filter((t) => t.date >= filters.from);
     if (filters.to) list = list.filter((t) => t.date <= filters.to);
     return list;
-  }, [visibleTrades, filters, viewMode, resolveTradeAccount]);
+  }, [visibleTrades, filters]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
@@ -77,7 +95,7 @@ export default function TradeList() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const hasFilters = Object.entries(filters).some(([k, v]) => v !== '' && !(k === 'account' && viewMode !== 'portfolio'));
+  const hasFilters = Object.values(filters).some((v) => v !== '');
   const unannotatedCount = visibleTrades.filter((t) => t.source === 'api' && !t.notes && !t.model).length;
 
   async function confirmDelete(id, e) {
@@ -99,7 +117,7 @@ export default function TradeList() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-white">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3.5 md:px-6">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3.5 md:px-6 dark:border-zinc-800">
         <div>
           <h3 className={`${cardTitle} flex items-center gap-2`}>
             Trade History
@@ -110,16 +128,20 @@ export default function TradeList() {
             )}
           </h3>
           <p className="mt-0.5 text-xs text-zinc-500">
+            {viewMode === 'portfolio'
+              ? 'All accounts'
+              : activeAccount?.name || 'Account'}
+            {' · '}
             {filtered.length} trade{filtered.length === 1 ? '' : 's'}
             {hasFilters ? ` · filtered from ${visibleTrades.length}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AccountViewDropdown variant="header" />
           <SyncNowButton size="sm" />
           <button className={btnPrimary} type="button" onClick={() => setManualOpen(true)}>
             Log trade
           </button>
-          <button className={btnGhost} type="button" onClick={refreshTrades}>Refresh</button>
         </div>
       </div>
 
@@ -169,13 +191,13 @@ export default function TradeList() {
             />
           </FilterField>
           <FilterField label="Account">
-            <input
-              className={filterControl}
-              type="text"
-              placeholder={viewMode === 'portfolio' ? 'Search account' : 'Portfolio only'}
-              value={filters.account}
-              onChange={(e) => setFilter('account', e.target.value)}
-              disabled={viewMode !== 'portfolio'}
+            <CustomDropdown
+              className="w-full"
+              menuClassName="w-full"
+              buttonClassName={`${filterControl} inline-flex items-center justify-between gap-2 text-left hover:border-violet-300`}
+              value={accountSwitchValue}
+              onChange={handleAccountSwitch}
+              options={accountSwitchOptions}
             />
           </FilterField>
           <FilterField label="From">
@@ -235,7 +257,8 @@ export default function TradeList() {
                   const isApi = t.source === 'api';
                   const needsReview = isApi && !t.notes && !t.model;
                   const rDisplay = fmtR(t.r_value) || '—';
-                  const pnlDisplay = fmtPnlStrict(t.pnl_usd);
+                  const denom = tradePnlDenomination(t, resolveTradeAccount);
+                  const pnlDisplay = fmtPnlStrict(t.pnl_usd, denom);
                   const accountName = resolveTradeAccount(t)?.name || t.account || '—';
                   const pnlTone = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
                   const rTone = t.result === 'win' ? 'text-violet-600' : t.result === 'loss' ? 'text-rose-600' : 'text-amber-600';

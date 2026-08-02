@@ -6,7 +6,7 @@
  * GET  /v1/investor-verify   — poll job result; delete creds on fail; queue sync on ok
  */
 import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
-import { encryptSecret, decryptSecret } from './crypto-helper.mjs';
+import { encryptSecret } from './crypto-helper.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 
 const LOGIN_FAILED_MSG = 'Login failed — check broker server, MT5 login, and investor password';
@@ -223,35 +223,6 @@ export async function handleInvestorVerifyStatus(req, {
   }
 
   if (result.ok === true) {
-    // Kick off a normal sync; failure here still counts as connected (login worked).
-    try {
-      const loadRes = await fetch(
-        `${supabaseUrl}/rest/v1/investor_credentials?select=broker_server,login,encrypted_password&trading_account_id=eq.${encodeURIComponent(tradingAccountId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&limit=1`,
-        { headers: supabaseHeaders(serviceKey) },
-      );
-      if (loadRes.ok) {
-        const rows = await loadRes.json();
-        const cred = rows[0];
-        if (cred) {
-          const password = decryptSecret(cred.encrypted_password, encryptionKey);
-          await fetch(`${bridgeUrl}/jobs/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-bridge-token': bridgeServiceToken,
-            },
-            body: JSON.stringify({
-              trading_account_id: tradingAccountId,
-              login: cred.login,
-              password,
-              server: cred.broker_server,
-            }),
-          });
-        }
-      }
-    } catch {
-      // ignore sync enqueue errors after successful login verify
-    }
     return { status: 200, body: { status: 'ok' } };
   }
 

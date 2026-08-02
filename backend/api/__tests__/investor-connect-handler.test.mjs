@@ -4,7 +4,6 @@ import {
   handleConnectInvestorCredentials,
   handleInvestorVerifyStatus,
 } from '../investor-connect-handler.mjs';
-import { encryptSecret } from '../crypto-helper.mjs';
 
 const KEY = 'a'.repeat(64);
 const DEPS = {
@@ -107,21 +106,11 @@ describe('handleInvestorVerifyStatus', () => {
     expect(result.body).toEqual({ status: 'pending' });
   });
 
-  it('queues sync and returns ok on successful verify', async () => {
-    const encrypted = encryptSecret('investor-pass', KEY);
+  it('returns ok on successful verify', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) })
       .mockResolvedValueOnce({ ok: true, json: async () => [{ trading_account_id: 'acct-1' }] })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'done', ok: true }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [{
-          broker_server: 'Broker-Live',
-          login: '12345',
-          encrypted_password: encrypted,
-        }],
-      })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ job_id: 'sync-1' }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'done', ok: true, trading_account_id: 'acct-1' }) });
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await handleInvestorVerifyStatus(
@@ -130,7 +119,7 @@ describe('handleInvestorVerifyStatus', () => {
     );
     expect(result.status).toBe(200);
     expect(result.body).toEqual({ status: 'ok' });
-    expect(fetchMock.mock.calls.some((c) => String(c[0]).endsWith('/jobs/sync'))).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('deletes credentials and returns failed on login rejection', async () => {

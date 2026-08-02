@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { TradeModalProvider } from '../context/TradeModalContext';
 import TabBar from '../components/layout/TabBar';
 import TradeModal from '../components/modals/TradeModal';
@@ -8,9 +8,8 @@ import { appShell } from '../lib/ui';
 const OverviewPage = lazy(() => import('./OverviewPage'));
 const LogPage = lazy(() => import('./LogPage'));
 const CalendarPage = lazy(() => import('./CalendarPage'));
-// News temporarily disabled
-// const EconomicCalendarPage = lazy(() => import('./EconomicCalendarPage'));
-// const WorldNewsPage = lazy(() => import('./WorldNewsPage'));
+const AccountsPage = lazy(() => import('./AccountsPage'));
+const AccountDetailPage = lazy(() => import('./AccountDetailPage'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
 const SetupPage = lazy(() => import('./SetupPage'));
 const ChecklistPage = lazy(() => import('./ChecklistPage'));
@@ -30,56 +29,90 @@ function TabFallback() {
   );
 }
 
+function DashboardTabContent({ activeTab }) {
+  return (
+    <>
+      {activeTab === 'overview' && <OverviewPage />}
+      {activeTab === 'log' && <LogPage />}
+      {activeTab === 'calendar' && <CalendarPage />}
+      {activeTab === 'checklist' && <ChecklistPage />}
+      {activeTab === 'compound' && <CompoundingPage />}
+      {activeTab === 'ai-advisor' && <AiAdvisorPage />}
+      {activeTab === 'leaderboard' && <LeaderboardPage embedded />}
+      {activeTab === 'settings' && <SettingsPage />}
+      {activeTab === 'setup' && <SetupPage />}
+    </>
+  );
+}
+
 export default function DashboardPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [settingsFocus, setSettingsFocus] = useState(null);
+  const onAccounts = location.pathname.startsWith('/dashboard/accounts');
 
   useEffect(() => {
-    if (location.state?.tab) {
-      let tab = location.state.tab;
-      let section = location.state.section || null;
-      // News temporarily disabled — send any news deep-links back to overview
-      if (tab === 'news' || tab === 'economic-calendar' || tab === 'world-news') {
-        tab = 'overview';
-      }
-      // Old settings MT5 deep-links → dedicated setup page
-      if (tab === 'settings' && (section === 'mt5-setup' || section === 'setup')) {
-        tab = 'setup';
-        section = null;
-      }
-      setActiveTab(tab);
-      setSettingsFocus(section);
-      window.history.replaceState({}, '');
+    if (!location.state?.tab) return;
+    let tab = location.state.tab;
+    let section = location.state.section || null;
+
+    if (tab === 'news' || tab === 'economic-calendar' || tab === 'world-news') {
+      tab = 'overview';
     }
-  }, [location.state]);
+    if (tab === 'settings' && (section === 'mt5-setup' || section === 'setup')) {
+      tab = 'setup';
+      section = null;
+    }
+    if (tab === 'settings' && section === 'trading-accounts') {
+      tab = 'accounts';
+    }
+    if (tab === 'trading-accounts') {
+      tab = 'accounts';
+    }
+
+    if (tab === 'accounts') {
+      navigate('/dashboard/accounts', { replace: true });
+    } else {
+      setActiveTab(tab);
+      if (onAccounts) navigate('/dashboard', { replace: true });
+    }
+    window.history.replaceState({}, '');
+  }, [location.state, navigate, onAccounts]);
+
+  function switchTab(tab) {
+    if (tab === 'accounts') {
+      navigate('/dashboard/accounts');
+      return;
+    }
+    setActiveTab(tab);
+    if (onAccounts) navigate('/dashboard');
+  }
+
+  const shellTab = onAccounts ? 'accounts' : activeTab;
+  const fillHeight =
+    shellTab === 'log'
+    || shellTab === 'checklist'
+    || shellTab === 'compound'
+    || shellTab === 'overview'
+    || shellTab === 'setup'
+    || onAccounts;
 
   return (
     <TradeModalProvider>
       <div className={appShell} id="main-app">
-        <TabBar activeTab={activeTab} onSwitchTab={setActiveTab} />
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50">
+        <TabBar activeTab={shellTab} onSwitchTab={switchTab} />
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
           <div
             className={`flex h-full min-h-0 min-w-0 flex-col ${
-              activeTab === 'log' || activeTab === 'checklist' || activeTab === 'compound' || activeTab === 'overview' || activeTab === 'setup'
-                ? 'overflow-hidden'
-                : 'overflow-y-auto overscroll-contain'
+              fillHeight ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
             }`}
           >
             <Suspense fallback={<TabFallback />}>
-              {activeTab === 'overview' && <OverviewPage />}
-              {activeTab === 'log' && <LogPage />}
-              {activeTab === 'calendar' && <CalendarPage />}
-              {activeTab === 'checklist' && <ChecklistPage />}
-              {activeTab === 'compound' && <CompoundingPage />}
-              {activeTab === 'ai-advisor' && <AiAdvisorPage />}
-              {activeTab === 'leaderboard' && <LeaderboardPage embedded />}
-              {/* News temporarily disabled
-              {activeTab === 'economic-calendar' && <EconomicCalendarPage />}
-              {activeTab === 'world-news' && <WorldNewsPage />}
-              */}
-              {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}
-              {activeTab === 'setup' && <SetupPage />}
+              <Routes>
+                <Route path="accounts" element={<AccountsPage />} />
+                <Route path="accounts/:accountId" element={<AccountDetailPage />} />
+                <Route path="*" element={<DashboardTabContent activeTab={activeTab} />} />
+              </Routes>
             </Suspense>
           </div>
         </main>

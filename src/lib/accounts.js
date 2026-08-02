@@ -13,6 +13,20 @@ export function normalizePnlDenomination(value) {
   return value === 'cent' ? 'cent' : 'usd';
 }
 
+/** Active view denomination: cent only when drilling into a cent account. Portfolio stays USD. */
+export function viewPnlDenomination(viewMode, activeAccount) {
+  if (viewMode === 'account' && activeAccount) {
+    return normalizePnlDenomination(activeAccount.pnl_denomination);
+  }
+  return 'usd';
+}
+
+/** Denomination for a single trade's account (portfolio rows may mix $ and ¢). */
+export function tradePnlDenomination(trade, resolveTradeAccount) {
+  const account = typeof resolveTradeAccount === 'function' ? resolveTradeAccount(trade) : null;
+  return normalizePnlDenomination(account?.pnl_denomination);
+}
+
 export const ACCOUNT_COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#dc2626'];
 
 export function normalizeSlug(name) {

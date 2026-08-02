@@ -11,8 +11,8 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase();
 
-const VERIFY_POLL_MS = 2000;
-const VERIFY_POLL_ATTEMPTS = 30;
+const VERIFY_POLL_MS = 400;
+const VERIFY_POLL_ATTEMPTS = 75; // ~30s after the first immediate check
 
 async function parseJson(res) {
   let body = null;
@@ -100,7 +100,8 @@ export async function connectAndVerifyInvestorCredentials(params) {
   }
 
   for (let i = 0; i < VERIFY_POLL_ATTEMPTS; i += 1) {
-    await sleep(VERIFY_POLL_MS);
+    // Check immediately on the first loop — don't burn time before looking.
+    if (i > 0) await sleep(VERIFY_POLL_MS);
     let status;
     try {
       status = await getInvestorVerifyStatus({ jobId, tradingAccountId });
@@ -136,6 +137,60 @@ export async function triggerInvestorSync(tradingAccountId) {
     body: JSON.stringify({ trading_account_id: tradingAccountId }),
   });
   return parseJson(res);
+}
+
+const SYNC_POLL_MS = 500;
+const SYNC_POLL_ATTEMPTS = 240; // ~2 minutes after the first immediate check
+
+/**
+ * Queue investor sync and keep polling until trades land or the worker records an error.
+ */
+export async function runInvestorSyncAndWait(tradingAccountId, { onStatus } = {}) {
+  const rowsBefore = await listInvestorCredentialsStatus();
+  const baseline = rowsBefore.find((r) => r.trading_account_id === tradingAccountId) || null;
+  if (!baseline) {
+    throw new Error('No investor credentials configured for this account');
+  }
+
+  const baselineSynced = baseline.last_synced_at || null;
+  const baselineUpdated = baseline.updated_at || null;
+  const baselineError = baseline.last_sync_error || null;
+
+  await triggerInvestorSync(tradingAccountId);
+
+  for (let i = 0; i < SYNC_POLL_ATTEMPTS; i += 1) {
+    if (i > 0) await sleep(SYNC_POLL_MS);
+
+    let rows;
+    try {
+      rows = await listInvestorCredentialsStatus();
+    } catch {
+      continue;
+    }
+    const row = rows.find((r) => r.trading_account_id === tradingAccountId) || null;
+    if (!row) continue;
+    if (typeof onStatus === 'function') onStatus(row);
+
+    if (row.last_synced_at && row.last_synced_at !== baselineSynced) {
+      return { ok: true, row };
+    }
+
+    const updatedChanged = Boolean(row.updated_at && row.updated_at !== baselineUpdated);
+    const errorChanged = (row.last_sync_error || null) !== baselineError;
+    if (row.last_sync_error && (updatedChanged || errorChanged)) {
+      return { ok: false, row, error: row.last_sync_error };
+    }
+  }
+
+  const rowsAfter = await listInvestorCredentialsStatus().catch(() => []);
+  const latest = rowsAfter.find((r) => r.trading_account_id === tradingAccountId) || null;
+  if (latest?.last_synced_at && latest.last_synced_at !== baselineSynced) {
+    return { ok: true, row: latest };
+  }
+  if (latest?.last_sync_error && latest.last_sync_error !== baselineError) {
+    return { ok: false, row: latest, error: latest.last_sync_error };
+  }
+  throw new Error('Sync timed out — the bridge may be busy. Try again.');
 }
 
 export async function listInvestorCredentialsStatus() {

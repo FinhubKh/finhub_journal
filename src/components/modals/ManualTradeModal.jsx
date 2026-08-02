@@ -3,6 +3,8 @@ import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { insertTrade } from '../../api';
 import { uploadTradeImage, validateTradeImageFile, MAX_IMAGES } from '../../api/tradeImages';
+import { fromDisplayPnl, moneySymbol } from '../../lib/format';
+import { normalizePnlDenomination } from '../../lib/accounts';
 import CustomDropdown from '../common/CustomDropdown';
 import {
   btnGhost, btnPrimary, card, input, label, msgError,
@@ -62,6 +64,11 @@ export default function ManualTradeModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  const selectedAccount = tradingAccounts.find((a) => a.id === accountId) || activeAccount;
+  const denomination = normalizePnlDenomination(selectedAccount?.pnl_denomination);
+  const pnlLabel = moneySymbol(denomination) === '¢' ? 'PnL (¢)' : 'PnL (USD)';
+  const pnlPlaceholder = denomination === 'cent' ? 'e.g. 1250' : '0.00';
+
   function addFiles(fileList) {
     const next = [...pendingFiles];
     for (const file of Array.from(fileList || [])) {
@@ -100,13 +107,15 @@ export default function ManualTradeModal({ isOpen, onClose }) {
       return;
     }
 
+    const denomination = normalizePnlDenomination(account.pnl_denomination);
+
     setSaving(true);
     try {
       const rows = await insertTrade({
         date,
         result,
         r_value: rValue !== '' ? Number(rValue) : 0,
-        pnl_usd: pnl !== '' ? Number(pnl) : 0,
+        pnl_usd: pnl !== '' ? fromDisplayPnl(pnl, denomination) : 0,
         notes: notes.trim() || null,
         model: model || null,
         session: session || null,
@@ -180,8 +189,8 @@ export default function ManualTradeModal({ isOpen, onClose }) {
               <input id="manual-r" className={input} type="number" step="0.1" value={rValue} onChange={(e) => setRValue(e.target.value)} placeholder="0.0" />
             </div>
             <div>
-              <label className={label} htmlFor="manual-pnl">PnL (USD)</label>
-              <input id="manual-pnl" className={input} type="number" step="0.01" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="0.00" />
+              <label className={label} htmlFor="manual-pnl">{pnlLabel}</label>
+              <input id="manual-pnl" className={input} type="number" step="0.01" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder={pnlPlaceholder} />
             </div>
             <div>
               <label className={label}>Session</label>

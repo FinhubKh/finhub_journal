@@ -89,7 +89,7 @@ export default function App() {
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/login" element={<GuestRoute><AuthPage /></GuestRoute>} />
               <Route
-                path="/dashboard"
+                path="/dashboard/*"
                 element={(
                   <ProtectedRoute>
                     <JournalRoute>

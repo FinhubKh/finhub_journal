@@ -75,7 +75,7 @@ const INSTALL_STEPS = [
   {
     n: '02',
     title: 'Create accounts & sync keys',
-    desc: 'Sign up, add trading accounts under Settings → Account, and generate a sync key for each MT5 account.',
+    desc: 'Sign up, add trading accounts under Accounts, and generate a sync key for each MT5 account.',
   },
   {
     n: '03',

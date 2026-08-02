@@ -3,13 +3,11 @@ import { useAppData } from '../../context/AppDataContext';
 import {
   groupTradesByAccount,
   accountTypeLabel,
+  normalizePnlDenomination,
 } from '../../lib/accounts';
 import { computeStats } from '../../lib/stats';
+import { fmtPnlStrict } from '../../lib/format';
 import { card, cardBody, cardHd, cardTitle } from '../../lib/ui';
-
-function fmtPnl(v) {
-  return v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;
-}
 
 export default function PortfolioBreakdown({ fill = false }) {
   const { allTrades, tradingAccounts, setActiveAccountId } = useAppData();
@@ -39,6 +37,7 @@ export default function PortfolioBreakdown({ fill = false }) {
           const pnl = stats?.totalPnl || 0;
           const wr = stats?.wr ?? 0;
           const isUntagged = account.id === '__untagged';
+          const denomination = normalizePnlDenomination(account.pnl_denomination);
 
           return (
             <button
@@ -65,7 +64,7 @@ export default function PortfolioBreakdown({ fill = false }) {
                   {wr}% WR
                 </span>
                 <span className={`font-semibold tabular-nums ${pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                  {fmtPnl(pnl)}
+                  {fmtPnlStrict(pnl, denomination)}
                 </span>
                 <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{trades.length}t</span>
               </div>

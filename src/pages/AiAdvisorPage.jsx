@@ -5,7 +5,6 @@ import {
   LuFileText,
   LuLightbulb,
   LuMessageSquare,
-  LuRefreshCw,
   LuSend,
   LuSparkles,
   LuThumbsUp,
@@ -721,15 +720,6 @@ export default function AiAdvisorPage() {
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Insights</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Grouped into strengths, risks, and focus.</p>
             </div>
-            <button
-              className={`${btnSm} inline-flex items-center gap-1.5`}
-              type="button"
-              disabled={insightsBusy || analysisBusy}
-              onClick={() => void handleInsights()}
-            >
-              <LuRefreshCw className={`h-3.5 w-3.5 ${insightsBusy ? 'animate-spin' : ''}`} aria-hidden />
-              {insightsBusy ? 'Refreshing…' : 'Refresh'}
-            </button>
           </div>
           <div className={cardBody}>
             {insightsError ? <p className={`mb-3 ${msgError}`}>{insightsError}</p> : null}

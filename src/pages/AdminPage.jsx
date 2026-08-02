@@ -13,7 +13,7 @@ import {
   adminRevokeSyncKey,
 } from '../api/admin';
 import {
-  btnDanger, btnGhost, btnSm, card, cardBody, cardHd, cardTitle,
+  btnDanger, btnSm, card, cardBody, cardHd, cardTitle,
   dashboardPageWide, emptyState, input, msgError, tableTd, tableTh,
 } from '../lib/ui';
 
@@ -198,7 +198,6 @@ export default function AdminPage() {
             <h1 className="text-lg font-bold text-zinc-900">Platform control</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button className={btnGhost} type="button" onClick={loadAll} disabled={loading}>Refresh</button>
             <button className={btnDanger} type="button" onClick={async () => { await signOut(); navigate('/'); }}>Sign out</button>
           </div>
         </div>

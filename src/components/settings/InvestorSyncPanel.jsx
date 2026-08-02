@@ -1,8 +1,10 @@
 // src/components/settings/InvestorSyncPanel.jsx
 import { useState } from 'react';
-import { connectAndVerifyInvestorCredentials, triggerInvestorSync, removeInvestorCredentials } from '../../api';
+import { connectAndVerifyInvestorCredentials, runInvestorSyncAndWait, removeInvestorCredentials } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
+import SyncLoadingModal from '../common/SyncLoadingModal';
+import PasswordInput from '../common/PasswordInput';
 import { btnGhost, btnOutline, btnSm, input, msgError } from '../../lib/ui';
 
 function formatLastSynced(iso) {
@@ -14,11 +16,12 @@ function formatLastSynced(iso) {
   });
 }
 
-export default function InvestorSyncPanel({ account, status, onChanged }) {
+export default function InvestorSyncPanel({ account, status, onChanged, compact = false }) {
   const { alert, confirm } = useDialog();
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ brokerServer: '', login: '', investorPassword: '' });
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState(null);
 
   function setField(key, value) {
@@ -53,13 +56,33 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
 
   async function handleSyncNow() {
     setBusy(true);
+    setSyncing(true);
+    setMsg(null);
     try {
-      await triggerInvestorSync(account.id);
-      toast.success('Sync queued — trades will appear shortly.');
+      const result = await runInvestorSyncAndWait(account.id, {
+        onStatus: () => {
+          void onChanged();
+        },
+      });
       await onChanged();
+      setSyncing(false);
+      if (result.ok) {
+        toast.success('Trades updated');
+      } else {
+        await alert({
+          title: 'Sync failed',
+          message: result.error || 'Sync did not finish.',
+        });
+      }
     } catch (err) {
-      await alert({ title: 'Sync failed', message: err.message || 'Could not start sync.' });
+      await onChanged();
+      setSyncing(false);
+      await alert({
+        title: 'Sync failed',
+        message: err.message || 'Could not sync.',
+      });
     } finally {
+      setSyncing(false);
       setBusy(false);
     }
   }
@@ -84,19 +107,22 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
   }
 
   return (
-    <div className="bg-white px-4 py-4 md:px-5 dark:bg-zinc-950">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Investor password sync</p>
-        {status ? (
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-            Connected
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-md bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 ring-1 ring-inset ring-zinc-200">
-            Not connected
-          </span>
-        )}
-      </div>
+    <div className={`${compact ? 'bg-transparent px-5 py-4' : 'bg-white px-4 py-4 md:px-5 dark:bg-zinc-950'}`}>
+      <SyncLoadingModal open={syncing} accountName={account?.name} />
+      {!compact ? (
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Investor password sync</p>
+          {status ? (
+            <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+              Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-md bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 ring-1 ring-inset ring-zinc-200">
+              Not connected
+            </span>
+          )}
+        </div>
+      ) : null}
 
       {status ? (
         <>
@@ -111,7 +137,7 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button className={btnSm} type="button" disabled={busy} onClick={() => void handleSyncNow()}>
-              {busy ? 'Syncing...' : 'Sync now'}
+              Sync now
             </button>
             <button
               className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-45"
@@ -137,12 +163,11 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
             value={form.login}
             onChange={(e) => setField('login', e.target.value)}
           />
-          <input
-            className={input}
-            type="password"
+          <PasswordInput
             placeholder="Investor (read-only) password"
             value={form.investorPassword}
             onChange={(e) => setField('investorPassword', e.target.value)}
+            autoComplete="new-password"
           />
           {msg && <p className={msgError}>{msg}</p>}
           <div className="flex flex-wrap gap-2 pt-1">

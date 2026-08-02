@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { buildPerfGroups } from '../../lib/stats';
+import { fmtPnlStrict } from '../../lib/format';
 import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
-
-function fmtPnl(v) {
-  return v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`;
-}
 
 const LIGHT_PIE_COLORS = ['#7c3aed', '#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe', '#f5f3ff'];
 const DARK_PIE_COLORS = ['#4ade80', '#22d3ee', '#60a5fa', '#a78bfa', '#fbbf24', '#fb923c', '#f472b6', '#5eead4'];
@@ -17,7 +14,7 @@ const KINDS = [
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
 
-export default function BreakdownCard({ trades, fill = false }) {
+export default function BreakdownCard({ trades, denomination = 'usd', fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [kind, setKind] = useState('symbol');
@@ -121,7 +118,7 @@ export default function BreakdownCard({ trades, fill = false }) {
                     {wr}% WR
                   </span>
                   <span className={`font-semibold tabular-nums ${d.pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {fmtPnl(d.pnl)}
+                    {fmtPnlStrict(d.pnl, denomination)}
                   </span>
                   <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{t}t</span>
                 </div>
