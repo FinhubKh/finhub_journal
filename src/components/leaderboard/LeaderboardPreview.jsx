@@ -210,6 +210,7 @@ export default function LeaderboardPreview({
   variant = 'card',
   seeAllTo = '/leaderboard',
   seeAllState = null,
+  fill = false,
 }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -283,8 +284,11 @@ export default function LeaderboardPreview({
   }
 
   return (
-    <section aria-label="Leaderboard preview">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+    <section
+      aria-label="Leaderboard preview"
+      className={fill ? 'flex h-full min-h-0 w-full flex-col' : undefined}
+    >
+      <div className={`mb-3 flex flex-wrap items-end justify-between gap-2 ${fill ? 'shrink-0' : ''}`}>
         <h2 className={`${sectionLabel} !mb-0`}>Top traders</h2>
         <Link
           {...seeAllProps}
@@ -293,8 +297,8 @@ export default function LeaderboardPreview({
           View leaderboard
         </Link>
       </div>
-      <div className={`${card} overflow-hidden`}>
-        <div className={cardHd}>
+      <div className={`${card} overflow-hidden ${fill ? 'flex min-h-0 flex-1 flex-col' : ''}`}>
+        <div className={`${cardHd} shrink-0`}>
           <h3 className={cardTitle}>Community leaderboard</h3>
           <span className="text-xs text-zinc-400">Published accounts</span>
         </div>
@@ -307,7 +311,7 @@ export default function LeaderboardPreview({
             No published accounts yet. Publish yours from Settings to appear here.
           </p>
         ) : (
-          <ul className="divide-y divide-zinc-100">
+          <ul className={`divide-y divide-zinc-100 ${fill ? 'min-h-0 flex-1 overflow-y-auto' : ''}`}>
             {entries.map((e, i) => (
               <li key={e.accountId}>
                 <Link

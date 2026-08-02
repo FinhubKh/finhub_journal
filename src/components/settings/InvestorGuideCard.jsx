@@ -1,67 +1,46 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { EA_WEBREQUEST_ORIGIN } from '../../api/env';
-import { btnOutline, btnPrimary, btnGhost, card } from '../../lib/ui';
-
-const EA_DOWNLOAD_URL = '/FinhubJournal_TradeSync.ex5';
+import { btnGhost, btnPrimary, card } from '../../lib/ui';
 
 const STEPS = [
   {
     n: 1,
-    title: 'Download the EA',
-    desc: 'Get the FinhubJournal_TradeSync.ex5 file. No install wizard needed — just one file.',
-    tip: 'Save it somewhere easy to find, like your Desktop.',
-    action: 'download',
-    image: '/image/install/step-1.png',
-    imageAlt: 'Download FinhubJournal_TradeSync.ex5',
+    title: 'Create or pick an account',
+    desc: 'In Finhub open Settings → Account. Add a trading account, or use one you already have.',
+    tip: 'Choose Investor password when creating the account, or connect it later on the account card.',
+    action: 'accounts',
+    image: '/image/install/investor/step-1.png',
+    imageAlt: 'Create a trading account in Finhub Settings',
   },
   {
     n: 2,
-    title: 'Put it in MetaTrader 5',
-    desc: 'In MT5 open File → Open Data Folder → MQL5 → Experts. Paste the .ex5 file there.',
-    tip: 'Restart MT5 (or right-click Experts → Refresh) so the EA shows up in Navigator.',
+    title: 'Find your investor password',
+    desc: 'In MetaTrader 5, open your account details and copy the investor (read-only) password — not the master password.',
+    tip: 'Investor access can view history but cannot place trades. That is what we need for sync.',
     action: null,
-    image: '/image/install/step-2.png',
-    imageAlt: 'Place the EA file in MQL5 Experts folder',
+    image: '/image/install/investor/step-2.png',
+    imageAlt: 'Copy investor password from MetaTrader 5 account details',
   },
   {
     n: 3,
-    title: 'Allow Finhub to connect',
-    desc: 'In MT5 go to Tools → Options → Expert Advisors. Enable “Allow WebRequest for listed URL”, then add this website URL.',
-    tip: 'Copy the URL below and paste it into the MT5 allow list.',
-    action: 'copy-url',
-    image: '/image/install/step-3.png',
-    imageAlt: 'Allow WebRequest URL in MetaTrader 5 options',
+    title: 'Connect credentials in Finhub',
+    desc: 'On the account card, open Investor password sync. Enter broker server, MT5 login, and the investor password.',
+    tip: 'Broker server looks like ICMarketsSC-Live. We encrypt the password before storing it.',
+    action: 'accounts',
+    image: '/image/install/investor/step-3.png',
+    imageAlt: 'Enter broker server, login, and investor password in Finhub',
   },
   {
     n: 4,
-    title: 'Get your sync key',
-    desc: 'In Finhub open Settings → Account. Create or pick a trading account, then generate a sync key and copy it.',
-    tip: 'Use one sync key per MT5 account.',
-    action: 'accounts',
-    image: '/image/install/step-4.png',
-    imageAlt: 'Generate sync key in Finhub account settings',
-  },
-  {
-    n: 5,
-    title: 'Attach EA & paste the key',
-    desc: 'Drag FinhubJournal_TradeSync onto any chart. Paste your sync key in the EA inputs, then click OK.',
-    tip: 'Keep MT5 running so trades can sync. You’re done when closed trades appear in your journal.',
+    title: 'Sync your closed trades',
+    desc: 'Save credentials, then use Sync Now. Closed trades pull into your journal — no EA install required.',
+    tip: 'You’re done when trades appear in the journal. Sync again anytime for a fresh pull.',
     action: 'done',
-    image: '/image/install/step-5.png',
-    imageAlt: 'Attach EA to a chart and paste sync key',
+    image: '/image/install/investor/step-4.png',
+    imageAlt: 'Sync Now pulls closed trades into the Finhub journal',
   },
 ];
-
-async function copyText(value, label) {
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.success(`${label} copied`);
-  } catch {
-    toast.error('Could not copy — select and copy manually');
-  }
-}
 
 function ProgressTrack({ current, total, onJump }) {
   const pct = ((current + 1) / total) * 100;
@@ -86,10 +65,10 @@ function ProgressTrack({ current, total, onJump }) {
               onClick={() => onJump(i)}
               className={`h-2.5 flex-1 min-w-8 rounded-full transition-all duration-300 ${
                 active
-                  ? 'bg-violet-600 scale-y-125 dark:bg-emerald-500'
+                  ? 'scale-y-125 bg-violet-600 dark:bg-emerald-500'
                   : done
                     ? 'bg-violet-300 dark:bg-emerald-800'
-                    : 'bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700'
+                    : 'bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700'
               }`}
             />
           );
@@ -100,38 +79,10 @@ function ProgressTrack({ current, total, onJump }) {
 }
 
 function StepAction({ action, onAccounts }) {
-  if (action === 'download') {
-    return (
-      <a className={`${btnPrimary} inline-flex w-full animate-install-fade-up sm:w-auto`} href={EA_DOWNLOAD_URL} download>
-        Download EA for MT5
-      </a>
-    );
-  }
-
-  if (action === 'copy-url') {
-    return (
-      <div className="space-y-2 animate-install-fade-up">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Website URL</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <code className="min-w-0 flex-1 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 font-mono text-xs text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-            {EA_WEBREQUEST_ORIGIN}
-          </code>
-          <button
-            className={btnOutline}
-            type="button"
-            onClick={() => void copyText(EA_WEBREQUEST_ORIGIN, 'Website URL')}
-          >
-            Copy URL
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (action === 'accounts') {
     return (
       <button className={`${btnPrimary} inline-flex w-full animate-install-fade-up sm:w-auto`} type="button" onClick={onAccounts}>
-        Open accounts & sync keys
+        Open accounts & investor sync
       </button>
     );
   }
@@ -139,7 +90,7 @@ function StepAction({ action, onAccounts }) {
   if (action === 'done') {
     return (
       <div className="animate-install-fade-up rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
-        Setup complete — your closed trades will sync into the journal.
+        Setup complete — sync anytime with investor password. No EA needed.
       </div>
     );
   }
@@ -147,7 +98,7 @@ function StepAction({ action, onAccounts }) {
   return null;
 }
 
-export default function InstallGuideCard({ defaultOpen = true, standalone = false }) {
+export default function InvestorGuideCard({ defaultOpen = true, standalone = false }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(standalone || defaultOpen);
   const [index, setIndex] = useState(0);
@@ -188,13 +139,21 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
   return (
     <section
       className={`${card} ${standalone ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden' : ''}`}
-      aria-label="How to install MT5"
+      aria-label="How to sync with investor password"
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">EA sync setup</h3>
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+              No EA required
+            </span>
+            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+              Read-only
+            </span>
+          </div>
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Investor password sync</h3>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Install the EA and paste your sync key. Use Next when you’re ready.
+            Connect with a read-only MT5 login. We pull closed trades for you.
           </p>
         </div>
         {!standalone ? (
@@ -219,11 +178,11 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
 
           <div
             key={animKey}
-            className={`overflow-hidden rounded-2xl border border-zinc-100 bg-gradient-to-br from-zinc-50 to-white dark:border-zinc-800 dark:from-zinc-900/80 dark:to-zinc-950 ${slideClass}`}
+            className={`overflow-hidden rounded-2xl border border-zinc-100 bg-linear-to-br from-zinc-50 to-white dark:border-zinc-800 dark:from-zinc-900/80 dark:to-zinc-950 ${slideClass}`}
             role="group"
-            aria-labelledby={`install-step-${step.n}-title`}
+            aria-labelledby={`investor-step-${step.n}-title`}
           >
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-zinc-950">
+            <div className="relative aspect-video w-full overflow-hidden bg-zinc-950">
               <img
                 src={step.image}
                 alt={step.imageAlt}
@@ -231,7 +190,7 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
                 loading="eager"
                 decoding="async"
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-950/50 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-zinc-950/50 to-transparent" />
             </div>
 
             <div className="flex items-start gap-4 p-5 sm:p-6">
@@ -240,7 +199,7 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
               </span>
               <div className="min-w-0 flex-1 pt-0.5">
                 <h4
-                  id={`install-step-${step.n}-title`}
+                  id={`investor-step-${step.n}-title`}
                   className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100"
                 >
                   {step.title}

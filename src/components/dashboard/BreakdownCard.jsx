@@ -17,7 +17,7 @@ const KINDS = [
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
 
-export default function BreakdownCard({ trades }) {
+export default function BreakdownCard({ trades, fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [kind, setKind] = useState('symbol');
@@ -78,8 +78,8 @@ export default function BreakdownCard({ trades }) {
   const entries = groups ? Object.entries(groups).sort((a, b) => b[1].pnl - a[1].pnl) : [];
 
   return (
-    <div className={`${card} overflow-hidden`}>
-      <div className={cardHd}>
+    <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
+      <div className={`${cardHd} shrink-0`}>
         <div>
           <h3 className={cardTitle}>Breakdown</h3>
           <p className="mt-0.5 text-xs text-zinc-500">Performance by dimension</p>
@@ -93,7 +93,7 @@ export default function BreakdownCard({ trades }) {
         </div>
       </div>
 
-      <div className={`${cardBody} relative h-[180px]`}>
+      <div className={`${cardBody} relative ${fill ? 'min-h-[200px] flex-[1.1]' : 'h-[180px]'}`}>
         {trades.length === 0 ? (
           <div className={emptyState}>No breakdown data yet.</div>
         ) : (
@@ -102,19 +102,28 @@ export default function BreakdownCard({ trades }) {
       </div>
 
       {entries.length > 0 && (
-        <div className="max-h-[220px] overflow-y-auto border-t border-zinc-100">
+        <div
+          className={`border-t border-zinc-100 dark:border-zinc-800 ${
+            fill ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-[220px] overflow-y-auto'
+          }`}
+        >
           {entries.map(([name, d]) => {
             const t = d.wins + d.losses + d.be;
             const wr = t > 0 ? Math.round((d.wins / t) * 100) : 0;
             return (
-              <div className="flex items-center justify-between gap-3 border-b border-zinc-50 px-4 py-3 last:border-0 md:px-5" key={name}>
-                <div className="min-w-0 truncate text-sm font-medium text-zinc-800">{name}</div>
+              <div
+                className="flex items-center justify-between gap-3 border-b border-zinc-50 px-4 py-3 last:border-0 dark:border-zinc-900 md:px-5"
+                key={name}
+              >
+                <div className="min-w-0 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{name}</div>
                 <div className="flex shrink-0 items-center gap-3 text-xs">
-                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600">{wr}% WR</span>
-                  <span className={d.pnl >= 0 ? 'font-semibold text-violet-600' : 'font-semibold text-rose-600'}>
+                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    {wr}% WR
+                  </span>
+                  <span className={`font-semibold tabular-nums ${d.pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {fmtPnl(d.pnl)}
                   </span>
-                  <span className="text-zinc-400">{t}t</span>
+                  <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{t}t</span>
                 </div>
               </div>
             );

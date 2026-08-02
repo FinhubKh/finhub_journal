@@ -8,6 +8,8 @@
     { "source": "/v1/bridge/sync", "destination": "/api/v1/mt5-bridge?route=bridge-sync" },
     { "source": "/v1/investor-credentials", "destination": "/api/v1/mt5-bridge?route=investor-credentials" },
     { "source": "/v1/investor-sync", "destination": "/api/v1/mt5-bridge?route=investor-sync" },
+    { "source": "/v1/investor-connect", "destination": "/api/v1/mt5-bridge?route=investor-connect" },
+    { "source": "/v1/investor-verify", "destination": "/api/v1/mt5-bridge?route=investor-verify" },
     { "source": "/v1/market/economic-calendar", "destination": "/api/v1/market/economic-calendar" },
     { "source": "/v1/market/news", "destination": "/api/v1/market/news" },
     { "source": "/v1/ai/checklist", "destination": "/api/v1/ai/checklist" },

@@ -4,7 +4,8 @@ import {
   recalculateTradesForDenomination, repairCentAccountPnl,
   listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
   setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
-  saveInvestorCredentials, triggerInvestorSync, listInvestorCredentialsStatus,
+  listInvestorCredentialsStatus,
+  connectAndVerifyInvestorCredentials,
 } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
@@ -278,17 +279,19 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
         if (!row?.id) throw new Error('Account was created but no id was returned.');
 
         if (form.syncMode === 'investor') {
-          await saveInvestorCredentials({
-            tradingAccountId: row.id,
-            brokerServer: form.brokerServer.trim(),
-            login: form.mt5Login.trim(),
-            investorPassword: form.investorPassword,
-          });
           try {
-            await triggerInvestorSync(row.id);
-            toast.success('Account created — investor sync queued');
-          } catch (syncErr) {
-            toast.warn(syncErr.message || 'Account saved, but sync could not be queued yet');
+            await connectAndVerifyInvestorCredentials({
+              tradingAccountId: row.id,
+              brokerServer: form.brokerServer.trim(),
+              login: form.mt5Login.trim(),
+              investorPassword: form.investorPassword,
+            });
+            toast.success('Account created — investor password verified');
+          } catch (verifyErr) {
+            toast.warn(
+              verifyErr.message
+                || 'Account created, but investor login failed. Reconnect credentials in Settings.',
+            );
           }
           await onSaved();
           onClose();
@@ -342,7 +345,9 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
           <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
             <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>Cancel</button>
             <button className={btnPrimary} type="submit" disabled={busy}>
-              {busy ? 'Saving...' : isEdit ? 'Save changes' : 'Add account'}
+              {busy
+                ? (!isEdit && form.syncMode === 'investor' ? 'Verifying...' : 'Saving...')
+                : isEdit ? 'Save changes' : 'Add account'}
             </button>
           </div>
         </form>

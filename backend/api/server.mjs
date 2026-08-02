@@ -21,6 +21,10 @@ import {
 import { handleSaveInvestorCredentials } from './investor-credentials-handler.mjs';
 import { handleTriggerInvestorSync } from './investor-sync-handler.mjs';
 import { handleBridgeSync } from './bridge-sync-handler.mjs';
+import {
+  handleConnectInvestorCredentials,
+  handleInvestorVerifyStatus,
+} from './investor-connect-handler.mjs';
 
 const env = loadEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL?.replace(/\/$/, '');
@@ -111,6 +115,28 @@ const server = createServer(async (req, res) => {
     const body = await readBody(req);
     req.body = body || {};
     const result = await handleSaveInvestorCredentials(req, { supabaseUrl, anonKey, serviceKey, encryptionKey });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/investor-connect') {
+    const body = await readBody(req);
+    req.body = body || {};
+    const result = await handleConnectInvestorCredentials(req, {
+      supabaseUrl, anonKey, serviceKey, encryptionKey, bridgeUrl, bridgeServiceToken,
+    });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/v1/investor-verify') {
+    req.query = {
+      job_id: url.searchParams.get('job_id') || '',
+      trading_account_id: url.searchParams.get('trading_account_id') || '',
+    };
+    const result = await handleInvestorVerifyStatus(req, {
+      supabaseUrl, anonKey, serviceKey, encryptionKey, bridgeUrl, bridgeServiceToken,
+    });
     sendJson(res, result.status, result.body);
     return;
   }

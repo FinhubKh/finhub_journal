@@ -1,6 +1,6 @@
 // src/components/settings/InvestorSyncPanel.jsx
 import { useState } from 'react';
-import { saveInvestorCredentials, triggerInvestorSync, removeInvestorCredentials } from '../../api';
+import { connectAndVerifyInvestorCredentials, triggerInvestorSync, removeInvestorCredentials } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
 import { btnGhost, btnOutline, btnSm, input, msgError } from '../../lib/ui';
@@ -34,7 +34,7 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
     setBusy(true);
     setMsg(null);
     try {
-      await saveInvestorCredentials({
+      await connectAndVerifyInvestorCredentials({
         tradingAccountId: account.id,
         brokerServer: form.brokerServer.trim(),
         login: form.login.trim(),
@@ -45,7 +45,7 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
       await onChanged();
       toast.success('Investor password connected');
     } catch (err) {
-      setMsg(err.message || 'Could not save investor credentials.');
+      setMsg(err.message || 'Could not verify investor credentials.');
     } finally {
       setBusy(false);
     }
@@ -146,7 +146,7 @@ export default function InvestorSyncPanel({ account, status, onChanged }) {
           />
           {msg && <p className={msgError}>{msg}</p>}
           <div className="flex flex-wrap gap-2 pt-1">
-            <button className={btnSm} type="submit" disabled={busy}>{busy ? 'Connecting...' : 'Connect'}</button>
+            <button className={btnSm} type="submit" disabled={busy}>{busy ? 'Verifying...' : 'Connect'}</button>
             <button className={btnGhost} type="button" disabled={busy} onClick={() => setFormOpen(false)}>Cancel</button>
           </div>
         </form>

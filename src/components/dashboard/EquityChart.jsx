@@ -23,7 +23,7 @@ function buildSeries(trades) {
   return { labels, dataUsd, dataR };
 }
 
-export default function EquityChart({ trades }) {
+export default function EquityChart({ trades, fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [mode, setMode] = useState('usd');
@@ -127,11 +127,11 @@ export default function EquityChart({ trades }) {
   }, [trades, mode, empty]);
 
   return (
-    <div className={`${card} overflow-hidden`}>
-      <div className={cardHd}>
+    <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
+      <div className={`${cardHd} shrink-0`}>
         <div>
           <h3 className={cardTitle}>Equity curve</h3>
-          <p className="mt-0.5 text-xs text-zinc-500">Cumulative performance over time</p>
+          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cumulative performance over time</p>
         </div>
         <div className="flex items-center gap-2">
           {!empty && lastVal != null && (
@@ -147,11 +147,11 @@ export default function EquityChart({ trades }) {
           </div>
         </div>
       </div>
-      <div className={`${cardBody} relative h-56`}>
+      <div className={`${cardBody} relative ${fill ? 'min-h-0 flex-1' : 'h-72 sm:h-80'}`}>
         {empty ? (
           <div className={emptyState}>No trades to chart yet.</div>
         ) : (
-          <canvas ref={canvasRef} />
+          <canvas ref={canvasRef} className="h-full w-full" />
         )}
       </div>
     </div>

@@ -61,7 +61,7 @@ export default function DashboardPage() {
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50">
           <div
             className={`flex h-full min-h-0 min-w-0 flex-col ${
-              activeTab === 'log' || activeTab === 'checklist' || activeTab === 'compound'
+              activeTab === 'log' || activeTab === 'checklist' || activeTab === 'compound' || activeTab === 'overview' || activeTab === 'setup'
                 ? 'overflow-hidden'
                 : 'overflow-y-auto overscroll-contain'
             }`}

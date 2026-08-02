@@ -294,12 +294,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
           className={`${btnGhost} w-full hover:bg-zinc-100 dark:hover:bg-zinc-800 ${expanded ? 'justify-between' : 'justify-center'}`}
           title="Toggle Dark/Light Mode"
         >
-          <span className="flex items-center gap-2">
-            {isDark ? <LuMoon className="h-4 w-4" aria-hidden /> : <LuSun className="h-4 w-4" aria-hidden />}
-            {expanded ? (
-              <span className="text-xs font-semibold">{isDark ? 'Dark Theme' : 'Light Theme'}</span>
-            ) : null}
-          </span>
+          {isDark ? <LuMoon className="h-4 w-4" aria-hidden /> : <LuSun className="h-4 w-4" aria-hidden />}
           {expanded ? (
             <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-bold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
               {isDark ? 'DARK' : 'LIGHT'}
