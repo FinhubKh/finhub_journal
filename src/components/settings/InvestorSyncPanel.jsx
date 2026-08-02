@@ -22,6 +22,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
   const [form, setForm] = useState({ brokerServer: '', login: '', investorPassword: '' });
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncStage, setSyncStage] = useState(null);
   const [msg, setMsg] = useState(null);
 
   function setField(key, value) {
@@ -57,10 +58,12 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
   async function handleSyncNow() {
     setBusy(true);
     setSyncing(true);
+    setSyncStage(null);
     setMsg(null);
     try {
       const result = await runInvestorSyncAndWait(account.id, {
-        onStatus: () => {
+        onStatus: (row) => {
+          setSyncStage(row?.sync_stage || null);
           void onChanged();
         },
       });
@@ -83,6 +86,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
       });
     } finally {
       setSyncing(false);
+      setSyncStage(null);
       setBusy(false);
     }
   }
@@ -108,7 +112,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
 
   return (
     <div className={`${compact ? 'bg-transparent px-5 py-4' : 'bg-white px-4 py-4 md:px-5 dark:bg-zinc-950'}`}>
-      <SyncLoadingModal open={syncing} accountName={account?.name} />
+      <SyncLoadingModal open={syncing} accountName={account?.name} stage={syncStage} />
       {!compact ? (
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Investor password sync</p>

@@ -195,7 +195,7 @@ export async function runInvestorSyncAndWait(tradingAccountId, { onStatus } = {}
 
 export async function listInvestorCredentialsStatus() {
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/investor_credentials?select=trading_account_id,broker_server,login,last_synced_at,last_sync_error,updated_at&user_id=eq.${getUserId()}`,
+    `${SUPABASE_URL}/rest/v1/investor_credentials?select=trading_account_id,broker_server,login,last_synced_at,last_sync_error,sync_stage,updated_at&user_id=eq.${getUserId()}`,
     { headers: authHeaders(getToken()) },
   );
   if (!res.ok) throw new Error(await res.text());

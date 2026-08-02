@@ -17,7 +17,7 @@ import {
 import DailyPnlModal from '../components/modals/DailyPnlModal';
 import YearDropdown from '../components/common/YearDropdown';
 import BackButton from '../components/common/BackButton';
-import { btnGhost, card, cardBody, dashboardPageWide, dashboardPageWideFull } from '../lib/ui';
+import { btnGhost, card, cardBody, dashboardPageWide } from '../lib/ui';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -56,7 +56,7 @@ function isWeekendDateString(ds) {
 }
 
 function cellClass(tone, today, tall = false, weekend = false) {
-  const base = `relative flex flex-col rounded-xl border p-2 text-xs transition ${tall ? 'min-h-[88px] h-full' : 'min-h-[72px]'}`;
+  const base = `relative flex flex-col rounded-xl border p-2 text-xs transition ${tall ? 'h-full overflow-hidden' : 'min-h-[72px]'}`;
   if (tone === 'win') {
     return `${base} border-violet-200 bg-violet-50 ${weekend ? 'opacity-80' : ''} ${today ? 'ring-2 ring-violet-400' : ''}`;
   }
@@ -305,8 +305,8 @@ function MonthDetailView({
   const bestWeek = bestWeekPnl === -Infinity ? null : weeks.find((w) => w.weekPnl === bestWeekPnl);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <BackButton onClick={onBack} />
         <div className="flex items-center gap-2">
           <button className={btnGhost} type="button" onClick={onPrevMonth}>Prev</button>
@@ -317,7 +317,7 @@ function MonthDetailView({
         </div>
       </div>
 
-      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           value={hasActivity ? fmtPnlStrict(totalPnl, denomination) : '—'}
           label="Monthly PnL"
@@ -333,14 +333,14 @@ function MonthDetailView({
       </div>
 
       {useOverrides && (
-        <p className="shrink-0 text-xs text-zinc-500">Click any day to set or edit manual PnL.</p>
+        <p className="text-xs text-zinc-500">Click any day to set or edit manual PnL.</p>
       )}
 
       {loading ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400`}>Loading...</div>
       ) : (
-        <div className={`${card} flex min-h-0 flex-1 flex-col overflow-hidden`}>
-          <div className={`${cardBody} flex min-h-0 flex-1 flex-col`}>
+        <div className={card}>
+          <div className={cardBody}>
             <div className="mb-2 grid grid-cols-8 gap-2">
               {WEEK_DAYS.map((d) => (
                 <div
@@ -355,9 +355,9 @@ function MonthDetailView({
               <div className="py-1 text-center text-xs font-semibold text-violet-600">Week PnL</div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2">
+            <div className="space-y-2">
               {weeks.map((week) => (
-                <div className="grid min-h-[92px] flex-1 grid-cols-8 gap-2" key={week.index}>
+                <div className="grid grid-cols-8 gap-2" key={week.index}>
                   {week.days.map((ds, idx) => {
                     if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
                     const dts = tradeMap[ds] || [];
@@ -396,7 +396,7 @@ function MonthDetailView({
                       return (
                         <button
                           type="button"
-                          className={`${cellClass(tone, ds === today, true, weekend)} cursor-pointer text-left`}
+                          className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left`}
                           key={ds}
                           onClick={() => onEditDay(ds, dts, override)}
                         >
@@ -406,12 +406,12 @@ function MonthDetailView({
                     }
 
                     return (
-                      <div className={cellClass(tone, ds === today, true, weekend)} key={ds}>
+                      <div className={cellClass(tone, ds === today, false, weekend)} key={ds}>
                         {inner}
                       </div>
                     );
                   })}
-                  <div className={`flex h-full flex-col items-center justify-center rounded-xl border p-2 text-center ${
+                  <div className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border p-2 text-center ${
                     !week.weekActive
                       ? 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60'
                       : week.weekPnl >= 0
@@ -433,9 +433,7 @@ function MonthDetailView({
         </div>
       )}
 
-      <div className="shrink-0">
-        <Legend />
-      </div>
+      <Legend />
     </div>
   );
 }
@@ -529,7 +527,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className={screen === 'detail' ? dashboardPageWideFull : dashboardPageWide}>
+    <div className={dashboardPageWide}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-zinc-900">Calendar</h1>

@@ -161,7 +161,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
           <p className="max-w-[16rem] truncate text-[11px] leading-tight">{statusLine}</p>
         ) : null}
       </div>
-      <SyncLoadingModal open={busy} accountName={activeAccount?.name} />
+      <SyncLoadingModal open={busy} accountName={activeAccount?.name} stage={investorStatus?.sync_stage} />
     </>
   );
 }
