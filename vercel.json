@@ -5,9 +5,9 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/v1/ea/sync", "destination": "/api/v1/ea/sync" },
-    { "source": "/v1/bridge/sync", "destination": "/api/v1/bridge/sync" },
-    { "source": "/v1/investor-credentials", "destination": "/api/v1/investor-credentials" },
-    { "source": "/v1/investor-sync", "destination": "/api/v1/investor-sync" },
+    { "source": "/v1/bridge/sync", "destination": "/api/v1/mt5-bridge?route=bridge-sync" },
+    { "source": "/v1/investor-credentials", "destination": "/api/v1/mt5-bridge?route=investor-credentials" },
+    { "source": "/v1/investor-sync", "destination": "/api/v1/mt5-bridge?route=investor-sync" },
     { "source": "/v1/market/economic-calendar", "destination": "/api/v1/market/economic-calendar" },
     { "source": "/v1/market/news", "destination": "/api/v1/market/news" },
     { "source": "/v1/ai/checklist", "destination": "/api/v1/ai/checklist" },
@@ -23,13 +23,7 @@
     "api/v1/ea/sync.js": {
       "maxDuration": 30
     },
-    "api/v1/bridge/sync.js": {
-      "maxDuration": 30
-    },
-    "api/v1/investor-credentials.js": {
-      "maxDuration": 15
-    },
-    "api/v1/investor-sync.js": {
+    "api/v1/mt5-bridge.js": {
       "maxDuration": 30
     },
     "api/v1/market/economic-calendar.js": {
