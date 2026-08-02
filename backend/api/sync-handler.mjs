@@ -1,31 +1,8 @@
 import { createHash } from 'crypto';
+import { supabaseHeaders, accountDenomination, upsertSyncedTrades } from './trade-sync-shared.mjs';
 
 function sha256Hex(text) {
   return createHash('sha256').update(text).digest('hex');
-}
-
-function supabaseHeaders(serviceKey, extra = {}) {
-  return {
-    apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
-    'Content-Type': 'application/json',
-    ...extra,
-  };
-}
-
-function accountDenomination(matchedAccount) {
-  return matchedAccount?.pnl_denomination === 'cent' ? 'cent' : 'usd';
-}
-
-function resolvePnlUsd(trade, matchedAccount) {
-  const raw = trade.pnl_raw != null ? Number(trade.pnl_raw) : null;
-  const fallback = Number(trade.pnl_usd) || 0;
-  const denom = accountDenomination(matchedAccount);
-
-  if (raw != null) {
-    return denom === 'cent' ? raw / 100 : raw;
-  }
-  return fallback;
 }
 
 export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, serviceKey }) {
@@ -69,43 +46,19 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
 
   const accountLabel = matchedAccount.name;
 
-  const rows = trades.map((t) => {
-    const pnl = resolvePnlUsd(t, matchedAccount);
-    return {
-      user_id: userId,
+  let saved;
+  try {
+    saved = await upsertSyncedTrades({
+      trades,
+      userId,
+      matchedAccount,
       source: 'api',
-      ticket: t.ticket,
-      symbol: t.symbol,
-      direction: t.direction,
-      entry_price: t.entry_price,
-      exit_price: t.exit_price,
-      lot_size: t.lot_size,
-      pnl_usd: pnl,
-      r_value: Number(t.r_value) || 0,
-      result: pnl > 0 ? 'win' : pnl < 0 ? 'loss' : 'be',
-      open_time: t.open_time,
-      close_time: t.close_time,
-      date: (t.close_time || t.open_time || new Date().toISOString()).slice(0, 10),
-      account: accountLabel,
-      account_id: matchedAccount.id,
-    };
-  });
-
-  const upsertRes = await fetch(
-    `${supabaseUrl}/rest/v1/trades?on_conflict=user_id,ticket`,
-    {
-      method: 'POST',
-      headers: supabaseHeaders(serviceKey, {
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      }),
-      body: JSON.stringify(rows),
-    },
-  );
-  if (!upsertRes.ok) {
-    const text = await upsertRes.text();
-    return { status: 500, body: { error: text || 'Failed to save trades' } };
+      supabaseUrl,
+      serviceKey,
+    });
+  } catch (err) {
+    return { status: 500, body: { error: err.message || 'Failed to save trades' } };
   }
-  const saved = await upsertRes.json();
 
   const syncedAt = new Date().toISOString();
   await fetch(

@@ -4,6 +4,7 @@ import {
   recalculateTradesForDenomination, repairCentAccountPnl,
   listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
   setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
+  saveInvestorCredentials, triggerInvestorSync, listInvestorCredentialsStatus,
 } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
@@ -21,11 +22,16 @@ import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, msgError, msgSuccess,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
+import InvestorSyncPanel from './InvestorSyncPanel';
 
 const EMPTY_FORM = {
   name: '',
   accountType: 'live',
   pnlDenomination: 'usd',
+  syncMode: 'ea',
+  brokerServer: '',
+  mt5Login: '',
+  investorPassword: '',
 };
 
 function accountToForm(account) {
@@ -64,7 +70,7 @@ function Badge({ children, tone = 'neutral' }) {
   );
 }
 
-function AccountFormFields({ form, setField }) {
+function AccountFormFields({ form, setField, isCreate }) {
   return (
     <div className="space-y-3">
       <div>
@@ -99,10 +105,94 @@ function AccountFormFields({ form, setField }) {
           />
         </div>
       </div>
-      <p className="text-xs text-zinc-500">
-        Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker uses cent lots (PnL syncs 100x higher on USD).
-        Generate an <strong className="font-medium text-zinc-600">MT5 sync key</strong> for this account after saving.
-      </p>
+
+      {isCreate ? (
+        <fieldset className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3">
+          <legend className="px-1 text-sm font-medium text-zinc-700">How should we sync MT5?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label
+              className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
+                form.syncMode === 'ea'
+                  ? 'border-violet-400 bg-white ring-2 ring-violet-200'
+                  : 'border-zinc-200 bg-white hover:border-zinc-300'
+              }`}
+            >
+              <input
+                type="radio"
+                className="sr-only"
+                name="syncMode"
+                value="ea"
+                checked={form.syncMode === 'ea'}
+                onChange={() => setField('syncMode', 'ea')}
+              />
+              <p className="text-sm font-semibold text-zinc-900">EA sync key</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                Install the EA on your MT5 and paste a sync key. Best if you keep MT5 open locally.
+              </p>
+            </label>
+            <label
+              className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
+                form.syncMode === 'investor'
+                  ? 'border-violet-400 bg-white ring-2 ring-violet-200'
+                  : 'border-zinc-200 bg-white hover:border-zinc-300'
+              }`}
+            >
+              <input
+                type="radio"
+                className="sr-only"
+                name="syncMode"
+                value="investor"
+                checked={form.syncMode === 'investor'}
+                onChange={() => setField('syncMode', 'investor')}
+              />
+              <p className="text-sm font-semibold text-zinc-900">Investor password</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                Read-only login. We pull closed trades for you — no EA install.
+              </p>
+            </label>
+          </div>
+
+          {form.syncMode === 'investor' ? (
+            <div className="space-y-2 border-t border-zinc-200 pt-3">
+              <input
+                className={input}
+                placeholder="Broker server (e.g. ICMarketsSC-Live)"
+                value={form.brokerServer}
+                onChange={(e) => setField('brokerServer', e.target.value)}
+                autoComplete="off"
+              />
+              <input
+                className={input}
+                placeholder="MT5 login number"
+                value={form.mt5Login}
+                onChange={(e) => setField('mt5Login', e.target.value)}
+                inputMode="numeric"
+                autoComplete="off"
+              />
+              <input
+                className={input}
+                type="password"
+                placeholder="Investor (read-only) password"
+                value={form.investorPassword}
+                onChange={(e) => setField('investorPassword', e.target.value)}
+                autoComplete="new-password"
+              />
+              <p className="text-xs text-zinc-500">
+                Use the investor password, not the master password. We encrypt it before storing.
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-zinc-500 border-t border-zinc-200 pt-3">
+              After creating the account we generate a sync key for you to paste into the EA.
+            </p>
+          )}
+        </fieldset>
+      ) : (
+        <p className="text-xs text-zinc-500">
+          Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker uses cent lots (PnL syncs 100x higher on USD).
+          Manage EA or investor sync on the account card after saving.
+        </p>
+      )}
     </div>
   );
 }
@@ -113,6 +203,8 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
   const [form, setForm] = useState(() => (isEdit ? accountToForm(account) : EMPTY_FORM));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [createdSyncKey, setCreatedSyncKey] = useState(null);
+  const [createdAccount, setCreatedAccount] = useState(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -136,6 +228,13 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
     if (!name) {
       setMsg({ type: 'error', text: 'Account name is required.' });
       return;
+    }
+
+    if (!isEdit && form.syncMode === 'investor') {
+      if (!form.brokerServer.trim() || !form.mt5Login.trim() || !form.investorPassword) {
+        setMsg({ type: 'error', text: 'Broker server, MT5 login, and investor password are required.' });
+        return;
+      }
     }
 
     setBusy(true);
@@ -165,23 +264,57 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
         }
       } else {
         const color = ACCOUNT_COLORS[tradingAccounts.length % ACCOUNT_COLORS.length];
-        await insertTradingAccount({
+        const created = await insertTradingAccount({
           name,
           slug: normalizeSlug(name),
           account_type: form.accountType,
           pnl_denomination: form.pnlDenomination,
           color,
           is_default: tradingAccounts.length === 0,
-          connection_status: 'manual',
+          connection_status: form.syncMode === 'investor' ? 'investor' : 'ea',
+          broker: form.syncMode === 'investor' ? form.brokerServer.trim() : null,
         });
-        await onSaved();
-        onClose();
+        const row = Array.isArray(created) ? created[0] : created;
+        if (!row?.id) throw new Error('Account was created but no id was returned.');
+
+        if (form.syncMode === 'investor') {
+          await saveInvestorCredentials({
+            tradingAccountId: row.id,
+            brokerServer: form.brokerServer.trim(),
+            login: form.mt5Login.trim(),
+            investorPassword: form.investorPassword,
+          });
+          try {
+            await triggerInvestorSync(row.id);
+            toast.success('Account created — investor sync queued');
+          } catch (syncErr) {
+            toast.warn(syncErr.message || 'Account saved, but sync could not be queued yet');
+          }
+          await onSaved();
+          onClose();
+        } else {
+          const key = await generateAccountSyncKey(row.id);
+          setCreatedAccount(row);
+          setCreatedSyncKey(key);
+          await onSaved();
+          toast.success('Account created — copy your EA sync key');
+        }
       }
     } catch (err) {
       setMsg({ type: 'error', text: err.message || `Could not ${isEdit ? 'save' : 'add'} account.` });
     } finally {
       setBusy(false);
     }
+  }
+
+  if (createdSyncKey && createdAccount) {
+    return (
+      <SyncKeyModal
+        account={createdAccount}
+        syncKey={createdSyncKey}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
@@ -204,7 +337,7 @@ function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) 
           <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>Close</button>
         </div>
         <form className="px-5 py-4" onSubmit={handleSubmit}>
-          <AccountFormFields form={form} setField={setField} />
+          <AccountFormFields form={form} setField={setField} isCreate={!isEdit} />
           {msg && <p className={`mt-3 ${msg.type === 'error' ? msgError : msgSuccess}`}>{msg.text}</p>}
           <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
             <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>Cancel</button>
@@ -275,7 +408,7 @@ function SyncKeyModal({ account, syncKey, onClose }) {
   );
 }
 
-function AccountCard({ account, hasSyncKey, lastSyncedAt, onEdit, onSetDefault, onUpdated, onKeysChanged }) {
+function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit, onSetDefault, onUpdated, onKeysChanged, onInvestorChanged }) {
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [revealedKey, setRevealedKey] = useState(null);
@@ -555,6 +688,8 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, onEdit, onSetDefault, 
           </div>
         </div>
 
+        <InvestorSyncPanel account={account} status={investorStatus} onChanged={onInvestorChanged} />
+
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/80 px-4 py-3 md:px-5">
           <div className="flex flex-wrap gap-2">
             {!account.is_default ? (
@@ -590,6 +725,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, onEdit, onSetDefault, 
 export default function TradingAccountsManager({ tradingAccounts, onUpdated, onSetDefault }) {
   const [modal, setModal] = useState(null);
   const [syncKeyByAccount, setSyncKeyByAccount] = useState({});
+  const [investorByAccount, setInvestorByAccount] = useState({});
 
   async function refreshSyncKeys() {
     try {
@@ -607,12 +743,30 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
     }
   }
 
+  async function refreshInvestorStatus() {
+    try {
+      const rows = await listInvestorCredentialsStatus();
+      const map = {};
+      for (const row of rows) {
+        map[row.trading_account_id] = row;
+      }
+      setInvestorByAccount(map);
+    } catch {
+      setInvestorByAccount({});
+    }
+  }
+
   useEffect(() => {
     refreshSyncKeys();
+    refreshInvestorStatus();
   }, [tradingAccounts.length]);
 
   async function handleKeysChanged() {
     await refreshSyncKeys();
+  }
+
+  async function handleInvestorChanged() {
+    await refreshInvestorStatus();
   }
 
   return (
@@ -620,7 +774,7 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-zinc-500">
           {tradingAccounts.length === 0
-            ? 'Add an account, then generate an MT5 sync key for it.'
+            ? 'Add an account and choose EA sync or investor password.'
             : `${tradingAccounts.length} account${tradingAccounts.length === 1 ? '' : 's'} · sync, share, and set your default`}
         </p>
         <button className={btnPrimary} type="button" onClick={() => setModal({ mode: 'add' })}>
@@ -643,10 +797,12 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
               account={account}
               hasSyncKey={Boolean(syncKeyByAccount[account.id])}
               lastSyncedAt={syncKeyByAccount[account.id]?.last_synced_at}
+              investorStatus={investorByAccount[account.id] || null}
               onEdit={(acc) => setModal({ mode: 'edit', account: acc })}
               onSetDefault={onSetDefault}
               onUpdated={onUpdated}
               onKeysChanged={handleKeysChanged}
+              onInvestorChanged={handleInvestorChanged}
             />
           ))}
         </div>

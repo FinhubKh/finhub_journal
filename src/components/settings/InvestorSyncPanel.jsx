@@ -1,0 +1,165 @@
+// src/components/settings/InvestorSyncPanel.jsx
+import { useState } from 'react';
+import { saveInvestorCredentials, triggerInvestorSync, removeInvestorCredentials } from '../../api';
+import { useDialog } from '../../context/DialogContext';
+import { toast } from 'react-toastify';
+import { btnGhost, btnOutline, btnSm, input, msgError } from '../../lib/ui';
+
+function formatLastSynced(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+export default function InvestorSyncPanel({ account, status, onChanged }) {
+  const { alert, confirm } = useDialog();
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState({ brokerServer: '', login: '', investorPassword: '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  function setField(key, value) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (!form.brokerServer.trim() || !form.login.trim() || !form.investorPassword) {
+      setMsg('Broker server, login, and investor password are all required.');
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      await saveInvestorCredentials({
+        tradingAccountId: account.id,
+        brokerServer: form.brokerServer.trim(),
+        login: form.login.trim(),
+        investorPassword: form.investorPassword,
+      });
+      setForm({ brokerServer: '', login: '', investorPassword: '' });
+      setFormOpen(false);
+      await onChanged();
+      toast.success('Investor password connected');
+    } catch (err) {
+      setMsg(err.message || 'Could not save investor credentials.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSyncNow() {
+    setBusy(true);
+    try {
+      await triggerInvestorSync(account.id);
+      toast.success('Sync queued — trades will appear shortly.');
+      await onChanged();
+    } catch (err) {
+      await alert({ title: 'Sync failed', message: err.message || 'Could not start sync.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    const ok = await confirm({
+      title: `Disconnect investor password for "${account.name}"?`,
+      message: 'You will need to re-enter the investor password to sync via this method again.',
+      confirmLabel: 'Disconnect',
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await removeInvestorCredentials(account.id);
+      await onChanged();
+    } catch (err) {
+      await alert({ title: 'Error', message: err.message || 'Could not disconnect.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="bg-white px-4 py-4 md:px-5 dark:bg-zinc-950">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Investor password sync</p>
+        {status ? (
+          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+            Connected
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-md bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 ring-1 ring-inset ring-zinc-200">
+            Not connected
+          </span>
+        )}
+      </div>
+
+      {status ? (
+        <>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            {status.broker_server} · login {status.login}
+          </p>
+          <p className={`mt-2 text-xs font-medium ${status.last_synced_at ? 'text-emerald-700' : 'text-zinc-400'}`}>
+            {status.last_synced_at ? `Last synced: ${formatLastSynced(status.last_synced_at)}` : 'Not synced yet'}
+          </p>
+          {status.last_sync_error ? (
+            <p className="mt-1 text-xs font-medium text-rose-600">Last sync failed: {status.last_sync_error}</p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button className={btnSm} type="button" disabled={busy} onClick={() => void handleSyncNow()}>
+              {busy ? 'Syncing...' : 'Sync now'}
+            </button>
+            <button
+              className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-45"
+              type="button"
+              disabled={busy}
+              onClick={() => void handleDisconnect()}
+            >
+              Disconnect
+            </button>
+          </div>
+        </>
+      ) : formOpen ? (
+        <form className="mt-1 space-y-2" onSubmit={handleSave}>
+          <input
+            className={input}
+            placeholder="Broker server (e.g. ICMarketsSC-Live)"
+            value={form.brokerServer}
+            onChange={(e) => setField('brokerServer', e.target.value)}
+          />
+          <input
+            className={input}
+            placeholder="MT5 login number"
+            value={form.login}
+            onChange={(e) => setField('login', e.target.value)}
+          />
+          <input
+            className={input}
+            type="password"
+            placeholder="Investor (read-only) password"
+            value={form.investorPassword}
+            onChange={(e) => setField('investorPassword', e.target.value)}
+          />
+          {msg && <p className={msgError}>{msg}</p>}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button className={btnSm} type="submit" disabled={busy}>{busy ? 'Connecting...' : 'Connect'}</button>
+            <button className={btnGhost} type="button" disabled={busy} onClick={() => setFormOpen(false)}>Cancel</button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            Alternative to the EA: paste a read-only investor password and we sync trades for you.
+          </p>
+          <button className={`${btnOutline} mt-3`} type="button" onClick={() => setFormOpen(true)}>
+            Connect via investor password
+          </button>
+        </>
+      )}
+    </div>
+  );
+}

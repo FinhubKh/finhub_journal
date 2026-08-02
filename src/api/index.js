@@ -438,3 +438,4 @@ export async function revokeAccountSyncKey(accountId) {
 
 export * from './compounding';
 export * from './share';
+export * from './investorSync';

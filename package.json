@@ -12,6 +12,7 @@
     "ea:compile": "node scripts/generate-ea-config.mjs --compile",
     "api:dev": "node backend/api/server.mjs",
     "db:check": "node scripts/db-check.mjs",
+    "test": "vitest run",
     "seed:admin": "node scripts/seed-admin.mjs",
     "seed:leaderboard": "node scripts/seed-leaderboard.mjs",
     "functions:deploy": "node scripts/deploy-functions.mjs"
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^3.2.7"
   }
 }

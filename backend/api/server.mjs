@@ -18,6 +18,9 @@ import {
   handleListPerformanceReports,
   handleDeletePerformanceReport,
 } from './ai-performance-handler.mjs';
+import { handleSaveInvestorCredentials } from './investor-credentials-handler.mjs';
+import { handleTriggerInvestorSync } from './investor-sync-handler.mjs';
+import { handleBridgeSync } from './bridge-sync-handler.mjs';
 
 const env = loadEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL?.replace(/\/$/, '');
@@ -26,6 +29,9 @@ const anonKey = env.VITE_SUPABASE_ANON_KEY;
 const sealionApiKey = (env.SEALION_API_KEY || '').trim();
 const sealionModel = (env.SEALION_MODEL || '').trim() || undefined;
 const port = Number(env.EA_API_PORT || 8787);
+const encryptionKey = env.INVESTOR_CRED_ENCRYPTION_KEY;
+const bridgeUrl = (env.MT5_BRIDGE_URL || '').replace(/\/$/, '');
+const bridgeServiceToken = env.BRIDGE_SERVICE_TOKEN;
 
 if (!supabaseUrl || !serviceKey) {
   console.error('Set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env');
@@ -88,6 +94,32 @@ const server = createServer(async (req, res) => {
       accountMeta: body.account_meta,
       supabaseUrl,
       serviceKey,
+    });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/bridge/sync') {
+    const body = await readBody(req);
+    req.body = body || {};
+    const result = await handleBridgeSync(req, { supabaseUrl, serviceKey, bridgeServiceToken });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/investor-credentials') {
+    const body = await readBody(req);
+    req.body = body || {};
+    const result = await handleSaveInvestorCredentials(req, { supabaseUrl, anonKey, serviceKey, encryptionKey });
+    sendJson(res, result.status, result.body);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/investor-sync') {
+    const body = await readBody(req);
+    req.body = body || {};
+    const result = await handleTriggerInvestorSync(req, {
+      supabaseUrl, anonKey, serviceKey, encryptionKey, bridgeUrl, bridgeServiceToken,
     });
     sendJson(res, result.status, result.body);
     return;
