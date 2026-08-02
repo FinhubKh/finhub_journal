@@ -21,6 +21,22 @@ function CloseIcon() {
   );
 }
 
+function ExpandIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M2.5 5.5V2.5H5.5M8.5 2.5H11.5V5.5M11.5 8.5V11.5H8.5M5.5 11.5H2.5V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CompressIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M5.5 2.5V5.5H2.5M11.5 5.5H8.5V2.5M8.5 11.5V8.5H11.5M2.5 8.5H5.5V11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function loadTradingViewScript() {
   if (typeof window === 'undefined') return Promise.reject(new Error('No window'));
   if (window.TradingView) return Promise.resolve();
@@ -60,10 +76,12 @@ function readSavedSymbol() {
 }
 
 export default function MarketChartFrame({ onClose }) {
+  const rootRef = useRef(null);
   const hostRef = useRef(null);
   const containerIdRef = useRef(`tv_chart_${Math.random().toString(36).slice(2, 10)}`);
   const [symbolId, setSymbolId] = useState(readSavedSymbol);
   const [error, setError] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const symbol = SYMBOLS.find((s) => s.id === symbolId) || SYMBOLS[0];
 
@@ -74,6 +92,29 @@ export default function MarketChartFrame({ onClose }) {
       /* ignore */
     }
   }, [symbolId]);
+
+  useEffect(() => {
+    if (!isFullscreen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function onKey(e) {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    // Let TradingView autosize pick up the new layout bounds.
+    const id = window.setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [isFullscreen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,8 +167,12 @@ export default function MarketChartFrame({ onClose }) {
     };
   }, [symbol.tv]);
 
+  const rootClass = isFullscreen
+    ? 'fixed inset-0 z-[180] flex flex-col overflow-hidden bg-white dark:bg-zinc-950'
+    : `${card} flex min-h-0 flex-1 flex-col overflow-hidden`;
+
   return (
-    <div className={`${card} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+    <div ref={rootRef} className={rootClass}>
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-100 px-3 py-2.5 dark:border-zinc-800">
         <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Market</span>
         <div className={`${pillToggle} ml-auto max-w-full flex-wrap`}>
@@ -142,7 +187,16 @@ export default function MarketChartFrame({ onClose }) {
             </button>
           ))}
         </div>
-        {onClose ? (
+        <button
+          type="button"
+          className={`${btnGhost} shrink-0 px-2 py-1.5`}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          onClick={() => setIsFullscreen((v) => !v)}
+        >
+          {isFullscreen ? <CompressIcon /> : <ExpandIcon />}
+        </button>
+        {onClose && !isFullscreen ? (
           <button
             type="button"
             className={`${btnGhost} shrink-0 px-2 py-1.5 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300`}
@@ -160,7 +214,10 @@ export default function MarketChartFrame({ onClose }) {
           {error}
         </div>
       ) : (
-        <div ref={hostRef} className="min-h-[320px] w-full flex-1 lg:min-h-0" />
+        <div
+          ref={hostRef}
+          className={`w-full flex-1 ${isFullscreen ? 'min-h-0' : 'min-h-[420px] lg:min-h-0'}`}
+        />
       )}
     </div>
   );

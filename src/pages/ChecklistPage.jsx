@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import ChecklistCard from '../components/journal/ChecklistCard';
 import ChecklistStepModal from '../components/modals/ChecklistStepModal';
 import CreateStrategyModal from '../components/modals/CreateStrategyModal';
-import AiChecklistSidebar from '../components/checklist/AiChecklistSidebar';
 import StrategyChecklistList from '../components/checklist/StrategyChecklistList';
 import MarketChartFrame from '../components/checklist/MarketChartFrame';
 import BackButton from '../components/common/BackButton';
@@ -26,8 +25,8 @@ export default function ChecklistPage() {
   const { userModels } = useAppData();
   const [scope, setScope] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAiOpen, setIsAiOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingModel, setEditingModel] = useState(null);
   const [marketVisible, setMarketVisible] = useState(readMarketVisible);
 
   useEffect(() => {
@@ -61,6 +60,12 @@ export default function ChecklistPage() {
     setScope({ type: 'strategy', id: model.id, name: model.name });
   }
 
+  function handleUpdated(model) {
+    if (scope?.type === 'strategy' && scope.id === model.id) {
+      setScope({ type: 'strategy', id: model.id, name: model.name });
+    }
+  }
+
   if (!scope) {
     return (
       <div className={dashboardPageWideFull}>
@@ -71,13 +76,25 @@ export default function ChecklistPage() {
 
         <StrategyChecklistList
           onSelect={setScope}
-          onCreate={() => setIsCreateOpen(true)}
+          onCreate={() => {
+            setEditingModel(null);
+            setIsCreateOpen(true);
+          }}
+          onEdit={(model) => {
+            setEditingModel(model);
+            setIsCreateOpen(true);
+          }}
         />
 
         <CreateStrategyModal
           isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
+          model={editingModel}
+          onClose={() => {
+            setIsCreateOpen(false);
+            setEditingModel(null);
+          }}
           onCreated={handleCreated}
+          onUpdated={handleUpdated}
         />
       </div>
     );
@@ -97,9 +114,6 @@ export default function ChecklistPage() {
               Show market
             </button>
           ) : null}
-          <button className={btnOutline} type="button" onClick={() => setIsAiOpen(true)}>
-            Generate with AI
-          </button>
           <button className={btnPrimary} type="button" onClick={() => setIsModalOpen(true)}>
             + Add Step
           </button>
@@ -108,13 +122,13 @@ export default function ChecklistPage() {
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
         {marketVisible ? (
-          <div className="flex min-h-[360px] min-w-0 flex-1 flex-col lg:min-h-0 lg:basis-[58%]">
+          <div className="flex min-h-[480px] min-w-0 flex-1 flex-col lg:min-h-0 lg:basis-[70%]">
             <MarketChartFrame onClose={() => setMarketVisible(false)} />
           </div>
         ) : null}
         <div
           className={`flex min-h-0 min-w-0 flex-col ${
-            marketVisible ? 'flex-1 lg:max-w-[42%] lg:basis-[42%]' : 'h-full w-full flex-1'
+            marketVisible ? 'flex-1 lg:max-w-[30%] lg:basis-[30%]' : 'h-full w-full flex-1'
           }`}
         >
           <ChecklistCard entryModelId={entryModelId} />
@@ -125,11 +139,6 @@ export default function ChecklistPage() {
         isOpen={isModalOpen}
         entryModelId={entryModelId}
         onClose={() => setIsModalOpen(false)}
-      />
-      <AiChecklistSidebar
-        isOpen={isAiOpen}
-        entryModelId={entryModelId}
-        onClose={() => setIsAiOpen(false)}
       />
     </div>
   );

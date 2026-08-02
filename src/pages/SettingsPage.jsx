@@ -13,7 +13,6 @@ import {
   updateTradingAccount,
 } from '../api';
 import TradingAccountsManager from '../components/settings/TradingAccountsManager';
-import InstallGuideCard from '../components/settings/InstallGuideCard';
 
 const SETTINGS_TABS = [
   {
@@ -24,16 +23,6 @@ const SETTINGS_TABS = [
         <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
         <path d="M2 6.5h12" stroke="currentColor" strokeWidth="1.4" />
         <path d="M5 9.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: 'mt5',
-    label: 'MT5 Setup',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M3 4.5h10v7a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 11.5v-7z" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M5.5 3v1.5M10.5 3v1.5M6 8.5l1.5 1.5L10.5 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -60,8 +49,6 @@ const SETTINGS_TABS = [
 
 const FOCUS_TO_TAB = {
   'trading-accounts': 'account',
-  'mt5-setup': 'mt5',
-  setup: 'mt5',
 };
 
 function SettingsSection({ title, children, id }) {
@@ -244,10 +231,6 @@ export default function SettingsPage({ focusSection = null }) {
               />
             </section>
           </>
-        )}
-
-        {activeTab === 'mt5' && (
-          <InstallGuideCard standalone />
         )}
 
         {activeTab === 'journal' && (

@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useAppData } from '../../context/AppDataContext';
+import { useDialog } from '../../context/DialogContext';
+import { deleteModel } from '../../api';
 import { card } from '../../lib/ui';
 
 function StrategyIcon({ general = false }) {
@@ -24,18 +27,70 @@ function StrategyIcon({ general = false }) {
   );
 }
 
-function StrategyCard({ title, subtitle, stepCount, onClick, general = false }) {
+function ActionIconButton({ label, onClick, tone = 'neutral', children }) {
+  const toneClass =
+    tone === 'danger'
+      ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40'
+      : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200';
+
   return (
     <button
       type="button"
-      className={`${card} group flex h-full w-full flex-col gap-4 p-4 text-left transition hover:border-violet-300 hover:shadow-sm dark:hover:border-violet-700 md:p-5`}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition ${toneClass}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StrategyCard({
+  title,
+  subtitle,
+  stepCount,
+  onClick,
+  general = false,
+  onEdit,
+  onDelete,
+  busy = false,
+}) {
+  return (
+    <button
+      type="button"
+      className={`${card} group flex h-full w-full flex-col gap-4 p-4 text-left transition hover:border-violet-300 hover:shadow-sm disabled:opacity-60 dark:hover:border-violet-700 md:p-5`}
       onClick={onClick}
+      disabled={busy}
     >
       <div className="flex items-start justify-between gap-3">
         <StrategyIcon general={general} />
-        <span className="rounded-lg bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-          {stepCount} {stepCount === 1 ? 'step' : 'steps'}
-        </span>
+        <div className="flex items-center gap-1">
+          {!general ? (
+            <div className="flex items-center opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+              {onEdit ? (
+                <ActionIconButton label="Edit strategy" onClick={onEdit}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M11.5 2.5l2 2L5.5 12.5H3.5v-2L11.5 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                  </svg>
+                </ActionIconButton>
+              ) : null}
+              {onDelete ? (
+                <ActionIconButton label="Delete strategy" tone="danger" onClick={onDelete}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M3.5 4.5h9M6.5 4.5V3h3v1.5M5.5 4.5l.5 8h4l.5-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </ActionIconButton>
+              ) : null}
+            </div>
+          ) : null}
+          <span className="rounded-lg bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+            {stepCount} {stepCount === 1 ? 'step' : 'steps'}
+          </span>
+        </div>
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</p>
@@ -48,8 +103,10 @@ function StrategyCard({ title, subtitle, stepCount, onClick, general = false }) 
   );
 }
 
-export default function StrategyChecklistList({ onSelect, onCreate }) {
-  const { userModels, userSteps } = useAppData();
+export default function StrategyChecklistList({ onSelect, onCreate, onEdit }) {
+  const { userModels, userSteps, refreshModels, refreshSteps } = useAppData();
+  const { alert, confirm } = useDialog();
+  const [busyId, setBusyId] = useState(null);
 
   const counts = useMemo(() => {
     const map = { general: 0 };
@@ -62,6 +119,30 @@ export default function StrategyChecklistList({ onSelect, onCreate }) {
     });
     return map;
   }, [userSteps]);
+
+  async function handleDelete(model) {
+    const stepCount = counts[model.id] || 0;
+    const ok = await confirm({
+      title: `Delete "${model.name}"?`,
+      message: stepCount
+        ? `This will permanently delete the strategy and its ${stepCount} checklist ${stepCount === 1 ? 'step' : 'steps'}.`
+        : 'This will permanently delete the strategy.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setBusyId(model.id);
+    try {
+      await deleteModel(model.id);
+      await Promise.all([refreshModels(), refreshSteps()]);
+      toast.success('Strategy deleted');
+    } catch {
+      await alert({ title: 'Error', message: 'Could not delete strategy.' });
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -81,6 +162,9 @@ export default function StrategyChecklistList({ onSelect, onCreate }) {
             subtitle="Strategy checklist"
             stepCount={counts[model.id] || 0}
             onClick={() => onSelect({ type: 'strategy', id: model.id, name: model.name })}
+            onEdit={() => onEdit?.(model)}
+            onDelete={() => void handleDelete(model)}
+            busy={busyId === model.id}
           />
         ))}
 

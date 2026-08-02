@@ -351,11 +351,27 @@ export async function insertModel(name) {
   return res.json();
 }
 
+export async function updateModel(id, name) {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/entry_models?id=eq.${id}&user_id=eq.${getUserId()}`,
+    {
+      method: 'PATCH',
+      headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+      body: JSON.stringify({ name }),
+    },
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function deleteModel(id) {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/entry_models?id=eq.${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
-  });
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/entry_models?id=eq.${id}&user_id=eq.${getUserId()}`,
+    {
+      method: 'DELETE',
+      headers: authHeaders(getToken()),
+    },
+  );
   if (!res.ok) throw new Error(await res.text());
 }
 

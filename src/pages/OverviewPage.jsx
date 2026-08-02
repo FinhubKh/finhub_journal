@@ -125,7 +125,7 @@ export default function OverviewPage() {
         <>
           {!hasTrades && (
             <div className="mb-6">
-              <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'settings', section: 'mt5-setup' } })} />
+              <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'setup' } })} />
             </div>
           )}
 

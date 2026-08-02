@@ -12,6 +12,7 @@ const CalendarPage = lazy(() => import('./CalendarPage'));
 // const EconomicCalendarPage = lazy(() => import('./EconomicCalendarPage'));
 // const WorldNewsPage = lazy(() => import('./WorldNewsPage'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
+const SetupPage = lazy(() => import('./SetupPage'));
 const ChecklistPage = lazy(() => import('./ChecklistPage'));
 const CompoundingPage = lazy(() => import('./CompoundingPage'));
 const AiAdvisorPage = lazy(() => import('./AiAdvisorPage'));
@@ -42,9 +43,10 @@ export default function DashboardPage() {
       if (tab === 'news' || tab === 'economic-calendar' || tab === 'world-news') {
         tab = 'overview';
       }
-      if (tab === 'setup') {
-        tab = 'settings';
-        section = section || 'mt5-setup';
+      // Old settings MT5 deep-links → dedicated setup page
+      if (tab === 'settings' && (section === 'mt5-setup' || section === 'setup')) {
+        tab = 'setup';
+        section = null;
       }
       setActiveTab(tab);
       setSettingsFocus(section);
@@ -77,6 +79,7 @@ export default function DashboardPage() {
               {activeTab === 'world-news' && <WorldNewsPage />}
               */}
               {activeTab === 'settings' && <SettingsPage focusSection={settingsFocus} />}
+              {activeTab === 'setup' && <SetupPage />}
             </Suspense>
           </div>
         </main>

@@ -7,4 +7,22 @@
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
   --color-brand: #7c3aed;
   --color-brand-bright: #a78bfa;
+  --animate-install-in-right: install-in-right 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-install-in-left: install-in-left 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-install-fade-up: install-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes install-in-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes install-in-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes install-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
