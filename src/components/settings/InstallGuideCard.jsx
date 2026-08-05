@@ -219,19 +219,18 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
 
           <div
             key={animKey}
-            className={`overflow-hidden rounded-2xl border border-zinc-100 bg-gradient-to-br from-zinc-50 to-white dark:border-zinc-800 dark:from-zinc-900/80 dark:to-zinc-950 ${slideClass}`}
+            className={`overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-zinc-50 to-white shadow-sm dark:border-zinc-800 dark:from-zinc-900/80 dark:to-zinc-950 ${slideClass}`}
             role="group"
             aria-labelledby={`install-step-${step.n}-title`}
           >
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-zinc-950">
+            <div className="relative aspect-[3/2] w-full overflow-hidden bg-zinc-950">
               <img
                 src={step.image}
                 alt={step.imageAlt}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full object-contain object-center"
                 loading="eager"
                 decoding="async"
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-950/50 to-transparent" />
             </div>
 
             <div className="flex items-start gap-4 p-5 sm:p-6">
