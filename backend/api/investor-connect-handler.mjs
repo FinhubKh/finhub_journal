@@ -3,14 +3,15 @@
  * treating the account as Connected.
  *
  * POST /v1/investor-connect  — save encrypted creds, enqueue verify job
- * GET  /v1/investor-verify   — poll job result; delete creds on fail; queue sync on ok
+ * GET  /v1/investor-verify   — poll job result; delete creds only on a
+ *                              confirmed bad login, not on bridge hiccups
  */
 import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
 import { encryptSecret } from './crypto-helper.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 
 const LOGIN_FAILED_MSG = 'Login failed — check broker server, MT5 login, and investor password';
-const VERIFY_UNAVAILABLE_MSG = 'Could not verify right now — bridge busy or unreachable. Try again.';
+const VERIFY_UNAVAILABLE_MSG = 'Could not verify right now — bridge busy or unreachable. Your login is saved; try Sync now shortly.';
 
 function bearerToken(req) {
   const header = req.headers.authorization || req.headers.Authorization || '';
@@ -96,6 +97,10 @@ export async function handleConnectInvestorCredentials(req, {
     return { status: 500, body: { error: 'Failed to save investor credentials' } };
   }
 
+  // From here on, credentials are already saved. A bridge hiccup below is
+  // transient infra trouble, not proof the login is wrong — keep the row so
+  // the user isn't forced to retype their password; only a confirmed bad
+  // login (see handleInvestorVerifyStatus) should delete it.
   let bridgeRes;
   try {
     bridgeRes = await fetch(`${bridgeUrl}/jobs/verify`, {
@@ -112,35 +117,17 @@ export async function handleConnectInvestorCredentials(req, {
       }),
     });
   } catch {
-    await deleteInvestorCredentials({
-      supabaseUrl,
-      serviceKey,
-      tradingAccountId,
-      userId: auth.user.id,
-    });
     return { status: 502, body: { error: VERIFY_UNAVAILABLE_MSG } };
   }
 
   if (!bridgeRes.ok) {
     await bridgeRes.text().catch(() => '');
-    await deleteInvestorCredentials({
-      supabaseUrl,
-      serviceKey,
-      tradingAccountId,
-      userId: auth.user.id,
-    });
     return { status: 502, body: { error: VERIFY_UNAVAILABLE_MSG } };
   }
 
   const bridgeBody = await bridgeRes.json().catch(() => ({}));
   const jobId = bridgeBody.job_id || null;
   if (!jobId) {
-    await deleteInvestorCredentials({
-      supabaseUrl,
-      serviceKey,
-      tradingAccountId,
-      userId: auth.user.id,
-    });
     return { status: 502, body: { error: VERIFY_UNAVAILABLE_MSG } };
   }
 
@@ -185,18 +172,15 @@ export async function handleInvestorVerifyStatus(req, {
     };
   }
 
+  // A bridge hiccup here is transient infra trouble, not a confirmed bad
+  // login — keep the credentials so the user isn't forced to reconnect.
+  // Only delete below once the bridge actually answers with a bad login.
   let bridgeRes;
   try {
     bridgeRes = await fetch(`${bridgeUrl}/jobs/${encodeURIComponent(jobId)}/result`, {
       headers: { 'x-bridge-token': bridgeServiceToken },
     });
   } catch {
-    await deleteInvestorCredentials({
-      supabaseUrl,
-      serviceKey,
-      tradingAccountId,
-      userId: auth.user.id,
-    });
     return { status: 200, body: { status: 'failed', error: VERIFY_UNAVAILABLE_MSG } };
   }
 
@@ -205,12 +189,6 @@ export async function handleInvestorVerifyStatus(req, {
   }
   if (!bridgeRes.ok) {
     await bridgeRes.text().catch(() => '');
-    await deleteInvestorCredentials({
-      supabaseUrl,
-      serviceKey,
-      tradingAccountId,
-      userId: auth.user.id,
-    });
     return { status: 200, body: { status: 'failed', error: VERIFY_UNAVAILABLE_MSG } };
   }
 
@@ -226,6 +204,8 @@ export async function handleInvestorVerifyStatus(req, {
     return { status: 200, body: { status: 'ok' } };
   }
 
+  // The bridge gave us a definitive answer and it's a bad login — the saved
+  // credentials are actually wrong, so there's no reason to keep them.
   await deleteInvestorCredentials({
     supabaseUrl,
     serviceKey,

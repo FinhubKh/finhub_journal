@@ -52,6 +52,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
       return row;
     } catch {
       setInvestorStatus(null);
+      toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
       return null;
     } finally {
       setLoadingStatus(false);

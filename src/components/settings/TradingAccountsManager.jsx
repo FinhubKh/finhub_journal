@@ -758,6 +758,7 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
       setInvestorByAccount(map);
     } catch {
       setInvestorByAccount({});
+      toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
     }
   }
 

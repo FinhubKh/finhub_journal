@@ -91,24 +91,13 @@ export async function connectAndVerifyInvestorCredentials(params) {
   const jobId = started.job_id;
   const tradingAccountId = params.tradingAccountId;
 
-  async function cleanupUnverified() {
-    try {
-      await removeInvestorCredentials(tradingAccountId);
-    } catch {
-      // best-effort — backend also deletes on failed status polls
-    }
-  }
-
+  // The backend only deletes credentials once it gets a confirmed bad login
+  // from the bridge — a network hiccup here is transient, so we just
+  // surface the error and leave the saved credentials alone.
   for (let i = 0; i < VERIFY_POLL_ATTEMPTS; i += 1) {
     // Check immediately on the first loop — don't burn time before looking.
     if (i > 0) await sleep(VERIFY_POLL_MS);
-    let status;
-    try {
-      status = await getInvestorVerifyStatus({ jobId, tradingAccountId });
-    } catch (err) {
-      await cleanupUnverified();
-      throw err;
-    }
+    const status = await getInvestorVerifyStatus({ jobId, tradingAccountId });
     if (status.status === 'pending') continue;
     if (status.status === 'ok') return { ok: true, ...started };
     throw new Error(
@@ -123,8 +112,7 @@ export async function connectAndVerifyInvestorCredentials(params) {
       last.error || 'Login failed — check broker server, MT5 login, and investor password',
     );
   }
-  await cleanupUnverified();
-  throw new Error('Could not verify right now — bridge busy or unreachable. Try again.');
+  throw new Error('Could not verify right now — bridge busy or unreachable. Your login is saved; try Sync now shortly.');
 }
 
 export async function triggerInvestorSync(tradingAccountId) {

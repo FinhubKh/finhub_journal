@@ -48,3 +48,5 @@ docs/superpowers/
 npm-debug.log*
 coverage/
 .nyc_output/
+.vercel
+.env*

@@ -113,6 +113,7 @@ export default function AccountDetailPage() {
     } catch {
       setSyncMeta(null);
       setInvestorStatus(null);
+      toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
     }
   }, [accountId]);
 
