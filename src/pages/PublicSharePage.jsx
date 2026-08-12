@@ -78,11 +78,17 @@ function TabBar({ active, onSelect }) {
  * ───────────
  * Compact horizontal glass banner bar.
  */
-function GateBanner({ feature = 'trade log', tradeCount }) {
+function GateBanner({ feature = 'trade log', tradeCount, ownerName }) {
+  const headline = tradeCount
+    ? `Viewing 3 of ${tradeCount} Trades`
+    : ownerName
+    ? `Unlock ${ownerName}'s Full Journal`
+    : `Unlock the Full ${feature === 'calendar' ? 'Calendar' : 'Trade Log'}`;
+
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4 sm:px-6">
       <div
-        className="pointer-events-auto relative flex w-full max-w-4xl flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-4 sm:p-4 md:px-6 shadow-xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10 sm:flex-row"
+        className="pointer-events-auto relative flex w-full max-w-4xl flex-col items-center justify-between gap-3.5 overflow-hidden rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-4 sm:p-4 md:px-6 shadow-xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10 sm:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top gradient strip */}
@@ -97,10 +103,10 @@ function GateBanner({ feature = 'trade log', tradeCount }) {
           </div>
           <div>
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 sm:text-base">
-              {tradeCount ? `Viewing 3 of ${tradeCount} Trades` : `Unlock the Full ${feature === 'calendar' ? 'Calendar' : 'Trade Log'}`}
+              {headline}
             </h3>
             <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-              Create an account to unlock everything.
+              Create a free account to view full trades & daily P&L.
             </p>
             <p className="mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">
               Free · No credit card required
@@ -129,7 +135,7 @@ function GateBanner({ feature = 'trade log', tradeCount }) {
 }
 
 /* --- Gated section wrapper for Calendar tab --- */
-function GatedCalendarSection({ children }) {
+function GatedCalendarSection({ children, ownerName }) {
   return (
     <div className="relative min-h-[460px] overflow-hidden rounded-2xl">
       {/* Blurred calendar underneath */}
@@ -145,7 +151,7 @@ function GatedCalendarSection({ children }) {
       <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/20 to-white/70 dark:via-zinc-950/20 dark:to-zinc-950/70" />
 
       {/* Horizontal Gate Banner */}
-      <GateBanner feature="calendar" />
+      <GateBanner feature="calendar" ownerName={ownerName} />
     </div>
   );
 }
@@ -504,7 +510,7 @@ export default function PublicSharePage() {
                           <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/30 to-white/90 dark:via-zinc-900/30 dark:to-zinc-900/90" />
 
                           {/* Gate Banner */}
-                          <GateBanner feature="trade log" tradeCount={tradeCount} />
+                          <GateBanner feature="trade log" tradeCount={tradeCount} ownerName={owner.display_name} />
                         </div>
                       </div>
                     </section>
@@ -517,7 +523,7 @@ export default function PublicSharePage() {
                 isLoggedIn
                   ? <PublicCalendar trades={trades} denomination={denomination} />
                   : (
-                    <GatedCalendarSection>
+                    <GatedCalendarSection ownerName={owner.display_name}>
                       <PublicCalendar trades={trades} denomination={denomination} />
                     </GatedCalendarSection>
                   )
