@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { getSession, subscribeAuth } from '../api/auth';
@@ -24,26 +24,15 @@ import {
 import EquityChart from '../components/dashboard/EquityChart';
 import { BrandLogo } from '../components/BrandLogo';
 import PublicCalendar from '../components/share/PublicCalendar';
-import SignupGateModal from '../components/share/SignupGateModal';
 
 const PAGE_SIZE = 20;
-const PREVIEW_ROWS = 3; // trade rows shown free to unauthenticated users
+const FREE_TRADE_ROWS = 3;
 
-/* ─── Tab definitions ─────────────────────────────────────────────── */
-const TABS = [
-  { id: 'overview', label: 'Overview', gated: false },
-  { id: 'calendar', label: 'Calendar', gated: true },
-  { id: 'log', label: 'Trade Log', gated: true },
-];
-
-/* ─── Small stat tile ─────────────────────────────────────────────── */
 function StatTile({ label, value, tone = 'neutral' }) {
   const toneClass =
-    tone === 'positive'
-      ? 'text-violet-600 dark:text-emerald-400'
-      : tone === 'negative'
-      ? 'text-rose-600 dark:text-rose-400'
-      : 'text-zinc-900 dark:text-zinc-100';
+    tone === 'positive' ? 'text-violet-600 dark:text-emerald-400'
+    : tone === 'negative' ? 'text-rose-600 dark:text-rose-400'
+    : 'text-zinc-900 dark:text-zinc-100';
   return (
     <div className={`${card} p-4`}>
       <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{label}</div>
@@ -52,253 +41,65 @@ function StatTile({ label, value, tone = 'neutral' }) {
   );
 }
 
-/* ─── Tab bar ─────────────────────────────────────────────────────── */
-function TabBar({ active, onSelect, isLoggedIn }) {
+function FloatingSignupCard({ visible, tradeCount }) {
   return (
-    <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
-      {TABS.map((tab) => {
-        const isActive = active === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onSelect(tab.id)}
-            className={`relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition ${
-              isActive
-                ? 'border-b-2 border-violet-600 dark:border-emerald-400 text-violet-700 dark:text-emerald-300'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
-            }`}
-          >
-            {tab.label}
-            {tab.gated && !isLoggedIn && (
-              <span className="text-[10px] leading-none text-zinc-400 dark:text-zinc-600">🔒</span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── Blurred gate overlay (Calendar / Trade Log for logged-out) ──── */
-function GateOverlay({ feature, onUnlock }) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl">
-      {/* Dim glass overlay */}
-      <div className="pointer-events-none absolute inset-0 z-10 rounded-2xl backdrop-blur-md bg-zinc-50/30 dark:bg-zinc-950/40" />
-      {/* Lock badge on top */}
-      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-700 text-3xl">
-          🔒
-        </div>
-        <div>
-          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            Free account required
-          </p>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 max-w-xs">
-            Sign up free to view the full {feature} and build your own trading journal.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onUnlock}
-          className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-500 active:scale-[0.98]"
-        >
-          Unlock for Free →
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Trade log with teaser rows + blur gate ──────────────────────── */
-function GatedTradeLog({ trades, denomination, isLoggedIn, onUnlock, page, setPage, totalPages, pageSafe, pageStart, pageTrades, tradeCount, tradesCapped }) {
-  if (isLoggedIn) {
-    return (
-      <FullTradeLog
-        trades={trades}
-        denomination={denomination}
-        page={page}
-        setPage={setPage}
-        totalPages={totalPages}
-        pageSafe={pageSafe}
-        pageStart={pageStart}
-        pageTrades={pageTrades}
-        tradeCount={tradeCount}
-        tradesCapped={tradesCapped}
-      />
-    );
-  }
-
-  // Unauthenticated: show first PREVIEW_ROWS trades then blur the rest
-  const previewTrades = trades.slice(0, PREVIEW_ROWS);
-  const hasMore = trades.length > PREVIEW_ROWS;
-
-  return (
-    <div className={`${card} overflow-hidden`}>
-      <div className={cardHd}>
-        <h2 className={cardTitle}>Trade History</h2>
-        <span className="text-xs text-zinc-400 dark:text-zinc-500">{trades.length} trades</span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-800">
-              <th className={tableTh}>Date</th>
-              <th className={tableTh}>Symbol</th>
-              <th className={tableTh}>Side</th>
-              <th className={tableTh}>Result</th>
-              <th className={`${tableTh} text-right`}>R</th>
-              <th className={`${tableTh} text-right`}>PnL</th>
-              <th className={tableTh}>Session</th>
-              <th className={tableTh}>Model</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-            {previewTrades.map((t) => (
-              <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
-                <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                <td className={tableTd}>{t.symbol || '—'}</td>
-                <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                <td className={tableTd}>
-                  <span className={tradeResultBadge(t.result)}>{t.result}</span>
-                </td>
-                <td className={`${tableTd} text-right tabular-nums`}>
-                  {t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}
-                </td>
-                <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                  {fmtPnlStrict(t.pnl_usd, denomination)}
-                </td>
-                <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Fade + blur gate for remaining rows */}
-      {hasMore && (
-        <div className="relative">
-          {/* Ghost rows for visual depth */}
-          <div className="pointer-events-none select-none overflow-hidden" style={{ maxHeight: 140, filter: 'blur(4px)', opacity: 0.35 }}>
-            <table className="w-full min-w-[640px] border-collapse text-left">
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                {trades.slice(PREVIEW_ROWS, PREVIEW_ROWS + 4).map((t) => (
-                  <tr key={t.id}>
-                    <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                    <td className={tableTd}>{t.symbol || '—'}</td>
-                    <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                    <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                    <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      {fmtPnlStrict(t.pnl_usd, denomination)}
-                    </td>
-                    <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                    <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Gradient fade + CTA */}
-          <div className="absolute inset-0 flex flex-col items-center justify-end pb-5 bg-gradient-to-b from-transparent via-white/80 to-white dark:via-zinc-900/80 dark:to-zinc-900">
-            <p className="mb-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-              +{trades.length - PREVIEW_ROWS} more trades hidden
+    <div
+      className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 pb-6 transition-all duration-500 ease-out ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'
+      }`}
+    >
+      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200/80 dark:border-zinc-700/60 bg-white/90 dark:bg-zinc-900/90 shadow-2xl shadow-zinc-900/20 dark:shadow-black/60 backdrop-blur-xl">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/70 to-transparent" />
+        <div className="flex flex-col items-center gap-4 px-6 py-5 sm:flex-row sm:justify-between">
+          <div className="text-center sm:text-left">
+            <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              {tradeCount > FREE_TRADE_ROWS ? `+${tradeCount - FREE_TRADE_ROWS} more trades` : 'Full calendar'} locked
             </p>
-            <button
-              type="button"
-              onClick={onUnlock}
-              className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-500 active:scale-[0.98]"
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              Free account unlocks the full journal, calendar and analytics.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 transition hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-[0.98]"
             >
-              🔒 Sign up free to see all trades →
-            </button>
+              Sign In
+            </Link>
+            <Link
+              to="/login?mode=signup"
+              className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-500 active:scale-[0.98]"
+            >
+              Create Free Account
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-/* ─── Full paginated trade log (logged-in users) ──────────────────── */
-function FullTradeLog({ trades, denomination, page, setPage, totalPages, pageSafe, pageStart, pageTrades, tradeCount, tradesCapped }) {
-  return (
-    <section>
-      <div className={`${card} overflow-hidden`}>
-        <div className={cardHd}>
-          <h2 className={cardTitle}>Trade History</h2>
-          <span className="text-xs text-zinc-400 dark:text-zinc-500">
-            {tradesCapped ? `${trades.length} shown · ${tradeCount} total` : `${trades.length} trades`}
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className={tableTh}>Date</th>
-                <th className={tableTh}>Symbol</th>
-                <th className={tableTh}>Side</th>
-                <th className={tableTh}>Result</th>
-                <th className={`${tableTh} text-right`}>R</th>
-                <th className={`${tableTh} text-right`}>PnL</th>
-                <th className={tableTh}>Session</th>
-                <th className={tableTh}>Model</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {pageTrades.map((t) => (
-                <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
-                  <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                  <td className={tableTd}>{t.symbol || '—'}</td>
-                  <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                  <td className={tableTd}>
-                    <span className={tradeResultBadge(t.result)}>{t.result}</span>
-                  </td>
-                  <td className={`${tableTd} text-right tabular-nums`}>
-                    {t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}
-                  </td>
-                  <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {fmtPnlStrict(t.pnl_usd, denomination)}
-                  </td>
-                  <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                  <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/80 px-4 py-3">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-            {trades.length > PAGE_SIZE
-              ? `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, trades.length)} of ${trades.length}`
-              : `${trades.length} trade${trades.length === 1 ? '' : 's'}`}
-          </span>
-          {trades.length > PAGE_SIZE && (
-            <div className="flex items-center gap-2">
-              <button className={btnSm} type="button" disabled={pageSafe <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-              <span className="min-w-[88px] text-center text-xs font-medium text-zinc-600 dark:text-zinc-400">Page {pageSafe} / {totalPages}</span>
-              <button className={btnSm} type="button" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Main page ───────────────────────────────────────────────────── */
 export default function PublicSharePage() {
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [gateModal, setGateModal] = useState(null); // null | feature string
+  const [cardVisible, setCardVisible] = useState(false);
+  const sentinelRef = useRef(null);
 
-  // Auth state — synchronously from session storage (no flicker)
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!getSession());
   useEffect(() => subscribeAuth(() => setIsLoggedIn(!!getSession())), []);
+
+  useEffect(() => {
+    if (isLoggedIn || !sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setCardVisible(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '-80px 0px 0px 0px' },
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [isLoggedIn, loading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -328,22 +129,11 @@ export default function PublicSharePage() {
 
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
-  // When user switches to a gated tab while logged out → show gate modal
-  function handleTabSelect(tabId) {
-    const tab = TABS.find((t) => t.id === tabId);
-    if (tab?.gated && !isLoggedIn) {
-      setGateModal(tab.label.toLowerCase());
-    } else {
-      setActiveTab(tabId);
-      setGateModal(null);
-    }
-  }
-
   if (loading) {
     return (
       <div className={pageShell}>
         <div className={`${dashboardPageWide} py-16`}>
-          <p className="text-sm text-zinc-400">Loading shared account…</p>
+          <p className="text-sm text-zinc-400">Loading shared account...</p>
         </div>
       </div>
     );
@@ -366,26 +156,28 @@ export default function PublicSharePage() {
   const { account, owner } = data;
   const denomination = normalizePnlDenomination(account.pnl_denomination);
   const pfNum = stats ? parseFloat(stats.pf) : NaN;
+  const previewTrades = trades.slice(0, FREE_TRADE_ROWS);
+  const remainingTrades = trades.slice(FREE_TRADE_ROWS);
+  const hasGatedContent = !isLoggedIn && trades.length > 0;
+
+  const tradeRows = isLoggedIn ? pageTrades : previewTrades;
 
   return (
     <div className={pageShell}>
-      {/* ── Sticky header ── */}
       <header className="sticky top-0 z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm">
         <div className={`${dashboardPageWide} flex flex-wrap items-center justify-between gap-3 !pb-4 !pt-4`}>
           <BrandLogo size="sm" />
           <div className="flex items-center gap-2">
             <Link to="/leaderboard" className={`${btnOutline} !px-4 !py-2 text-xs`}>Leaderboard</Link>
-            {isLoggedIn ? (
-              <Link to="/dashboard" className={`${btnPrimary} !px-4 !py-2 text-xs`}>My Journal</Link>
-            ) : (
-              <Link to="/login" className={`${btnPrimary} !px-4 !py-2 text-xs`}>Open your journal</Link>
-            )}
+            {isLoggedIn
+              ? <Link to="/dashboard" className={`${btnPrimary} !px-4 !py-2 text-xs`}>My Journal</Link>
+              : <Link to="/login" className={`${btnPrimary} !px-4 !py-2 text-xs`}>Open your journal</Link>
+            }
           </div>
         </div>
       </header>
 
-      <main className={`${dashboardPageWide} !pt-6`}>
-        {/* Account header */}
+      <main className={`${dashboardPageWide} !pt-6 pb-32`}>
         <div className="mb-6">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-violet-600 dark:text-emerald-400">Shared trading account</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">{account.name}</h1>
@@ -400,137 +192,142 @@ export default function PublicSharePage() {
         {!trades.length ? (
           <div className={`${card} ${emptyState}`}>No trades on this account yet.</div>
         ) : (
-          <div className="space-y-0">
+          <div className="space-y-6">
             {tradesCapped && (
-              <p className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                Showing the latest {trades.length.toLocaleString()} of {tradeCount.toLocaleString()} trades. Stats and equity below use this window.
+              <p className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
+                Showing the latest {trades.length.toLocaleString()} of {tradeCount.toLocaleString()} trades.
               </p>
             )}
 
-            {/* Tab bar */}
-            <TabBar active={activeTab} onSelect={handleTabSelect} isLoggedIn={isLoggedIn} />
+            {/* FREE: Summary */}
+            <section>
+              <h2 className={`${sectionLabel} mb-3`}>Summary</h2>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <StatTile label="Net result" value={fmtPnlStrict(stats.totalPnl, denomination)} tone={stats.totalPnl >= 0 ? 'positive' : 'negative'} />
+                <StatTile label="Win rate" value={`${stats.wr}%`} tone={stats.wr >= 50 ? 'positive' : 'negative'} />
+                <StatTile label="Profit factor" value={String(stats.pf)} tone={!Number.isNaN(pfNum) && pfNum >= 1 ? 'positive' : 'neutral'} />
+                <StatTile label="Trades" value={String(stats.total)} />
+              </div>
+            </section>
 
-            <div className="pt-6 space-y-6">
-              {/* ── OVERVIEW TAB ── */}
-              {activeTab === 'overview' && (
-                <>
-                  <section>
-                    <h2 className={`${sectionLabel} mb-3`}>Summary</h2>
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                      <StatTile label="Net result" value={fmtPnlStrict(stats.totalPnl, denomination)} tone={stats.totalPnl >= 0 ? 'positive' : 'negative'} />
-                      <StatTile label="Win rate" value={`${stats.wr}%`} tone={stats.wr >= 50 ? 'positive' : 'negative'} />
-                      <StatTile label="Profit factor" value={String(stats.pf)} tone={!Number.isNaN(pfNum) && pfNum >= 1 ? 'positive' : 'neutral'} />
-                      <StatTile label="Trades" value={String(stats.total)} />
+            {/* FREE: Equity */}
+            <section>
+              <h2 className={`${sectionLabel} mb-3`}>Equity</h2>
+              <EquityChart trades={trades} denomination={denomination} />
+            </section>
+
+            {/* FREE: Recent trades (first FREE_TRADE_ROWS always visible) */}
+            <section>
+              <h2 className={`${sectionLabel} mb-3`}>Recent Trades</h2>
+              <div className={`${card} overflow-hidden`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                        <th className={tableTh}>Date</th>
+                        <th className={tableTh}>Symbol</th>
+                        <th className={tableTh}>Side</th>
+                        <th className={tableTh}>Result</th>
+                        <th className={`${tableTh} text-right`}>R</th>
+                        <th className={`${tableTh} text-right`}>PnL</th>
+                        <th className={tableTh}>Session</th>
+                        <th className={tableTh}>Model</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                      {tradeRows.map((t) => (
+                        <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
+                          <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                          <td className={tableTd}>{t.symbol || '—'}</td>
+                          <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                          <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                          <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                          <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            {fmtPnlStrict(t.pnl_usd, denomination)}
+                          </td>
+                          <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
+                          <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {isLoggedIn && trades.length > PAGE_SIZE && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/80 px-4 py-3">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Showing {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, trades.length)} of {trades.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button className={btnSm} type="button" disabled={pageSafe <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                      <span className="min-w-[88px] text-center text-xs font-medium text-zinc-600 dark:text-zinc-400">Page {pageSafe} / {totalPages}</span>
+                      <button className={btnSm} type="button" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
                     </div>
-                  </section>
-
-                  <section>
-                    <h2 className={`${sectionLabel} mb-3`}>Equity</h2>
-                    <EquityChart trades={trades} denomination={denomination} />
-                  </section>
-
-                  {/* Teaser: show 3 trades + invite to full log */}
-                  {!isLoggedIn && (
-                    <section>
-                      <div className="flex items-center justify-between mb-3">
-                        <h2 className={sectionLabel}>Recent Trades</h2>
-                        <button
-                          type="button"
-                          onClick={() => setGateModal('trade log')}
-                          className="text-xs font-semibold text-violet-600 dark:text-emerald-400 hover:underline"
-                        >
-                          View all {trades.length} trades →
-                        </button>
-                      </div>
-                      <div className={`${card} overflow-hidden`}>
-                        <div className="overflow-x-auto">
-                          <table className="w-full min-w-[640px] border-collapse text-left">
-                            <thead>
-                              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                                <th className={tableTh}>Date</th>
-                                <th className={tableTh}>Symbol</th>
-                                <th className={tableTh}>Side</th>
-                                <th className={tableTh}>Result</th>
-                                <th className={`${tableTh} text-right`}>R</th>
-                                <th className={`${tableTh} text-right`}>PnL</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                              {trades.slice(0, PREVIEW_ROWS).map((t) => (
-                                <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
-                                  <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                                  <td className={tableTd}>{t.symbol || '—'}</td>
-                                  <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                                  <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                                  <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-                                  <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                    {fmtPnlStrict(t.pnl_usd, denomination)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="flex items-center justify-center border-t border-zinc-100 dark:border-zinc-800 px-4 py-3">
-                          <button
-                            type="button"
-                            onClick={() => setGateModal('trade log')}
-                            className="text-sm font-semibold text-violet-600 dark:text-emerald-400 hover:underline"
-                          >
-                            🔒 Unlock all {trades.length} trades — it's free
-                          </button>
-                        </div>
-                      </div>
-                    </section>
-                  )}
-                </>
-              )}
-
-              {/* ── CALENDAR TAB ── */}
-              {activeTab === 'calendar' && (
-                isLoggedIn ? (
-                  <PublicCalendar trades={trades} denomination={denomination} />
-                ) : (
-                  <div className="relative" style={{ minHeight: 460 }}>
-                    {/* Blurred calendar preview */}
-                    <div className="pointer-events-none select-none" style={{ filter: 'blur(6px)', opacity: 0.45 }}>
-                      <PublicCalendar trades={trades} denomination={denomination} />
-                    </div>
-                    <GateOverlay feature="calendar" onUnlock={() => setGateModal('calendar')} />
                   </div>
-                )
-              )}
+                )}
+              </div>
+            </section>
 
-              {/* ── TRADE LOG TAB ── */}
-              {activeTab === 'log' && (
-                <GatedTradeLog
-                  trades={trades}
-                  denomination={denomination}
-                  isLoggedIn={isLoggedIn}
-                  onUnlock={() => setGateModal('trade log')}
-                  page={page}
-                  setPage={setPage}
-                  totalPages={totalPages}
-                  pageSafe={pageSafe}
-                  pageStart={pageStart}
-                  pageTrades={pageTrades}
-                  tradeCount={tradeCount}
-                  tradesCapped={tradesCapped}
+            {/* Sentinel: floating card appears when this exits viewport */}
+            {!isLoggedIn && <div ref={sentinelRef} aria-hidden="true" />}
+
+            {/* GATED: Calendar + remaining trades (blurred for logged-out) */}
+            {isLoggedIn ? (
+              <section>
+                <h2 className={`${sectionLabel} mb-3`}>Calendar</h2>
+                <PublicCalendar trades={trades} denomination={denomination} />
+              </section>
+            ) : (
+              <div className="relative select-none overflow-hidden rounded-2xl" style={{ minHeight: 340 }}>
+                {/* Progressive blur gradient overlay */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 z-10"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 20%, rgba(255,255,255,0.6) 52%, rgba(255,255,255,0.95) 72%, rgba(255,255,255,1) 85%)',
+                  }}
                 />
-              )}
-            </div>
+                {/* Blurred content peek */}
+                <div className="pointer-events-none" style={{ filter: 'blur(6px)', opacity: 0.55 }}>
+                  {remainingTrades.length > 0 && (
+                    <div className={`${card} overflow-hidden mb-6`}>
+                      <div className={cardHd}>
+                        <h2 className={cardTitle}>Trade History</h2>
+                        <span className="text-xs text-zinc-400">{trades.length} trades</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[640px] border-collapse text-left">
+                          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                            {remainingTrades.slice(0, 6).map((t) => (
+                              <tr key={t.id}>
+                                <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                                <td className={tableTd}>{t.symbol || '—'}</td>
+                                <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                                <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                                <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                                <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                  {fmtPnlStrict(t.pnl_usd, denomination)}
+                                </td>
+                                <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
+                                <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <h2 className={`${sectionLabel} mb-3`}>Calendar</h2>
+                    <PublicCalendar trades={trades} denomination={denomination} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
 
-      {/* ── Signup gate modal ── */}
-      {gateModal && (
-        <SignupGateModal
-          feature={gateModal}
-          onClose={() => setGateModal(null)}
-        />
-      )}
+      {hasGatedContent && <FloatingSignupCard visible={cardVisible} tradeCount={tradeCount} />}
     </div>
   );
 }
-
