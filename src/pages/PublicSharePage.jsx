@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { getSession, subscribeAuth } from '../api/auth';
@@ -99,8 +99,11 @@ function GateBanner({ feature = 'trade log', tradeCount }) {
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 sm:text-base">
               {tradeCount ? `Viewing 3 of ${tradeCount} Trades` : `Unlock the Full ${feature === 'calendar' ? 'Calendar' : 'Trade Log'}`}
             </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Create a free account to inspect all trades, daily calendar heatmaps & performance stats.
+            <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+              Create an account to unlock everything.
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+              Free · No credit card required
             </p>
           </div>
         </div>
