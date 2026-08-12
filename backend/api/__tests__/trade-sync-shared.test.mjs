@@ -2,9 +2,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { resolvePnlUsd, tradesToRows, upsertSyncedTrades } from '../trade-sync-shared.mjs';
 
 describe('resolvePnlUsd', () => {
-  it('divides cent-account pnl_raw by 100', () => {
+  it('uses pnl_raw as-is for cent accounts', () => {
     const pnl = resolvePnlUsd({ pnl_raw: 1000 }, { pnl_denomination: 'cent' });
-    expect(pnl).toBe(10);
+    expect(pnl).toBe(1000);
   });
 
   it('uses pnl_raw as-is for usd accounts', () => {

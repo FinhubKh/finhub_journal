@@ -11,13 +11,11 @@ export function accountDenomination(matchedAccount) {
   return matchedAccount?.pnl_denomination === 'cent' ? 'cent' : 'usd';
 }
 
-export function resolvePnlUsd(trade, matchedAccount) {
+export function resolvePnlUsd(trade) {
   const raw = trade.pnl_raw != null ? Number(trade.pnl_raw) : null;
   const fallback = Number(trade.pnl_usd) || 0;
-  const denom = accountDenomination(matchedAccount);
-
   if (raw != null) {
-    return denom === 'cent' ? raw / 100 : raw;
+    return raw;
   }
   return fallback;
 }

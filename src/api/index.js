@@ -191,31 +191,14 @@ async function patchTradePnl(trades, factor) {
   }
 }
 
-/** Adjust stored PnL when switching account between cent and USD. */
-export async function recalculateTradesForDenomination(account, oldDenom, newDenom) {
-  const oldNorm = oldDenom === 'cent' ? 'cent' : 'usd';
-  const newNorm = newDenom === 'cent' ? 'cent' : 'usd';
-  if (!account?.id || oldNorm === newNorm) return 0;
-
-  let factor = null;
-  if (newNorm === 'cent' && oldNorm !== 'cent') factor = 0.01;
-  else if (newNorm === 'usd' && oldNorm === 'cent') factor = 100;
-  if (factor == null) return 0;
-
-  const trades = await fetchTradesForAccount(account);
-  if (trades.length === 0) return 0;
-
-  await patchTradePnl(trades, factor);
-  return trades.length;
+/** Adjust stored PnL when switching account between cent and USD. (No-op: values are 1:1) */
+export async function recalculateTradesForDenomination() {
+  return 0;
 }
 
-/** One-time repair: divide all account trades by 100 (cent account with inflated PnL). */
-export async function repairCentAccountPnl(account) {
-  if (!account?.id) return 0;
-  const trades = await fetchTradesForAccount(account);
-  if (trades.length === 0) return 0;
-  await patchTradePnl(trades, 0.01);
-  return trades.length;
+/** One-time repair: no-op since values are stored 1:1. */
+export async function repairCentAccountPnl() {
+  return 0;
 }
 
 export async function fetchAllTrades() {

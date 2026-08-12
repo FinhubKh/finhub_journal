@@ -83,10 +83,8 @@ Deno.serve(async (req) => {
     function resolvePnlUsd(t: IncomingTrade): number {
       const raw = t.pnl_raw != null ? Number(t.pnl_raw) : null;
       const fallback = Number(t.pnl_usd) || 0;
-      const denom = matchedAccount.pnl_denomination === 'cent' ? 'cent' : 'usd';
-
       if (raw != null) {
-        return denom === 'cent' ? raw / 100 : raw;
+        return raw;
       }
       return fallback;
     }

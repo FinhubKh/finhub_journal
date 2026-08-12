@@ -7,18 +7,18 @@ export function moneySymbol(denomination = 'usd') {
   return normalizeDenom(denomination) === 'cent' ? '¢' : '$';
 }
 
-/** Convert stored USD PnL into MT5-style display units (×100 for cent accounts). */
-export function toDisplayPnl(usdValue, denomination = 'usd') {
+/** Display value is 1:1 with stored value (no × 100 scaling). */
+export function toDisplayPnl(usdValue) {
   const n = Number(usdValue);
   if (!Number.isFinite(n)) return 0;
-  return normalizeDenom(denomination) === 'cent' ? n * 100 : n;
+  return n;
 }
 
-/** Convert a user-entered display amount back to stored USD. */
-export function fromDisplayPnl(displayValue, denomination = 'usd') {
+/** Convert a user-entered display amount back to stored value (1:1). */
+export function fromDisplayPnl(displayValue) {
   const n = Number(displayValue);
   if (!Number.isFinite(n)) return 0;
-  return normalizeDenom(denomination) === 'cent' ? n / 100 : n;
+  return n;
 }
 
 /**
