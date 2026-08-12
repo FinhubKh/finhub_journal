@@ -26,7 +26,6 @@ import { BrandLogo } from '../components/BrandLogo';
 import PublicCalendar from '../components/share/PublicCalendar';
 
 const PAGE_SIZE = 20;
-const PREVIEW_ROWS = 3;
 
 /* --- Tabs ---------------------------------------------------------- */
 const TABS = [
@@ -80,104 +79,98 @@ function TabBar({ active, onSelect, isLoggedIn }) {
 /*
  * FloatingGateCard
  * ─────────────────
- * The premium dark card that floats centered and fixed over the blurred
- * gated content. No dark backdrop — the blurred content underneath acts
- * as the visual context. Not dismissible (user must sign up or sign in).
+ * Sleek, professional dark conversion card floating over blurred content.
+ * Designed with modern micro-details: crisp vector lock badge, subtle gradient borders,
+ * custom checkmark icons, and premium CTA styling.
  */
-function FloatingGateCard({ feature }) {
+function FloatingGateCard({ feature = 'full journal' }) {
   return (
-    /* Fixed layer — pointer events pass through the wrapper, only the card itself is interactive */
     <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center p-4">
       <div
-        className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 shadow-2xl"
+        className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800/90 bg-zinc-950/90 p-7 text-center shadow-2xl shadow-black/80 backdrop-blur-2xl ring-1 ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Violet gradient top line */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/60 to-transparent" />
-        {/* Soft violet glow behind card top */}
-        <div className="absolute -top-16 left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-violet-600/15 blur-3xl" />
+        {/* Subtle top ambient glow */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/80 to-transparent" />
+        <div className="pointer-events-none absolute -top-20 left-1/2 h-40 w-72 -translate-x-1/2 rounded-full bg-violet-600/20 blur-3xl" />
 
-        <div className="px-8 pb-8 pt-10 text-center">
-          {/* Lock icon */}
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600/15 text-2xl ring-1 ring-violet-500/30">
-            🔒
-          </div>
-
-          {/* Headline */}
-          <h2 className="text-xl font-bold tracking-tight text-zinc-100">
-            Unlock the Full Trader Journal
-          </h2>
-
-          {/* Sub-copy */}
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-            Create a free account to explore the complete{' '}
-            <span className="font-medium text-zinc-200">{feature}</span>,
-            track your own trades, and build your trading journal.
-          </p>
-
-          {/* Perks list */}
-          <ul className="my-6 space-y-2 text-left">
-            {[
-              'Daily P&L calendar with heat-map view',
-              'Full trade history & performance stats',
-              'Equity curve, win rate & profit factor',
-              'AI coaching & trade analytics',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-violet-600/20 text-[10px] text-violet-400">✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-
-          {/* CTAs */}
-          <div className="flex flex-col gap-3">
-            <Link
-              to="/login?mode=signup"
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-900/40 transition hover:bg-violet-500 active:scale-[0.98]"
-            >
-              Create Free Account →
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800 px-6 py-3 text-sm font-semibold text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-700 hover:text-zinc-100 active:scale-[0.98]"
-            >
-              Sign In
-            </Link>
-          </div>
-
-          <p className="mt-4 text-xs text-zinc-600">Free forever · No credit card required</p>
+        {/* Lock Icon Container */}
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-500/10 text-violet-400 shadow-inner shadow-violet-500/20">
+          <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
         </div>
+
+        {/* Headline */}
+        <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+          Unlock the Full Trader Journal
+        </h2>
+
+        {/* Subtitle */}
+        <p className="mt-2.5 text-xs leading-relaxed text-zinc-400 sm:text-sm">
+          Create a free account to explore the complete <span className="font-semibold text-zinc-200">{feature}</span>, track your own trades, and analyze performance.
+        </p>
+
+        {/* Features Checklist */}
+        <ul className="my-6 space-y-2.5 text-left">
+          {[
+            'Daily P&L calendar with heat-map view',
+            'Full trade history & performance stats',
+            'Equity curve, win rate & profit factor',
+            'AI coaching & trade analytics',
+          ].map((item) => (
+            <li key={item} className="flex items-center gap-3 text-xs text-zinc-300 sm:text-sm">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[11px] font-bold text-violet-400">
+                ✓
+              </span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-3">
+          <Link
+            to="/login?mode=signup"
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition duration-200 hover:from-violet-500 hover:to-indigo-500 hover:shadow-violet-600/45 active:scale-[0.98]"
+          >
+            Create Free Account →
+          </Link>
+          <Link
+            to="/login"
+            className="inline-flex w-full items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-3 text-sm font-semibold text-zinc-300 transition duration-200 hover:border-zinc-700 hover:bg-zinc-800 hover:text-white active:scale-[0.98]"
+          >
+            Sign In
+          </Link>
+        </div>
+
+        <p className="mt-4 text-[11px] text-zinc-500">Free forever · No credit card required</p>
       </div>
     </div>
   );
 }
 
 /* --- Gated section wrapper ----------------------------------------- */
-/*
- * Wraps any tab's content in a blur when the user is logged out.
- * The blurred content acts as visual context / FOMO behind the card.
- */
 function GatedSection({ feature, children }) {
   return (
-    <>
-      {/* Blurred content underneath */}
+    <div className="relative">
+      {/* Heavy blurred content underneath as visual context */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none"
-        style={{ filter: 'blur(7px)', opacity: 0.5 }}
+        className="pointer-events-none select-none overflow-hidden"
+        style={{ filter: 'blur(8px)', opacity: 0.45 }}
       >
         {children}
       </div>
 
-      {/* Centered floating card (no backdrop) */}
+      {/* Centered floating card */}
       <FloatingGateCard feature={feature} />
-    </>
+    </div>
   );
 }
 
-/* --- Trade log (3 preview + blur + card for logged-out) ------------ */
-function GatedTradeLog({ trades, denomination, isLoggedIn, page, setPage, totalPages, pageSafe, pageStart, pageTrades, tradeCount, tradesCapped }) {
+/* --- Trade Log Component ------------------------------------------- */
+function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPages, pageSafe, pageStart, pageTrades, tradeCount, tradesCapped }) {
   if (isLoggedIn) {
     return (
       <section>
@@ -239,41 +232,7 @@ function GatedTradeLog({ trades, denomination, isLoggedIn, page, setPage, totalP
     );
   }
 
-  /* Logged-out: show 3 real rows then blur the rest */
-  const previewTrades = trades.slice(0, PREVIEW_ROWS);
-  const remaining = trades.slice(PREVIEW_ROWS);
-  const hasMore = remaining.length > 0;
-
-  const tableHeader = (
-    <thead>
-      <tr className="border-b border-zinc-200 dark:border-zinc-800">
-        <th className={tableTh}>Date</th>
-        <th className={tableTh}>Symbol</th>
-        <th className={tableTh}>Side</th>
-        <th className={tableTh}>Result</th>
-        <th className={`${tableTh} text-right`}>R</th>
-        <th className={`${tableTh} text-right`}>PnL</th>
-        <th className={tableTh}>Session</th>
-        <th className={tableTh}>Model</th>
-      </tr>
-    </thead>
-  );
-
-  const tradeRow = (t) => (
-    <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
-      <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-      <td className={tableTd}>{t.symbol || '—'}</td>
-      <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-      <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-      <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-      <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-        {fmtPnlStrict(t.pnl_usd, denomination)}
-      </td>
-      <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-      <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
-    </tr>
-  );
-
+  /* Logged-out view: Shows many rows blurred behind the card */
   return (
     <GatedSection feature="trade log">
       <div className={`${card} overflow-hidden`}>
@@ -283,21 +242,36 @@ function GatedTradeLog({ trades, denomination, isLoggedIn, page, setPage, totalP
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-left">
-            {tableHeader}
+            <thead>
+              <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                <th className={tableTh}>Date</th>
+                <th className={tableTh}>Symbol</th>
+                <th className={tableTh}>Side</th>
+                <th className={tableTh}>Result</th>
+                <th className={`${tableTh} text-right`}>R</th>
+                <th className={`${tableTh} text-right`}>PnL</th>
+                <th className={tableTh}>Session</th>
+                <th className={tableTh}>Model</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {previewTrades.map(tradeRow)}
+              {trades.slice(0, 15).map((t) => (
+                <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
+                  <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                  <td className={tableTd}>{t.symbol || '—'}</td>
+                  <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                  <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                  <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                  <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {fmtPnlStrict(t.pnl_usd, denomination)}
+                  </td>
+                  <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
+                  <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        {hasMore && (
-          <div className="overflow-hidden" style={{ maxHeight: 160 }}>
-            <table className="w-full min-w-[640px] border-collapse text-left">
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                {remaining.slice(0, 5).map(tradeRow)}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </GatedSection>
   );
@@ -344,7 +318,6 @@ export default function PublicSharePage() {
 
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
-  /* Tab selection: gated tabs always open (showing blurred content + card) */
   function handleTabSelect(tabId) {
     setActiveTab(tabId);
   }
@@ -439,7 +412,7 @@ export default function PublicSharePage() {
                     <EquityChart trades={trades} denomination={denomination} />
                   </section>
 
-                  {/* Recent trades teaser (3 rows for logged-out) */}
+                  {/* Overview Recent Trades for unauthenticated users */}
                   {!isLoggedIn && (
                     <section>
                       <div className="flex items-center justify-between mb-3">
@@ -452,6 +425,8 @@ export default function PublicSharePage() {
                           View all {trades.length} trades →
                         </button>
                       </div>
+                      
+                      {/* Teaser: 3 crisp clear rows at top, followed by 8 blurred rows + Floating Card */}
                       <div className={`${card} overflow-hidden`}>
                         <div className="overflow-x-auto">
                           <table className="w-full min-w-[640px] border-collapse text-left">
@@ -466,7 +441,7 @@ export default function PublicSharePage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                              {trades.slice(0, PREVIEW_ROWS).map((t) => (
+                              {trades.slice(0, 3).map((t) => (
                                 <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
                                   <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
                                   <td className={tableTd}>{t.symbol || '—'}</td>
@@ -481,15 +456,37 @@ export default function PublicSharePage() {
                             </tbody>
                           </table>
                         </div>
-                        <div className="flex items-center justify-center border-t border-zinc-100 dark:border-zinc-800 px-4 py-3">
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('log')}
-                            className="text-sm font-semibold text-violet-600 dark:text-emerald-400 hover:underline"
-                          >
-                            🔒 Unlock all {trades.length} trades — it's free
-                          </button>
+                      </div>
+
+                      {/* Blurred extension table behind card */}
+                      <div className="relative mt-4">
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none select-none overflow-hidden"
+                          style={{ filter: 'blur(8px)', opacity: 0.45 }}
+                        >
+                          <div className={`${card} overflow-hidden`}>
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[640px] border-collapse text-left">
+                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                                  {trades.slice(3, 12).map((t) => (
+                                    <tr key={t.id}>
+                                      <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                                      <td className={tableTd}>{t.symbol || '—'}</td>
+                                      <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                                      <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                                      <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                                      <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {fmtPnlStrict(t.pnl_usd, denomination)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         </div>
+                        <FloatingGateCard feature="trade log" />
                       </div>
                     </section>
                   )}
@@ -509,7 +506,7 @@ export default function PublicSharePage() {
 
               {/* ── TRADE LOG TAB ── */}
               {activeTab === 'log' && (
-                <GatedTradeLog
+                <TradeLogView
                   trades={trades}
                   denomination={denomination}
                   isLoggedIn={isLoggedIn}
