@@ -29,9 +29,9 @@ const PAGE_SIZE = 20;
 
 /* --- Tabs ---------------------------------------------------------- */
 const TABS = [
-  { id: 'overview', label: 'Overview', gated: false },
-  { id: 'calendar', label: 'Calendar', gated: true },
-  { id: 'log',      label: 'Trade Log', gated: true },
+  { id: 'overview', label: 'Overview' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'log',      label: 'Trade Log' },
 ];
 
 /* --- Stat tile ----------------------------------------------------- */
@@ -48,8 +48,8 @@ function StatTile({ label, value, tone = 'neutral' }) {
   );
 }
 
-/* --- Tab bar ------------------------------------------------------- */
-function TabBar({ active, onSelect, isLoggedIn }) {
+/* --- Tab bar (Clean tabs without lock emojis) ---------------------- */
+function TabBar({ active, onSelect }) {
   return (
     <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
       {TABS.map((tab) => {
@@ -61,14 +61,11 @@ function TabBar({ active, onSelect, isLoggedIn }) {
             onClick={() => onSelect(tab.id)}
             className={`relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition ${
               isActive
-                ? 'border-b-2 border-violet-600 dark:border-emerald-400 text-violet-700 dark:text-emerald-300'
+                ? 'border-b-2 border-violet-600 dark:border-emerald-400 text-violet-700 dark:text-emerald-300 font-semibold'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
             }`}
           >
             {tab.label}
-            {tab.gated && !isLoggedIn && (
-              <span className="text-[10px] leading-none text-zinc-400 dark:text-zinc-600">🔒</span>
-            )}
           </button>
         );
       })}
@@ -77,17 +74,17 @@ function TabBar({ active, onSelect, isLoggedIn }) {
 }
 
 /*
- * FloatingGateCard
- * ─────────────────
- * Sleek, professional dark conversion card floating over blurred content.
- * Designed with modern micro-details: crisp vector lock badge, subtle gradient borders,
- * custom checkmark icons, and premium CTA styling.
+ * GateCard
+ * ─────────
+ * Sleek, professional dark conversion card positioned absolutely inside
+ * the gated container (so it ONLY appears when scrolling down to blurry content,
+ * never popping up over the top header/summary/chart on page load).
  */
-function FloatingGateCard({ feature = 'full journal' }) {
+function GateCard({ feature = 'full journal' }) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center p-4">
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
       <div
-        className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800/90 bg-zinc-950/90 p-7 text-center shadow-2xl shadow-black/80 backdrop-blur-2xl ring-1 ring-white/10"
+        className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800/90 bg-zinc-950/95 p-7 text-center shadow-2xl shadow-black/80 backdrop-blur-2xl ring-1 ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Subtle top ambient glow */}
@@ -150,21 +147,24 @@ function FloatingGateCard({ feature = 'full journal' }) {
   );
 }
 
-/* --- Gated section wrapper ----------------------------------------- */
-function GatedSection({ feature, children }) {
+/* --- Gated section wrapper with ultra-enticing blurred preview ----- */
+function GatedSection({ feature, children, minHeight = '500px' }) {
   return (
-    <div className="relative">
-      {/* Heavy blurred content underneath as visual context */}
+    <div className="relative min-h-[480px] overflow-hidden rounded-2xl" style={{ minHeight }}>
+      {/* Enticing blurred content underneath with a vibrant gradient overlay */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none overflow-hidden"
-        style={{ filter: 'blur(8px)', opacity: 0.45 }}
+        className="pointer-events-none select-none overflow-hidden transition"
+        style={{ filter: 'blur(7px)', opacity: 0.5 }}
       >
         {children}
       </div>
 
-      {/* Centered floating card */}
-      <FloatingGateCard feature={feature} />
+      {/* Subtle overlay gradient to blend blurred content into the card */}
+      <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-zinc-900/20 to-zinc-950/60 dark:via-zinc-950/40 dark:to-zinc-950/80" />
+
+      {/* Centered Gate Card (Positioned Absolutely within this section) */}
+      <GateCard feature={feature} />
     </div>
   );
 }
@@ -234,7 +234,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
 
   /* Logged-out view: Shows many rows blurred behind the card */
   return (
-    <GatedSection feature="trade log">
+    <GatedSection feature="trade log" minHeight="520px">
       <div className={`${card} overflow-hidden`}>
         <div className={cardHd}>
           <h2 className={cardTitle}>Trade History</h2>
@@ -389,8 +389,8 @@ export default function PublicSharePage() {
               </p>
             )}
 
-            {/* Tab bar */}
-            <TabBar active={activeTab} onSelect={handleTabSelect} isLoggedIn={isLoggedIn} />
+            {/* Clean Tab bar (no lock emojis) */}
+            <TabBar active={activeTab} onSelect={handleTabSelect} />
 
             <div className="pt-6 space-y-6">
 
@@ -412,7 +412,7 @@ export default function PublicSharePage() {
                     <EquityChart trades={trades} denomination={denomination} />
                   </section>
 
-                  {/* Overview Recent Trades for unauthenticated users */}
+                  {/* Overview Recent Trades section for unauthenticated users */}
                   {!isLoggedIn && (
                     <section>
                       <div className="flex items-center justify-between mb-3">
@@ -426,8 +426,8 @@ export default function PublicSharePage() {
                         </button>
                       </div>
                       
-                      {/* Teaser: 3 crisp clear rows at top, followed by 8 blurred rows + Floating Card */}
-                      <div className={`${card} overflow-hidden`}>
+                      {/* Teaser: 3 crisp clear trades at top */}
+                      <div className={`${card} overflow-hidden mb-4`}>
                         <div className="overflow-x-auto">
                           <table className="w-full min-w-[640px] border-collapse text-left">
                             <thead>
@@ -458,36 +458,29 @@ export default function PublicSharePage() {
                         </div>
                       </div>
 
-                      {/* Blurred extension table behind card */}
-                      <div className="relative mt-4">
-                        <div
-                          aria-hidden="true"
-                          className="pointer-events-none select-none overflow-hidden"
-                          style={{ filter: 'blur(8px)', opacity: 0.45 }}
-                        >
-                          <div className={`${card} overflow-hidden`}>
-                            <div className="overflow-x-auto">
-                              <table className="w-full min-w-[640px] border-collapse text-left">
-                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                                  {trades.slice(3, 12).map((t) => (
-                                    <tr key={t.id}>
-                                      <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                                      <td className={tableTd}>{t.symbol || '—'}</td>
-                                      <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                                      <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                                      <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-                                      <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                        {fmtPnlStrict(t.pnl_usd, denomination)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                      {/* Blurred extension table underneath (Card ONLY appears when scrolling down here) */}
+                      <GatedSection feature="trade log" minHeight="450px">
+                        <div className={`${card} overflow-hidden`}>
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[640px] border-collapse text-left">
+                              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                                {trades.slice(3, 14).map((t) => (
+                                  <tr key={t.id}>
+                                    <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                                    <td className={tableTd}>{t.symbol || '—'}</td>
+                                    <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                                    <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                                    <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                      {fmtPnlStrict(t.pnl_usd, denomination)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                        <FloatingGateCard feature="trade log" />
-                      </div>
+                      </GatedSection>
                     </section>
                   )}
                 </>
@@ -498,7 +491,7 @@ export default function PublicSharePage() {
                 isLoggedIn
                   ? <PublicCalendar trades={trades} denomination={denomination} />
                   : (
-                    <GatedSection feature="calendar">
+                    <GatedSection feature="calendar" minHeight="520px">
                       <PublicCalendar trades={trades} denomination={denomination} />
                     </GatedSection>
                   )
