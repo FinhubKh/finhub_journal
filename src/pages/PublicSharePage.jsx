@@ -48,7 +48,7 @@ function StatTile({ label, value, tone = 'neutral' }) {
   );
 }
 
-/* --- Tab bar (Clean, light/dark responsive tabs) -------------------- */
+/* --- Tab bar ------------------------------------------------------- */
 function TabBar({ active, onSelect }) {
   return (
     <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
@@ -76,12 +76,11 @@ function TabBar({ active, onSelect }) {
 /*
  * GateBanner
  * ───────────
- * Sleek, horizontal table gate banner that sits across the trade table or calendar.
- * Integrated seamlessly into the UI flow — no vertical checklist box.
+ * Compact horizontal glass banner bar.
  */
 function GateBanner({ feature = 'trade log', tradeCount }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4 sm:px-6">
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4 sm:px-6">
       <div
         className="pointer-events-auto relative flex w-full max-w-4xl flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-4 sm:p-4 md:px-6 shadow-xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10 sm:flex-row"
         onClick={(e) => e.stopPropagation()}
@@ -211,7 +210,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
     );
   }
 
-  /* Logged-out Trade Log tab: Shows 3 crisp rows at top + 12 blurred rows underneath with GateBanner */
+  /* Logged-out Trade Log tab: Shows 3 crisp rows at top + 4 compact blurred rows underneath with GateBanner */
   return (
     <div className={`${card} overflow-hidden`}>
       <div className={cardHd}>
@@ -252,8 +251,8 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
         </table>
       </div>
 
-      {/* Blurred extension table with horizontal GateBanner */}
-      <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[360px]">
+      {/* Compact blurred extension table (4 rows) with GateBanner */}
+      <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[170px]">
         <div
           aria-hidden="true"
           className="pointer-events-none select-none overflow-hidden"
@@ -262,7 +261,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-left">
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                {trades.slice(3, 14).map((t) => (
+                {trades.slice(3, 7).map((t) => (
                   <tr key={t.id}>
                     <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
                     <td className={tableTd}>{t.symbol || '—'}</td>
@@ -471,8 +470,8 @@ export default function PublicSharePage() {
                           </table>
                         </div>
 
-                        {/* Blurred extension table inside gated wrapper with horizontal GateBanner */}
-                        <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[360px]">
+                        {/* Compact blurred extension table (4 rows) with GateBanner */}
+                        <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[170px]">
                           <div
                             aria-hidden="true"
                             className="pointer-events-none select-none overflow-hidden"
@@ -481,7 +480,7 @@ export default function PublicSharePage() {
                             <div className="overflow-x-auto">
                               <table className="w-full min-w-[640px] border-collapse text-left">
                                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                                  {trades.slice(3, 14).map((t) => (
+                                  {trades.slice(3, 7).map((t) => (
                                     <tr key={t.id}>
                                       <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
                                       <td className={tableTd}>{t.symbol || '—'}</td>
