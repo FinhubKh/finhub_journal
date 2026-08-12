@@ -48,7 +48,7 @@ function StatTile({ label, value, tone = 'neutral' }) {
   );
 }
 
-/* --- Tab bar (Clean, light/dark responsive tabs) -------------------- */
+/* --- Tab bar ------------------------------------------------------- */
 function TabBar({ active, onSelect }) {
   return (
     <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
@@ -76,48 +76,47 @@ function TabBar({ active, onSelect }) {
 /*
  * GateCard
  * ─────────
- * Theme-native conversion card matching the exact website design system
- * (Light mode: clean white glass card with violet accents; Dark mode: sleek dark glass).
- * Positioned absolutely in the scroll flow over blurred content.
+ * Compact, proportional conversion card matching the exact website design system.
+ * Designed with balanced margins, clean typography, and tight padding.
  */
 function GateCard({ feature = 'full journal' }) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6 sm:p-8">
       <div
-        className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-7 text-center shadow-2xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10"
+        className="pointer-events-auto relative w-full max-w-[360px] overflow-hidden rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-5 sm:p-6 text-center shadow-xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Decorative top gradient strip */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-violet-600" />
-        <div className="pointer-events-none absolute -top-20 left-1/2 h-36 w-64 -translate-x-1/2 rounded-full bg-violet-500/10 dark:bg-violet-600/20 blur-3xl" />
+        {/* Top gradient accent line */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-indigo-500 to-violet-600" />
+        <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-48 -translate-x-1/2 rounded-full bg-violet-500/10 dark:bg-violet-600/20 blur-2xl" />
 
-        {/* Lock Icon Container */}
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-200 dark:border-violet-800/50 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shadow-xs">
-          <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        {/* Lock Icon Badge */}
+        <div className="mx-auto mb-3.5 flex h-11 w-11 items-center justify-center rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shadow-xs">
+          <svg className="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
           </svg>
         </div>
 
         {/* Headline */}
-        <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl">
-          Unlock the Full Trader Journal
+        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-xl">
+          Unlock Full Journal
         </h2>
 
         {/* Subtitle */}
-        <p className="mt-2.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-sm">
-          Create a free account to explore the complete <span className="font-semibold text-zinc-900 dark:text-zinc-200">{feature}</span>, track your own trades, and analyze performance.
+        <p className="mt-1.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+          Create a free account to explore the complete <span className="font-semibold text-zinc-900 dark:text-zinc-200">{feature}</span>, track trades, and view analytics.
         </p>
 
         {/* Features Checklist */}
-        <ul className="my-6 space-y-2.5 text-left">
+        <ul className="my-4 space-y-2 text-left">
           {[
             'Daily P&L calendar with heat-map view',
             'Full trade history & performance stats',
             'Equity curve, win rate & profit factor',
             'AI coaching & trade analytics',
           ].map((item) => (
-            <li key={item} className="flex items-center gap-3 text-xs text-zinc-700 dark:text-zinc-300 sm:text-sm">
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950/60 text-[11px] font-bold text-violet-600 dark:text-violet-400">
+            <li key={item} className="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-300">
+              <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950/60 text-[10px] font-bold text-violet-600 dark:text-violet-400">
                 ✓
               </span>
               <span>{item}</span>
@@ -126,31 +125,31 @@ function GateCard({ feature = 'full journal' }) {
         </ul>
 
         {/* Action Buttons */}
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <Link
             to="/login?mode=signup"
-            className="inline-flex w-full items-center justify-center rounded-xl bg-violet-600 px-6 py-3.5 text-sm font-semibold text-white shadow-md transition duration-200 hover:bg-violet-500 active:scale-[0.98]"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition duration-200 hover:bg-violet-500 active:scale-[0.98]"
           >
             Create Free Account →
           </Link>
           <Link
             to="/login"
-            className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/80 px-6 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200 transition duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 active:scale-[0.98]"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/80 px-5 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 active:scale-[0.98]"
           >
             Sign In
           </Link>
         </div>
 
-        <p className="mt-4 text-[11px] text-zinc-400 dark:text-zinc-500">Free forever · No credit card required</p>
+        <p className="mt-3 text-[10px] text-zinc-400 dark:text-zinc-500">Free forever · No credit card required</p>
       </div>
     </div>
   );
 }
 
 /* --- Gated section wrapper ----------------------------------------- */
-function GatedSection({ feature, children, minHeight = '460px' }) {
+function GatedSection({ feature, children, minHeight = '480px' }) {
   return (
-    <div className="relative min-h-[460px] overflow-hidden rounded-2xl" style={{ minHeight }}>
+    <div className="relative min-h-[480px] overflow-hidden rounded-2xl" style={{ minHeight }}>
       {/* Blurred preview content underneath */}
       <div
         aria-hidden="true"
@@ -234,7 +233,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
 
   /* Logged-out view: Shows many rows blurred behind the card */
   return (
-    <GatedSection feature="trade log" minHeight="500px">
+    <GatedSection feature="trade log" minHeight="480px">
       <div className={`${card} overflow-hidden`}>
         <div className={cardHd}>
           <h2 className={cardTitle}>Trade History</h2>
@@ -426,7 +425,7 @@ export default function PublicSharePage() {
                         </button>
                       </div>
                       
-                      {/* Integrated Single Table: 3 clear rows at top, followed by 12 blurred rows with GateCard overlay */}
+                      {/* Single Table Card: 3 crisp clear trades at top */}
                       <div className={`${card} overflow-hidden`}>
                         <div className="overflow-x-auto">
                           <table className="w-full min-w-[640px] border-collapse text-left">
@@ -441,7 +440,6 @@ export default function PublicSharePage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                              {/* Top 3 crisp clear rows */}
                               {trades.slice(0, 3).map((t) => (
                                 <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
                                   <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
@@ -458,8 +456,8 @@ export default function PublicSharePage() {
                           </table>
                         </div>
 
-                        {/* Continuous table extension inside blurred container with GateCard overlay */}
-                        <div className="relative border-t border-zinc-100 dark:border-zinc-800/60">
+                        {/* Blurred extension table inside gated wrapper with card overlay */}
+                        <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[420px]">
                           <div
                             aria-hidden="true"
                             className="pointer-events-none select-none overflow-hidden"
@@ -485,10 +483,10 @@ export default function PublicSharePage() {
                             </div>
                           </div>
 
-                          {/* Soft backdrop gradient overlay */}
+                          {/* Theme overlay */}
                           <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/30 to-white/90 dark:via-zinc-900/30 dark:to-zinc-900/90" />
 
-                          {/* Gate Card */}
+                          {/* Compact Gate Card */}
                           <GateCard feature="trade log" />
                         </div>
                       </div>
@@ -502,7 +500,7 @@ export default function PublicSharePage() {
                 isLoggedIn
                   ? <PublicCalendar trades={trades} denomination={denomination} />
                   : (
-                    <GatedSection feature="calendar" minHeight="500px">
+                    <GatedSection feature="calendar" minHeight="480px">
                       <PublicCalendar trades={trades} denomination={denomination} />
                     </GatedSection>
                   )
