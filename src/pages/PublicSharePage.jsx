@@ -48,7 +48,7 @@ function StatTile({ label, value, tone = 'neutral' }) {
   );
 }
 
-/* --- Tab bar ------------------------------------------------------- */
+/* --- Tab bar (Clean, light/dark responsive tabs) -------------------- */
 function TabBar({ active, onSelect }) {
   return (
     <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
@@ -74,83 +74,63 @@ function TabBar({ active, onSelect }) {
 }
 
 /*
- * GateCard
- * ─────────
- * Compact, proportional conversion card matching the exact website design system.
- * Designed with balanced margins, clean typography, and tight padding.
+ * GateBanner
+ * ───────────
+ * Sleek, horizontal table gate banner that sits across the trade table or calendar.
+ * Integrated seamlessly into the UI flow — no vertical checklist box.
  */
-function GateCard({ feature = 'full journal' }) {
+function GateBanner({ feature = 'trade log', tradeCount }) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6 sm:p-8">
+    <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4 sm:px-6">
       <div
-        className="pointer-events-auto relative w-full max-w-[360px] overflow-hidden rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-5 sm:p-6 text-center shadow-xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10"
+        className="pointer-events-auto relative flex w-full max-w-4xl flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 p-4 sm:p-4 md:px-6 shadow-xl shadow-violet-500/10 dark:shadow-black/70 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/10 sm:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top gradient accent line */}
+        {/* Top gradient strip */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-indigo-500 to-violet-600" />
-        <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-48 -translate-x-1/2 rounded-full bg-violet-500/10 dark:bg-violet-600/20 blur-2xl" />
 
-        {/* Lock Icon Badge */}
-        <div className="mx-auto mb-3.5 flex h-11 w-11 items-center justify-center rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shadow-xs">
-          <svg className="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-          </svg>
+        {/* Left Side: Lock Badge + Text */}
+        <div className="flex items-center gap-3.5 text-center sm:text-left">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 shadow-xs">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 sm:text-base">
+              {tradeCount ? `Viewing 3 of ${tradeCount} Trades` : `Unlock the Full ${feature === 'calendar' ? 'Calendar' : 'Trade Log'}`}
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Create a free account to inspect all trades, daily calendar heatmaps & performance stats.
+            </p>
+          </div>
         </div>
 
-        {/* Headline */}
-        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-xl">
-          Unlock Full Journal
-        </h2>
-
-        {/* Subtitle */}
-        <p className="mt-1.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Create a free account to explore the complete <span className="font-semibold text-zinc-900 dark:text-zinc-200">{feature}</span>, track trades, and view analytics.
-        </p>
-
-        {/* Features Checklist */}
-        <ul className="my-4 space-y-2 text-left">
-          {[
-            'Daily P&L calendar with heat-map view',
-            'Full trade history & performance stats',
-            'Equity curve, win rate & profit factor',
-            'AI coaching & trade analytics',
-          ].map((item) => (
-            <li key={item} className="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-300">
-              <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950/60 text-[10px] font-bold text-violet-600 dark:text-violet-400">
-                ✓
-              </span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-2">
-          <Link
-            to="/login?mode=signup"
-            className="inline-flex w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition duration-200 hover:bg-violet-500 active:scale-[0.98]"
-          >
-            Create Free Account →
-          </Link>
+        {/* Right Side: CTAs */}
+        <div className="flex shrink-0 items-center gap-2.5 w-full sm:w-auto">
           <Link
             to="/login"
-            className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/80 px-5 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition duration-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 active:scale-[0.98]"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/80 px-4 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition hover:bg-zinc-100 dark:hover:bg-zinc-700 active:scale-[0.98]"
           >
             Sign In
           </Link>
+          <Link
+            to="/login?mode=signup"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-violet-500 active:scale-[0.98]"
+          >
+            Create Free Account →
+          </Link>
         </div>
-
-        <p className="mt-3 text-[10px] text-zinc-400 dark:text-zinc-500">Free forever · No credit card required</p>
       </div>
     </div>
   );
 }
 
-/* --- Gated section wrapper ----------------------------------------- */
-function GatedSection({ feature, children, minHeight = '480px' }) {
+/* --- Gated section wrapper for Calendar tab --- */
+function GatedCalendarSection({ children }) {
   return (
-    <div className="relative min-h-[480px] overflow-hidden rounded-2xl" style={{ minHeight }}>
-      {/* Blurred preview content underneath */}
+    <div className="relative min-h-[460px] overflow-hidden rounded-2xl">
+      {/* Blurred calendar underneath */}
       <div
         aria-hidden="true"
         className="pointer-events-none select-none overflow-hidden"
@@ -159,11 +139,11 @@ function GatedSection({ feature, children, minHeight = '480px' }) {
         {children}
       </div>
 
-      {/* Subtle theme overlay to blend background with gate card */}
-      <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/30 to-white/80 dark:via-zinc-950/30 dark:to-zinc-950/80" />
+      {/* Soft gradient overlay */}
+      <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/20 to-white/70 dark:via-zinc-950/20 dark:to-zinc-950/70" />
 
-      {/* Centered Gate Card */}
-      <GateCard feature={feature} />
+      {/* Horizontal Gate Banner */}
+      <GateBanner feature="calendar" />
     </div>
   );
 }
@@ -231,48 +211,83 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
     );
   }
 
-  /* Logged-out view: Shows many rows blurred behind the card */
+  /* Logged-out Trade Log tab: Shows 3 crisp rows at top + 12 blurred rows underneath with GateBanner */
   return (
-    <GatedSection feature="trade log" minHeight="480px">
-      <div className={`${card} overflow-hidden`}>
-        <div className={cardHd}>
-          <h2 className={cardTitle}>Trade History</h2>
-          <span className="text-xs text-zinc-400 dark:text-zinc-500">{trades.length} trades</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className={tableTh}>Date</th>
-                <th className={tableTh}>Symbol</th>
-                <th className={tableTh}>Side</th>
-                <th className={tableTh}>Result</th>
-                <th className={`${tableTh} text-right`}>R</th>
-                <th className={`${tableTh} text-right`}>PnL</th>
-                <th className={tableTh}>Session</th>
-                <th className={tableTh}>Model</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {trades.slice(0, 15).map((t) => (
-                <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
-                  <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                  <td className={tableTd}>{t.symbol || '—'}</td>
-                  <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                  <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                  <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-                  <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {fmtPnlStrict(t.pnl_usd, denomination)}
-                  </td>
-                  <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                  <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <div className={`${card} overflow-hidden`}>
+      <div className={cardHd}>
+        <h2 className={cardTitle}>Trade History</h2>
+        <span className="text-xs text-zinc-400 dark:text-zinc-500">{trades.length} trades</span>
       </div>
-    </GatedSection>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+              <th className={tableTh}>Date</th>
+              <th className={tableTh}>Symbol</th>
+              <th className={tableTh}>Side</th>
+              <th className={tableTh}>Result</th>
+              <th className={`${tableTh} text-right`}>R</th>
+              <th className={`${tableTh} text-right`}>PnL</th>
+              <th className={tableTh}>Session</th>
+              <th className={tableTh}>Model</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+            {/* Top 3 clear rows */}
+            {trades.slice(0, 3).map((t) => (
+              <tr key={t.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition">
+                <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                <td className={tableTd}>{t.symbol || '—'}</td>
+                <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {fmtPnlStrict(t.pnl_usd, denomination)}
+                </td>
+                <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
+                <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Blurred extension table with horizontal GateBanner */}
+      <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[360px]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none select-none overflow-hidden"
+          style={{ filter: 'blur(5px)', opacity: 0.45 }}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-left">
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                {trades.slice(3, 14).map((t) => (
+                  <tr key={t.id}>
+                    <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
+                    <td className={tableTd}>{t.symbol || '—'}</td>
+                    <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                    <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
+                    <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {fmtPnlStrict(t.pnl_usd, denomination)}
+                    </td>
+                    <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
+                    <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Backdrop gradient overlay */}
+        <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/30 to-white/90 dark:via-zinc-900/30 dark:to-zinc-900/90" />
+
+        {/* Horizontal Gate Banner */}
+        <GateBanner feature="trade log" tradeCount={tradeCount} />
+      </div>
+    </div>
   );
 }
 
@@ -425,7 +440,7 @@ export default function PublicSharePage() {
                         </button>
                       </div>
                       
-                      {/* Single Table Card: 3 crisp clear trades at top */}
+                      {/* Integrated Single Table Card: 3 crisp clear trades at top */}
                       <div className={`${card} overflow-hidden`}>
                         <div className="overflow-x-auto">
                           <table className="w-full min-w-[640px] border-collapse text-left">
@@ -456,12 +471,12 @@ export default function PublicSharePage() {
                           </table>
                         </div>
 
-                        {/* Blurred extension table inside gated wrapper with card overlay */}
-                        <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[420px]">
+                        {/* Blurred extension table inside gated wrapper with horizontal GateBanner */}
+                        <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[360px]">
                           <div
                             aria-hidden="true"
                             className="pointer-events-none select-none overflow-hidden"
-                            style={{ filter: 'blur(6px)', opacity: 0.45 }}
+                            style={{ filter: 'blur(5px)', opacity: 0.45 }}
                           >
                             <div className="overflow-x-auto">
                               <table className="w-full min-w-[640px] border-collapse text-left">
@@ -486,8 +501,8 @@ export default function PublicSharePage() {
                           {/* Theme overlay */}
                           <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-white/30 to-white/90 dark:via-zinc-900/30 dark:to-zinc-900/90" />
 
-                          {/* Compact Gate Card */}
-                          <GateCard feature="trade log" />
+                          {/* Gate Banner */}
+                          <GateBanner feature="trade log" tradeCount={tradeCount} />
                         </div>
                       </div>
                     </section>
@@ -500,9 +515,9 @@ export default function PublicSharePage() {
                 isLoggedIn
                   ? <PublicCalendar trades={trades} denomination={denomination} />
                   : (
-                    <GatedSection feature="calendar" minHeight="480px">
+                    <GatedCalendarSection>
                       <PublicCalendar trades={trades} denomination={denomination} />
-                    </GatedSection>
+                    </GatedCalendarSection>
                   )
               )}
 
