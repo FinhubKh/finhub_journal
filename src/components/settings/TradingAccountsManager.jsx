@@ -25,13 +25,18 @@ import {
 import CustomDropdown from '../common/CustomDropdown';
 import PasswordInput from '../common/PasswordInput';
 import InvestorSyncPanel from './InvestorSyncPanel';
+import BrokerServerFields from './BrokerServerFields';
 
 const EMPTY_FORM = {
   name: '',
   accountType: 'live',
   pnlDenomination: 'usd',
   syncMode: 'ea',
+  brokerId: '',
+  serverChoice: '',
+  customServer: '',
   brokerServer: '',
+  brokerName: '',
   mt5Login: '',
   investorPassword: '',
 };
@@ -72,7 +77,7 @@ function Badge({ children, tone = 'neutral' }) {
   );
 }
 
-function AccountFormFields({ form, setField, isCreate }) {
+function AccountFormFields({ form, setField }) {
   return (
     <div className="space-y-3">
       <div>
@@ -107,94 +112,149 @@ function AccountFormFields({ form, setField, isCreate }) {
           />
         </div>
       </div>
-
-      {isCreate ? (
-        <fieldset className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3">
-          <legend className="px-1 text-sm font-medium text-zinc-700">How should we sync MT5?</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label
-              className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-                form.syncMode === 'ea'
-                  ? 'border-violet-400 bg-white ring-2 ring-violet-200'
-                  : 'border-zinc-200 bg-white hover:border-zinc-300'
-              }`}
-            >
-              <input
-                type="radio"
-                className="sr-only"
-                name="syncMode"
-                value="ea"
-                checked={form.syncMode === 'ea'}
-                onChange={() => setField('syncMode', 'ea')}
-              />
-              <p className="text-sm font-semibold text-zinc-900">EA sync key</p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                Install the EA on your MT5 and paste a sync key. Best if you keep MT5 open locally.
-              </p>
-            </label>
-            <label
-              className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-                form.syncMode === 'investor'
-                  ? 'border-violet-400 bg-white ring-2 ring-violet-200'
-                  : 'border-zinc-200 bg-white hover:border-zinc-300'
-              }`}
-            >
-              <input
-                type="radio"
-                className="sr-only"
-                name="syncMode"
-                value="investor"
-                checked={form.syncMode === 'investor'}
-                onChange={() => setField('syncMode', 'investor')}
-              />
-              <p className="text-sm font-semibold text-zinc-900">Investor password</p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                Read-only login. We pull closed trades for you — no EA install.
-              </p>
-            </label>
-          </div>
-
-          {form.syncMode === 'investor' ? (
-            <div className="space-y-2 border-t border-zinc-200 pt-3">
-              <input
-                className={input}
-                placeholder="Broker server (e.g. ICMarketsSC-Live)"
-                value={form.brokerServer}
-                onChange={(e) => setField('brokerServer', e.target.value)}
-                autoComplete="off"
-              />
-              <input
-                className={input}
-                placeholder="MT5 login number"
-                value={form.mt5Login}
-                onChange={(e) => setField('mt5Login', e.target.value)}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-              <PasswordInput
-                placeholder="Investor (read-only) password"
-                value={form.investorPassword}
-                onChange={(e) => setField('investorPassword', e.target.value)}
-                autoComplete="new-password"
-              />
-              <p className="text-xs text-zinc-500">
-                Use the investor password, not the master password. We encrypt it before storing.
-              </p>
-            </div>
-          ) : (
-            <p className="text-xs text-zinc-500 border-t border-zinc-200 pt-3">
-              After creating the account we generate a sync key for you to paste into the EA.
-            </p>
-          )}
-        </fieldset>
-      ) : (
-        <p className="text-xs text-zinc-500">
-          Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker shows PnL in cents.
-          Sync stores true USD, and the journal displays MT5-style amounts with ¢.
-          Manage EA or investor sync after opening the account.
-        </p>
-      )}
+      <p className="text-xs text-zinc-500">
+        Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker shows PnL in cents.
+        Sync stores true USD, and the journal displays MT5-style amounts with ¢.
+        Manage EA or investor sync after opening the account.
+      </p>
     </div>
+  );
+}
+
+function CreateStepProgress({ steps, index }) {
+  const pct = ((index + 1) / steps.length) * 100;
+  return (
+    <div className="mb-4 space-y-2">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-zinc-500">
+        <span>Step {index + 1} of {steps.length}</span>
+        <span>{Math.round(pct)}%</span>
+      </div>
+      <div className="flex gap-1.5">
+        {steps.map((s, i) => (
+          <div
+            key={s.id}
+            className={`h-1.5 flex-1 rounded-full transition ${
+              i <= index ? 'bg-violet-600' : 'bg-zinc-200'
+            }`}
+            title={s.title}
+          />
+        ))}
+      </div>
+      <p className="text-sm font-semibold text-zinc-900">{steps[index]?.title}</p>
+      {steps[index]?.hint ? (
+        <p className="text-xs leading-relaxed text-zinc-500">{steps[index].hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function SyncModeStep({ form, setField }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label
+        className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
+          form.syncMode === 'ea'
+            ? 'border-violet-400 bg-white ring-2 ring-violet-200'
+            : 'border-zinc-200 bg-white hover:border-zinc-300'
+        }`}
+      >
+        <input
+          type="radio"
+          className="sr-only"
+          name="syncMode"
+          value="ea"
+          checked={form.syncMode === 'ea'}
+          onChange={() => setField('syncMode', 'ea')}
+        />
+        <p className="text-sm font-semibold text-zinc-900">EA sync key</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+          Install the EA on your MT5 and paste a sync key. Best if you keep MT5 open locally.
+        </p>
+      </label>
+      <label
+        className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
+          form.syncMode === 'investor'
+            ? 'border-violet-400 bg-white ring-2 ring-violet-200'
+            : 'border-zinc-200 bg-white hover:border-zinc-300'
+        }`}
+      >
+        <input
+          type="radio"
+          className="sr-only"
+          name="syncMode"
+          value="investor"
+          checked={form.syncMode === 'investor'}
+          onChange={() => setField('syncMode', 'investor')}
+        />
+        <p className="text-sm font-semibold text-zinc-900">Investor password</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+          Read-only login. We pull closed trades for you — no EA install.
+        </p>
+      </label>
+    </div>
+  );
+}
+
+function createWizardSteps(syncMode) {
+  const base = [
+    { id: 'basics', title: 'Account details', hint: 'Name this account and set type / currency.' },
+    { id: 'sync', title: 'How should we sync MT5?', hint: 'Pick EA if you run MetaTrader locally, or investor password for hands-off sync.' },
+  ];
+  if (syncMode === 'investor') {
+    return [
+      ...base,
+      { id: 'broker', title: 'Choose your broker', hint: 'ST Markets and Lirunex are near the top. Search if you need another.' },
+      { id: 'server', title: 'Pick the MT5 server', hint: 'Must match the exact server from your broker portal / MT5 login.' },
+      { id: 'credentials', title: 'Login & investor password', hint: 'Use the investor (read-only) password — not the master password.' },
+      { id: 'review', title: 'Review & create', hint: 'We’ll verify the investor login after creating the account.' },
+    ];
+  }
+  return [
+    ...base,
+    { id: 'review', title: 'Review & create', hint: 'After creating, we’ll show an EA sync key to paste into MetaTrader.' },
+  ];
+}
+
+function ReviewStep({ form }) {
+  return (
+    <dl className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-sm">
+      <div className="flex justify-between gap-3">
+        <dt className="text-zinc-500">Name</dt>
+        <dd className="font-medium text-zinc-900">{form.name.trim() || '—'}</dd>
+      </div>
+      <div className="flex justify-between gap-3">
+        <dt className="text-zinc-500">Type</dt>
+        <dd className="font-medium text-zinc-900">{accountTypeLabel(form.accountType)}</dd>
+      </div>
+      <div className="flex justify-between gap-3">
+        <dt className="text-zinc-500">Currency</dt>
+        <dd className="font-medium text-zinc-900">{pnlDenominationLabel(form.pnlDenomination)}</dd>
+      </div>
+      <div className="flex justify-between gap-3">
+        <dt className="text-zinc-500">Sync</dt>
+        <dd className="font-medium text-zinc-900">
+          {form.syncMode === 'investor' ? 'Investor password' : 'EA sync key'}
+        </dd>
+      </div>
+      {form.syncMode === 'investor' ? (
+        <>
+          <div className="flex justify-between gap-3">
+            <dt className="text-zinc-500">Broker</dt>
+            <dd className="font-medium text-zinc-900">{form.brokerName || '—'}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-zinc-500">Server</dt>
+            <dd className="max-w-[60%] truncate font-medium text-zinc-900" title={form.brokerServer}>
+              {form.brokerServer || '—'}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-zinc-500">Login</dt>
+            <dd className="font-medium text-zinc-900">{form.mt5Login || '—'}</dd>
+          </div>
+        </>
+      ) : null}
+    </dl>
   );
 }
 
@@ -206,6 +266,10 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
   const [msg, setMsg] = useState(null);
   const [createdSyncKey, setCreatedSyncKey] = useState(null);
   const [createdAccount, setCreatedAccount] = useState(null);
+  const [stepIndex, setStepIndex] = useState(0);
+
+  const steps = isEdit ? [] : createWizardSteps(form.syncMode);
+  const step = steps[stepIndex] || null;
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -219,12 +283,86 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
     };
   }, [busy, onClose]);
 
+  // Keep step index in range when sync mode changes step list length
+  useEffect(() => {
+    if (isEdit) return;
+    setStepIndex((i) => Math.min(i, createWizardSteps(form.syncMode).length - 1));
+  }, [form.syncMode, isEdit]);
+
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function applyBrokerFields(next) {
+    setForm((f) => ({
+      ...f,
+      brokerId: next.brokerId,
+      serverChoice: next.serverChoice,
+      customServer: next.customServer,
+      brokerServer: next.brokerServer,
+      brokerName: next.brokerName,
+    }));
+  }
+
+  function validateStep(id) {
+    if (id === 'basics') {
+      if (!form.name.trim()) return 'Account name is required.';
+      return null;
+    }
+    if (id === 'sync') {
+      if (!form.syncMode) return 'Choose how to sync MT5.';
+      return null;
+    }
+    if (id === 'broker') {
+      if (!form.brokerId) return 'Choose your broker.';
+      return null;
+    }
+    if (id === 'server') {
+      if (!form.brokerServer.trim()) return 'Pick or type the exact MT5 server.';
+      return null;
+    }
+    if (id === 'credentials') {
+      if (!form.mt5Login.trim() || !form.investorPassword) {
+        return 'MT5 login and investor password are required.';
+      }
+      return null;
+    }
+    return null;
+  }
+
+  function goNext() {
+    const err = validateStep(step?.id);
+    if (err) {
+      setMsg({ type: 'error', text: err });
+      return;
+    }
+    setMsg(null);
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  }
+
+  function goBack() {
+    setMsg(null);
+    setStepIndex((i) => Math.max(i - 1, 0));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!isEdit) {
+      // Only submit on final review step
+      if (step?.id !== 'review') {
+        goNext();
+        return;
+      }
+      for (const s of steps) {
+        const err = validateStep(s.id);
+        if (err) {
+          setMsg({ type: 'error', text: err });
+          setStepIndex(steps.findIndex((x) => x.id === s.id));
+          return;
+        }
+      }
+    }
+
     const name = form.name.trim();
     if (!name) {
       setMsg({ type: 'error', text: 'Account name is required.' });
@@ -232,8 +370,12 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
     }
 
     if (!isEdit && form.syncMode === 'investor') {
+      if (!form.brokerId) {
+        setMsg({ type: 'error', text: 'Choose your broker first.' });
+        return;
+      }
       if (!form.brokerServer.trim() || !form.mt5Login.trim() || !form.investorPassword) {
-        setMsg({ type: 'error', text: 'Broker server, MT5 login, and investor password are required.' });
+        setMsg({ type: 'error', text: 'MT5 server, login, and investor password are required.' });
         return;
       }
     }
@@ -273,7 +415,9 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           color,
           is_default: tradingAccounts.length === 0,
           connection_status: form.syncMode === 'investor' ? 'investor' : 'ea',
-          broker: form.syncMode === 'investor' ? form.brokerServer.trim() : null,
+          broker: form.syncMode === 'investor'
+            ? (form.brokerName || form.brokerServer).trim() || null
+            : null,
         });
         const row = Array.isArray(created) ? created[0] : created;
         if (!row?.id) throw new Error('Account was created but no id was returned.');
@@ -320,6 +464,8 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
     );
   }
 
+  const isLastCreateStep = !isEdit && step?.id === 'review';
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-[2px]"
@@ -340,15 +486,117 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>Close</button>
         </div>
         <form className="px-5 py-4" onSubmit={handleSubmit}>
-          <AccountFormFields form={form} setField={setField} isCreate={!isEdit} />
+          {isEdit ? (
+            <AccountFormFields form={form} setField={setField} />
+          ) : (
+            <>
+              <CreateStepProgress steps={steps} index={stepIndex} />
+              {step?.id === 'basics' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account name</label>
+                    <input
+                      className={input}
+                      placeholder="e.g. ST Markets Live, Personal"
+                      value={form.name}
+                      onChange={(e) => setField('name', e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-zinc-700">Type</label>
+                      <CustomDropdown
+                        className="w-full"
+                        menuClassName="w-full"
+                        value={form.accountType}
+                        onChange={(v) => setField('accountType', v)}
+                        options={ACCOUNT_TYPES}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account currency</label>
+                      <CustomDropdown
+                        className="w-full"
+                        menuClassName="w-full"
+                        value={form.pnlDenomination}
+                        onChange={(v) => setField('pnlDenomination', v)}
+                        options={PNL_DENOMINATIONS}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              {step?.id === 'sync' ? <SyncModeStep form={form} setField={setField} /> : null}
+              {step?.id === 'broker' ? (
+                <BrokerServerFields
+                  mode="broker"
+                  brokerId={form.brokerId}
+                  serverChoice={form.serverChoice}
+                  customServer={form.customServer}
+                  onChange={applyBrokerFields}
+                />
+              ) : null}
+              {step?.id === 'server' ? (
+                <BrokerServerFields
+                  mode="server"
+                  brokerId={form.brokerId}
+                  serverChoice={form.serverChoice}
+                  customServer={form.customServer}
+                  onChange={applyBrokerFields}
+                />
+              ) : null}
+              {step?.id === 'credentials' ? (
+                <div className="space-y-2">
+                  <input
+                    className={input}
+                    placeholder="MT5 login number"
+                    value={form.mt5Login}
+                    onChange={(e) => setField('mt5Login', e.target.value)}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  <PasswordInput
+                    placeholder="Investor (read-only) password"
+                    value={form.investorPassword}
+                    onChange={(e) => setField('investorPassword', e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <p className="text-xs text-zinc-500">
+                    We encrypt the password before storing it.
+                  </p>
+                </div>
+              ) : null}
+              {step?.id === 'review' ? <ReviewStep form={form} /> : null}
+            </>
+          )}
           {msg && <p className={`mt-3 ${msg.type === 'error' ? msgError : msgSuccess}`}>{msg.text}</p>}
-          <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
-            <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>Cancel</button>
-            <button className={btnPrimary} type="submit" disabled={busy}>
-              {busy
-                ? (!isEdit && form.syncMode === 'investor' ? 'Verifying...' : 'Saving...')
-                : isEdit ? 'Save changes' : 'Add account'}
-            </button>
+          <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-zinc-100 pt-4">
+            <div>
+              {!isEdit && stepIndex > 0 ? (
+                <button className={btnGhost} type="button" disabled={busy} onClick={goBack}>
+                  Back
+                </button>
+              ) : (
+                <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>
+                  Cancel
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {!isEdit && !isLastCreateStep ? (
+                <button className={btnPrimary} type="button" disabled={busy} onClick={goNext}>
+                  Continue
+                </button>
+              ) : (
+                <button className={btnPrimary} type="submit" disabled={busy}>
+                  {busy
+                    ? (!isEdit && form.syncMode === 'investor' ? 'Verifying...' : 'Saving...')
+                    : isEdit ? 'Save changes' : 'Create account'}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>

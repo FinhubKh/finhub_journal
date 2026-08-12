@@ -25,8 +25,8 @@ const STEPS = [
   {
     n: 3,
     title: 'Connect credentials in Finhub',
-    desc: 'On the account card, open Investor password sync. Enter broker server, MT5 login, and the investor password.',
-    tip: 'Broker server looks like ICMarketsSC-Live. We encrypt the password before storing it.',
+    desc: 'On the account card, open Investor password sync. Choose your broker, pick the MT5 server, then enter login and investor password.',
+    tip: 'ST Markets and Lirunex are listed — or type the exact server from your broker portal (e.g. Exness-MT5Real36).',
     action: 'accounts',
     image: '/image/install/investor/step-3.png',
     imageAlt: 'Enter broker server, login, and investor password in Finhub',

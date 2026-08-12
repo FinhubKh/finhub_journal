@@ -5,6 +5,7 @@ import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
 import SyncLoadingModal from '../common/SyncLoadingModal';
 import PasswordInput from '../common/PasswordInput';
+import BrokerServerFields from './BrokerServerFields';
 import { btnGhost, btnOutline, btnSm, input, msgError } from '../../lib/ui';
 
 function formatLastSynced(iso) {
@@ -16,10 +17,20 @@ function formatLastSynced(iso) {
   });
 }
 
+const EMPTY_CONNECT = {
+  brokerId: '',
+  serverChoice: '',
+  customServer: '',
+  brokerServer: '',
+  brokerName: '',
+  login: '',
+  investorPassword: '',
+};
+
 export default function InvestorSyncPanel({ account, status, onChanged, compact = false }) {
   const { alert, confirm } = useDialog();
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ brokerServer: '', login: '', investorPassword: '' });
+  const [form, setForm] = useState(EMPTY_CONNECT);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncStage, setSyncStage] = useState(null);
@@ -31,8 +42,12 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
 
   async function handleSave(e) {
     e.preventDefault();
+    if (!form.brokerId) {
+      setMsg('Choose your broker first.');
+      return;
+    }
     if (!form.brokerServer.trim() || !form.login.trim() || !form.investorPassword) {
-      setMsg('Broker server, login, and investor password are all required.');
+      setMsg('MT5 server, login, and investor password are all required.');
       return;
     }
     setBusy(true);
@@ -44,7 +59,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
         login: form.login.trim(),
         investorPassword: form.investorPassword,
       });
-      setForm({ brokerServer: '', login: '', investorPassword: '' });
+      setForm(EMPTY_CONNECT);
       setFormOpen(false);
       await onChanged();
       toast.success('Investor password connected');
@@ -155,17 +170,29 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
         </>
       ) : formOpen ? (
         <form className="mt-1 space-y-2" onSubmit={handleSave}>
-          <input
-            className={input}
-            placeholder="Broker server (e.g. ICMarketsSC-Live)"
-            value={form.brokerServer}
-            onChange={(e) => setField('brokerServer', e.target.value)}
+          <BrokerServerFields
+            brokerId={form.brokerId}
+            serverChoice={form.serverChoice}
+            customServer={form.customServer}
+            disabled={busy}
+            onChange={(next) => {
+              setForm((f) => ({
+                ...f,
+                brokerId: next.brokerId,
+                serverChoice: next.serverChoice,
+                customServer: next.customServer,
+                brokerServer: next.brokerServer,
+                brokerName: next.brokerName,
+              }));
+            }}
           />
           <input
             className={input}
             placeholder="MT5 login number"
             value={form.login}
             onChange={(e) => setField('login', e.target.value)}
+            inputMode="numeric"
+            autoComplete="off"
           />
           <PasswordInput
             placeholder="Investor (read-only) password"
@@ -182,7 +209,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
       ) : (
         <>
           <p className="text-xs leading-relaxed text-zinc-500">
-            Alternative to the EA: paste a read-only investor password and we sync trades for you.
+            Alternative to the EA: choose your broker, pick the MT5 server, then paste a read-only investor password.
           </p>
           <button className={`${btnOutline} mt-3`} type="button" onClick={() => setFormOpen(true)}>
             Connect via investor password
