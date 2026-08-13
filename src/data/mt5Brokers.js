@@ -8,7 +8,9 @@ export const CUSTOM_SERVER_VALUE = '__custom__';
 export const OTHER_BROKER_ID = 'other';
 
 /** @typedef {{ name: string, type?: 'live'|'demo'|'unknown' }} Mt5Server */
-/** @typedef {{ id: string, name: string, region?: string, pinned?: boolean, allowCustomServer?: boolean, servers: Mt5Server[] }} Mt5Broker */
+/** @typedef {{ id: string, name: string, region?: string, logo?: string, pinned?: boolean, allowCustomServer?: boolean, servers: Mt5Server[] }} Mt5Broker */
+
+const brokerLogo = (id) => `/brokers/${id}.svg`;
 
 /** @type {Mt5Broker[]} */
 export const MT5_BROKERS = [
@@ -16,6 +18,7 @@ export const MT5_BROKERS = [
     id: 'stmarket',
     name: 'ST Markets',
     region: 'Cambodia',
+    logo: brokerLogo('stmarket'),
     pinned: true,
     allowCustomServer: true,
     servers: [
@@ -27,6 +30,7 @@ export const MT5_BROKERS = [
     id: 'lirunex',
     name: 'Lirunex',
     region: 'Asia',
+    logo: brokerLogo('lirunex'),
     pinned: true,
     allowCustomServer: true,
     servers: [
@@ -41,6 +45,7 @@ export const MT5_BROKERS = [
     id: 'exness',
     name: 'Exness',
     region: 'Global',
+    logo: brokerLogo('exness'),
     pinned: true,
     allowCustomServer: true,
     servers: [
@@ -63,6 +68,7 @@ export const MT5_BROKERS = [
     id: 'xm',
     name: 'XM',
     region: 'Global',
+    logo: brokerLogo('xm'),
     pinned: true,
     allowCustomServer: true,
     servers: [
@@ -77,6 +83,7 @@ export const MT5_BROKERS = [
     id: 'icmarkets',
     name: 'IC Markets',
     region: 'Global',
+    logo: brokerLogo('icmarkets'),
     pinned: true,
     allowCustomServer: true,
     servers: [
@@ -94,6 +101,7 @@ export const MT5_BROKERS = [
     id: 'pepperstone',
     name: 'Pepperstone',
     region: 'Global',
+    logo: brokerLogo('pepperstone'),
     allowCustomServer: true,
     servers: [
       { name: 'Pepperstone-MT5-Live', type: 'live' },
@@ -105,6 +113,7 @@ export const MT5_BROKERS = [
     id: 'fbs',
     name: 'FBS',
     region: 'Global',
+    logo: brokerLogo('fbs'),
     allowCustomServer: true,
     servers: [
       { name: 'FBS-Real', type: 'live' },
@@ -115,6 +124,7 @@ export const MT5_BROKERS = [
     id: 'roboforex',
     name: 'RoboForex',
     region: 'Global',
+    logo: brokerLogo('roboforex'),
     allowCustomServer: true,
     servers: [
       { name: 'RoboForex-ECN', type: 'live' },
@@ -125,6 +135,7 @@ export const MT5_BROKERS = [
     id: 'tickmill',
     name: 'Tickmill',
     region: 'Global',
+    logo: brokerLogo('tickmill'),
     allowCustomServer: true,
     servers: [
       { name: 'Tickmill-Demo', type: 'demo' },
@@ -138,6 +149,7 @@ export const MT5_BROKERS = [
     id: 'fxpro',
     name: 'FxPro',
     region: 'Global',
+    logo: brokerLogo('fxpro'),
     allowCustomServer: true,
     servers: [
       { name: 'FxPro-MT5', type: 'live' },
@@ -149,6 +161,7 @@ export const MT5_BROKERS = [
     id: 'fusionmarkets',
     name: 'Fusion Markets',
     region: 'Global',
+    logo: brokerLogo('fusionmarkets'),
     allowCustomServer: true,
     servers: [
       { name: 'FusionMarkets-Live', type: 'live' },
@@ -159,6 +172,7 @@ export const MT5_BROKERS = [
     id: 'litefinance',
     name: 'LiteFinance',
     region: 'Global',
+    logo: brokerLogo('litefinance'),
     allowCustomServer: true,
     servers: [
       { name: 'LiteFinance-MT5-Live', type: 'live' },
@@ -169,6 +183,7 @@ export const MT5_BROKERS = [
     id: 'alpari',
     name: 'Alpari',
     region: 'Global',
+    logo: brokerLogo('alpari'),
     allowCustomServer: true,
     servers: [
       { name: 'Alpari-MT5', type: 'live' },
@@ -179,6 +194,7 @@ export const MT5_BROKERS = [
     id: 'forextime',
     name: 'ForexTime / FXTM',
     region: 'Global',
+    logo: brokerLogo('forextime'),
     allowCustomServer: true,
     servers: [
       { name: 'ForexTime-Live01', type: 'live' },
@@ -192,6 +208,7 @@ export const MT5_BROKERS = [
     id: OTHER_BROKER_ID,
     name: 'Other / not listed',
     region: 'Custom',
+    logo: brokerLogo('other'),
     allowCustomServer: true,
     servers: [],
   },
@@ -214,11 +231,16 @@ export function brokerSelectOptions({ includePlaceholder = false } = {}) {
   const opts = listMt5BrokersSorted().map((b) => ({
     value: b.id,
     label: b.region && b.id !== OTHER_BROKER_ID ? `${b.name} · ${b.region}` : b.name,
+    logo: b.logo || '',
   }));
   if (includePlaceholder) {
-    return [{ value: '', label: 'Select broker…' }, ...opts];
+    return [{ value: '', label: 'Select broker…', logo: '' }, ...opts];
   }
   return opts;
+}
+
+export function brokerLogoSrc(brokerId) {
+  return getMt5Broker(brokerId)?.logo || '';
 }
 
 export function serverSelectOptions(brokerId) {

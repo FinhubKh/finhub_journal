@@ -15,6 +15,23 @@ function Chevron({ open }) {
   );
 }
 
+function OptionLogo({ src, label }) {
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      className="h-6 w-6 shrink-0 rounded-md object-cover ring-1 ring-black/5 dark:ring-white/10"
+      width={24}
+      height={24}
+      loading="lazy"
+      decoding="async"
+      title={label}
+    />
+  );
+}
+
 function normalizeOptions(options) {
   return options.map((option) => {
     if (typeof option === 'string') return { value: option, label: option };
@@ -70,7 +87,10 @@ export default function CustomDropdown({
         aria-haspopup="listbox"
         aria-label={ariaLabel}
       >
-        <span className="truncate">{selected?.label ?? value}</span>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <OptionLogo src={selected?.logo} label={selected?.label} />
+          <span className="truncate">{selected?.label ?? value}</span>
+        </span>
         <Chevron open={open} />
       </button>
 
@@ -88,14 +108,17 @@ export default function CustomDropdown({
                 type="button"
                 role="option"
                 aria-selected={isSelected}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
                   isSelected
                     ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 font-semibold'
                     : 'bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/80'
                 }`}
                 onClick={() => pick(item.value)}
               >
-                <span className="truncate">{item.label}</span>
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <OptionLogo src={item.logo} label={item.label} />
+                  <span className="truncate">{item.label}</span>
+                </span>
                 {isSelected && (
                   <svg className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />

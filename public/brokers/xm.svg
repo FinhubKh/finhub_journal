@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img">
+  <rect width="128" height="128" rx="28" fill="#111827"/>
+  <polygon points="18,64 30,52 30,76" fill="#EF4444"/>
+  <text x="72" y="66" text-anchor="middle" dominant-baseline="central"
+        font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif"
+        font-size="42" font-weight="800" fill="#FFFFFF">XM</text>
+</svg>
