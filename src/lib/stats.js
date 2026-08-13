@@ -16,10 +16,7 @@ export function computeStats(trades) {
   const losses = trades.filter((t) => t.result === 'loss');
   const total = trades.length;
   const totalPnl = trades.reduce((s, t) => s + (t.pnl_usd || 0), 0);
-  const totalR = trades.reduce((s, t) => s + (t.r_value || 0), 0);
   const wr = Math.round((wins.length / total) * 100);
-  const avgR = totalR / total;
-
   const grossWin = wins.reduce((s, t) => s + (t.pnl_usd || 0), 0);
   const grossLoss = Math.abs(losses.reduce((s, t) => s + (t.pnl_usd || 0), 0));
   const pf = grossLoss > 0 ? (grossWin / grossLoss).toFixed(2) : grossWin > 0 ? '∞' : '—';
@@ -27,6 +24,17 @@ export function computeStats(trades) {
   const avgWin = wins.length > 0 ? grossWin / wins.length : 0;
   const avgLoss = losses.length > 0 ? grossLoss / losses.length : 0;
   const rrRatio = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : avgWin > 0 ? '∞' : '—';
+
+  // Calculate R-multiple & Avg R:
+  // If trades have explicit non-zero r_value (e.g. manual trades with custom R-value), use them.
+  // Otherwise, fallback to 1R = avgLoss baseline so synced trades have dynamic R stats.
+  const hasExplicitR = trades.some((t) => Math.abs(t.r_value || 0) > 0.01);
+  const totalR = hasExplicitR
+    ? trades.reduce((s, t) => s + (t.r_value || 0), 0)
+    : avgLoss > 0
+    ? totalPnl / avgLoss
+    : 0;
+  const avgR = total ? totalR / total : 0;
 
   const lr = losses.length / total;
   const expectancy = (wr / 100) * avgWin - lr * avgLoss;

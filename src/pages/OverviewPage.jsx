@@ -175,9 +175,16 @@ function RiskSection({ stats, showAccounts, denomination }) {
             tone={stats && stats.expectancy >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
           />
           <StatTile
+            label="Risk:Reward"
+            value={stats ? `${stats.rrRatio}:1` : '—'}
+            hint="Avg win ÷ Avg loss"
+            tone={stats && parseFloat(stats.rrRatio) >= 1 ? 'positive' : stats ? 'neutral' : 'neutral'}
+          />
+          <StatTile
             label="Avg R"
             value={stats ? `${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R` : '—'}
             hint="Mean R-multiple"
+            tone={stats && stats.avgR >= 0 ? 'positive' : 'negative'}
           />
           <StatTile
             label="Max drawdown"
