@@ -154,8 +154,8 @@ function SyncModeStep({ form, setField }) {
       <label
         className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
           form.syncMode === 'ea'
-            ? 'border-violet-400 bg-white ring-2 ring-violet-200'
-            : 'border-zinc-200 bg-white hover:border-zinc-300'
+            ? 'border-violet-400 bg-white ring-2 ring-violet-200 dark:border-emerald-500 dark:bg-zinc-900 dark:ring-emerald-900/50'
+            : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700'
         }`}
       >
         <input
@@ -166,16 +166,16 @@ function SyncModeStep({ form, setField }) {
           checked={form.syncMode === 'ea'}
           onChange={() => setField('syncMode', 'ea')}
         />
-        <p className="text-sm font-semibold text-zinc-900">EA sync key</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">EA sync key</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
           Install the EA on your MT5 and paste a sync key. Best if you keep MT5 open locally.
         </p>
       </label>
       <label
         className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
           form.syncMode === 'investor'
-            ? 'border-violet-400 bg-white ring-2 ring-violet-200'
-            : 'border-zinc-200 bg-white hover:border-zinc-300'
+            ? 'border-violet-400 bg-white ring-2 ring-violet-200 dark:border-emerald-500 dark:bg-zinc-900 dark:ring-emerald-900/50'
+            : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700'
         }`}
       >
         <input
@@ -186,8 +186,8 @@ function SyncModeStep({ form, setField }) {
           checked={form.syncMode === 'investor'}
           onChange={() => setField('syncMode', 'investor')}
         />
-        <p className="text-sm font-semibold text-zinc-900">Investor password</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Investor password</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
           Read-only login. We pull closed trades for you — no EA install.
         </p>
       </label>
@@ -203,8 +203,8 @@ function createWizardSteps(syncMode) {
   if (syncMode === 'investor') {
     return [
       ...base,
-      { id: 'broker', title: 'Choose your broker', hint: 'ST Markets and Lirunex are near the top. Search if you need another.' },
-      { id: 'server', title: 'Pick the MT5 server', hint: 'Must match the exact server from your broker portal / MT5 login.' },
+      { id: 'broker', title: 'Choose your broker', hint: 'Type or pick from popular brokers.' },
+      { id: 'server', title: 'Select MT5 server', hint: 'Exact server name from MetaTrader login box.' },
       { id: 'credentials', title: 'Login & investor password', hint: 'Use the investor (read-only) password — not the master password.' },
       { id: 'review', title: 'Review & create', hint: 'We’ll verify the investor login after creating the account.' },
     ];
@@ -217,40 +217,40 @@ function createWizardSteps(syncMode) {
 
 function ReviewStep({ form }) {
   return (
-    <dl className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-sm">
+    <dl className="space-y-2.5 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500">Name</dt>
-        <dd className="font-medium text-zinc-900">{form.name.trim() || '—'}</dd>
+        <dt className="text-zinc-500 dark:text-zinc-400">Name</dt>
+        <dd className="font-medium text-zinc-900 dark:text-zinc-100">{form.name.trim() || '—'}</dd>
       </div>
       <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500">Type</dt>
-        <dd className="font-medium text-zinc-900">{accountTypeLabel(form.accountType)}</dd>
+        <dt className="text-zinc-500 dark:text-zinc-400">Type</dt>
+        <dd className="font-medium text-zinc-900 dark:text-zinc-100">{accountTypeLabel(form.accountType)}</dd>
       </div>
       <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500">Currency</dt>
-        <dd className="font-medium text-zinc-900">{pnlDenominationLabel(form.pnlDenomination)}</dd>
+        <dt className="text-zinc-500 dark:text-zinc-400">Currency</dt>
+        <dd className="font-medium text-zinc-900 dark:text-zinc-100">{pnlDenominationLabel(form.pnlDenomination)}</dd>
       </div>
       <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500">Sync</dt>
-        <dd className="font-medium text-zinc-900">
+        <dt className="text-zinc-500 dark:text-zinc-400">Sync</dt>
+        <dd className="font-medium text-zinc-900 dark:text-zinc-100">
           {form.syncMode === 'investor' ? 'Investor password' : 'EA sync key'}
         </dd>
       </div>
       {form.syncMode === 'investor' ? (
         <>
           <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500">Broker</dt>
-            <dd className="font-medium text-zinc-900">{form.brokerName || '—'}</dd>
+            <dt className="text-zinc-500 dark:text-zinc-400">Broker</dt>
+            <dd className="font-medium text-zinc-900 dark:text-zinc-100">{form.brokerName || '—'}</dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500">Server</dt>
-            <dd className="max-w-[60%] truncate font-medium text-zinc-900" title={form.brokerServer}>
+            <dt className="text-zinc-500 dark:text-zinc-400">Server</dt>
+            <dd className="max-w-[60%] truncate font-medium text-zinc-900 dark:text-zinc-100" title={form.brokerServer}>
               {form.brokerServer || '—'}
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500">Login</dt>
-            <dd className="font-medium text-zinc-900">{form.mt5Login || '—'}</dd>
+            <dt className="text-zinc-500 dark:text-zinc-400">Login</dt>
+            <dd className="font-medium text-zinc-900 dark:text-zinc-100">{form.mt5Login || '—'}</dd>
           </div>
         </>
       ) : null}
