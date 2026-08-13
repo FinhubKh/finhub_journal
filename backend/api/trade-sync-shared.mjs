@@ -15,22 +15,19 @@ export function resolvePnlUsd(trade, matchedAccount, source) {
   const isCentAccount = matchedAccount?.pnl_denomination === 'cent';
   const raw = trade.pnl_raw != null ? Number(trade.pnl_raw) : null;
   const fallback = trade.pnl_usd != null ? Number(trade.pnl_usd) : (trade.profit != null ? Number(trade.profit) : 0);
+  const val = raw != null ? raw : fallback;
 
   if (isCentAccount) {
     // Investor password bridge (MetaApi) sends values in USD dollars (e.g. 54.83).
     // Scale USD dollars to Cents (* 100) so FinhubKH stores 5483.00 cents 1:1!
-    if (source === 'investor_bridge') {
-      const val = raw != null ? raw : fallback;
+    if (source === 'investor_bridge' || (Math.abs(val) < 500 && val !== 0)) {
       return val * 100;
     }
-    // EA sync or Manual entry: values are already sent 1:1 in Cents (e.g. 5483.00)
-    if (raw != null) return raw;
-    return fallback;
+    return val;
   }
 
   // USD Account: values are in USD dollars (e.g. 54.83)
-  if (raw != null) return raw;
-  return fallback;
+  return val;
 }
 
 export function tradesToRows(trades, userId, matchedAccount, source) {
