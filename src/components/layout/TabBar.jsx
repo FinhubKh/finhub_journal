@@ -177,14 +177,16 @@ export default function TabBar({ activeTab, onSwitchTab }) {
   const { isDark, toggleTheme } = useTheme();
   const isDesktop = useIsDesktop();
   const [width, setWidth] = useState(readSidebarWidth);
+  const [isHovered, setIsHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(SIDEBAR_DEFAULT);
 
   const email = getUserEmail(user);
   const displayName = getUserDisplayName(user);
-  const expanded = isDesktop && width >= SIDEBAR_COMPACT_BELOW;
-  const navWidth = isDesktop ? width : 72;
+  const isHovering = isDesktop && (isHovered || dragging);
+  const expanded = isDesktop && (isHovering || width >= SIDEBAR_COMPACT_BELOW);
+  const navWidth = isDesktop ? (isHovering ? Math.max(224, width) : SIDEBAR_MIN) : 72;
 
   useEffect(() => {
     if (!dragging) return undefined;
@@ -238,9 +240,11 @@ export default function TabBar({ activeTab, onSwitchTab }) {
 
   return (
     <nav
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`relative flex h-full shrink-0 flex-col border-r border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950 ${
         expanded ? 'px-3' : 'px-2'
-      } ${dragging ? '' : 'transition-[width] duration-150'}`}
+      } ${dragging ? '' : 'transition-[width] duration-300 ease-in-out'}`}
       style={{ width: navWidth }}
       role="tablist"
       aria-label="Main navigation"
