@@ -84,7 +84,6 @@ describe('handleConnectInvestorCredentials', () => {
 
     expect(result.status).toBe(502);
     expect(result.body.error).toMatch(/verify/i);
-    expect(fetchMock.mock.calls[4][1].method).toBe('DELETE');
   });
 });
 

@@ -2,18 +2,23 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { resolvePnlUsd, tradesToRows, upsertSyncedTrades } from '../trade-sync-shared.mjs';
 
 describe('resolvePnlUsd', () => {
-  it('uses pnl_raw as-is for cent accounts', () => {
-    const pnl = resolvePnlUsd({ pnl_raw: 1000 }, { pnl_denomination: 'cent' });
+  it('uses pnl_raw as-is for cent accounts on EA sync (source api)', () => {
+    const pnl = resolvePnlUsd({ pnl_raw: 1000 }, { pnl_denomination: 'cent' }, 'api');
     expect(pnl).toBe(1000);
   });
 
+  it('scales USD dollars to Cents (*100) for cent accounts on investor_bridge sync', () => {
+    const pnl = resolvePnlUsd({ pnl_usd: 54.83 }, { pnl_denomination: 'cent' }, 'investor_bridge');
+    expect(pnl).toBe(5483);
+  });
+
   it('uses pnl_raw as-is for usd accounts', () => {
-    const pnl = resolvePnlUsd({ pnl_raw: 42.5 }, { pnl_denomination: 'usd' });
+    const pnl = resolvePnlUsd({ pnl_raw: 42.5 }, { pnl_denomination: 'usd' }, 'investor_bridge');
     expect(pnl).toBe(42.5);
   });
 
   it('falls back to pnl_usd when pnl_raw is absent', () => {
-    const pnl = resolvePnlUsd({ pnl_usd: 7 }, { pnl_denomination: 'usd' });
+    const pnl = resolvePnlUsd({ pnl_usd: 7 }, { pnl_denomination: 'usd' }, 'api');
     expect(pnl).toBe(7);
   });
 });
