@@ -7,10 +7,16 @@ export function moneySymbol(denomination = 'usd') {
   return normalizeDenom(denomination) === 'cent' ? '¢' : '$';
 }
 
-/** Display value is 1:1 with stored value (no × 100 scaling). */
-export function toDisplayPnl(usdValue) {
+/** Display value for the UI. Handles cent accounts (scaling 100x if stored in dollars). */
+export function toDisplayPnl(usdValue, denomination = 'usd') {
   const n = Number(usdValue);
   if (!Number.isFinite(n)) return 0;
+  if (normalizeDenom(denomination) === 'cent') {
+    // If stored trade/total PnL is in dollars (e.g. 0.08 or 54.83), scale by 100 to display full Cents!
+    if (Math.abs(n) < 500 && n !== 0) {
+      return n * 100;
+    }
+  }
   return n;
 }
 
