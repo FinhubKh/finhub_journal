@@ -16,7 +16,7 @@ import SyncNowButton from '../components/common/SyncNowButton';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
   const valueCls =
-    tone === 'positive' ? 'text-violet-600 dark:text-emerald-400'
+    tone === 'positive' ? 'text-emerald-600 dark:text-emerald-400'
       : tone === 'negative' ? 'text-rose-600 dark:text-rose-400'
         : 'text-zinc-900 dark:text-zinc-100';
 
@@ -208,7 +208,7 @@ function RiskSection({ stats, showAccounts, denomination }) {
             </span>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <div className="text-xl font-bold tabular-nums text-violet-600 dark:text-emerald-400 sm:text-2xl">
+                <div className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-2xl">
                   {stats && stats.bestStreak > 0 ? `${stats.bestStreak}W` : '—'}
                 </div>
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">Best win</span>
