@@ -68,8 +68,15 @@ export async function handleTriggerInvestorSync(req, {
   }
 
   if (!bridgeRes.ok) {
-    await bridgeRes.text().catch(() => '');
-    return { status: 502, body: { error: 'Bridge service rejected the sync job' } };
+    const detail = await bridgeRes.text().catch(() => '');
+    return {
+      status: 502,
+      body: {
+        error: 'Bridge service rejected the sync job',
+        bridge_status: bridgeRes.status,
+        bridge_detail: String(detail || '').slice(0, 300) || null,
+      },
+    };
   }
 
   const bridgeBody = await bridgeRes.json().catch(() => ({}));
