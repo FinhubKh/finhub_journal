@@ -26,10 +26,7 @@ export function computeStats(trades) {
 
   const avgWin = wins.length > 0 ? grossWin / wins.length : 0;
   const avgLoss = losses.length > 0 ? grossLoss / losses.length : 0;
-
-  const avgWinR = wins.length > 0 ? wins.reduce((s, t) => s + (t.r_value || 0), 0) / wins.length : 0;
-  const avgLossR = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + (t.r_value || 0), 0) / losses.length) : 0;
-  const rrRatio = avgLossR > 0 ? (avgWinR / avgLossR).toFixed(2) : avgWinR > 0 ? '∞' : '—';
+  const rrRatio = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : avgWin > 0 ? '∞' : '—';
 
   const lr = losses.length / total;
   const expectancy = (wr / 100) * avgWin - lr * avgLoss;
