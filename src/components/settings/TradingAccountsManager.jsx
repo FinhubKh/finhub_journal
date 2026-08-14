@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   insertTradingAccount, deleteTradingAccount, updateTradingAccount,
-  recalculateTradesForDenomination, repairCentAccountPnl,
+  recalculateTradesForDenomination,
   listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
   setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
   listInvestorCredentialsStatus,
@@ -20,12 +20,16 @@ import {
   normalizePnlDenomination,
 } from '../../lib/accounts';
 import {
-  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, msgError, msgSuccess,
+  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
+  msgError, msgSuccess, sectionLabel, select,
 } from '../../lib/ui';
 import CustomDropdown from '../common/CustomDropdown';
 import PasswordInput from '../common/PasswordInput';
 import InvestorSyncPanel from './InvestorSyncPanel';
 import BrokerServerFields from './BrokerServerFields';
+
+/** Form dropdowns should match text inputs, not toolbar pills. */
+const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 text-left font-normal`;
 
 const EMPTY_FORM = {
   name: '',
@@ -65,10 +69,10 @@ function formatLastSynced(iso) {
 
 function Badge({ children, tone = 'neutral' }) {
   const tones = {
-    neutral: 'bg-zinc-100 text-zinc-600',
-    accent: 'bg-violet-100 text-violet-700',
-    success: 'bg-emerald-50 text-emerald-700',
-    muted: 'bg-zinc-50 text-zinc-500 ring-1 ring-inset ring-zinc-200',
+    neutral: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+    accent: 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
+    success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+    muted: 'bg-zinc-50 text-zinc-500 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700',
   };
   return (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tones[tone]}`}>
@@ -77,11 +81,18 @@ function Badge({ children, tone = 'neutral' }) {
   );
 }
 
+const CENT_HELPER = (
+  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+    Choose <strong className="font-medium text-zinc-600 dark:text-zinc-300">Cent account</strong> if your broker shows PnL in cents (e.g. USC).
+    Sync stores the same numbers MT5 shows; switching Cent ↔ USD automatically rescales existing trades (×100 / ÷100).
+  </p>
+);
+
 function AccountFormFields({ form, setField }) {
   return (
     <div className="space-y-3">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account name</label>
+        <label className={label}>Account name</label>
         <input
           className={input}
           placeholder="e.g. FTMO Cent, Personal"
@@ -92,31 +103,29 @@ function AccountFormFields({ form, setField }) {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700">Type</label>
+          <label className={label}>Type</label>
           <CustomDropdown
             className="w-full"
             menuClassName="w-full"
+            buttonClassName={formSelectBtn}
             value={form.accountType}
             onChange={(v) => setField('accountType', v)}
             options={ACCOUNT_TYPES}
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account currency</label>
+          <label className={label}>Account currency</label>
           <CustomDropdown
             className="w-full"
             menuClassName="w-full"
+            buttonClassName={formSelectBtn}
             value={form.pnlDenomination}
             onChange={(v) => setField('pnlDenomination', v)}
             options={PNL_DENOMINATIONS}
           />
         </div>
       </div>
-      <p className="text-xs text-zinc-500">
-        Choose <strong className="font-medium text-zinc-600">Cent account</strong> if your broker shows PnL in cents.
-        Sync stores true USD, and the journal displays MT5-style amounts with ¢.
-        Manage EA or investor sync after opening the account.
-      </p>
+      {CENT_HELPER}
     </div>
   );
 }
@@ -125,7 +134,7 @@ function CreateStepProgress({ steps, index }) {
   const pct = ((index + 1) / steps.length) * 100;
   return (
     <div className="mb-4 space-y-2">
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-zinc-500">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
         <span>Step {index + 1} of {steps.length}</span>
         <span>{Math.round(pct)}%</span>
       </div>
@@ -134,28 +143,28 @@ function CreateStepProgress({ steps, index }) {
           <div
             key={s.id}
             className={`h-1.5 flex-1 rounded-full transition ${
-              i <= index ? 'bg-violet-600' : 'bg-zinc-200'
+              i <= index ? 'bg-violet-600' : 'bg-zinc-200 dark:bg-zinc-800'
             }`}
             title={s.title}
           />
         ))}
       </div>
-      <p className="text-sm font-semibold text-zinc-900">{steps[index]?.title}</p>
+      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{steps[index]?.title}</p>
       {steps[index]?.hint ? (
-        <p className="text-xs leading-relaxed text-zinc-500">{steps[index].hint}</p>
+        <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{steps[index].hint}</p>
       ) : null}
     </div>
   );
 }
 
 function SyncModeStep({ form, setField }) {
+  const selected = 'border-violet-400 bg-white ring-2 ring-violet-200 dark:bg-zinc-900 dark:ring-violet-900/50';
+  const idle = 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700';
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       <label
         className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-          form.syncMode === 'ea'
-            ? 'border-violet-400 bg-white ring-2 ring-violet-200 dark:border-emerald-500 dark:bg-zinc-900 dark:ring-emerald-900/50'
-            : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700'
+          form.syncMode === 'ea' ? selected : idle
         }`}
       >
         <input
@@ -173,9 +182,7 @@ function SyncModeStep({ form, setField }) {
       </label>
       <label
         className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-          form.syncMode === 'investor'
-            ? 'border-violet-400 bg-white ring-2 ring-violet-200 dark:border-emerald-500 dark:bg-zinc-900 dark:ring-emerald-900/50'
-            : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700'
+          form.syncMode === 'investor' ? selected : idle
         }`}
       >
         <input
@@ -216,41 +223,44 @@ function createWizardSteps(syncMode) {
 }
 
 function ReviewStep({ form }) {
+  const row = 'flex justify-between gap-3';
+  const dt = 'text-zinc-500 dark:text-zinc-400';
+  const dd = 'font-medium text-zinc-900 dark:text-zinc-100';
   return (
-    <dl className="space-y-2.5 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500 dark:text-zinc-400">Name</dt>
-        <dd className="font-medium text-zinc-900 dark:text-zinc-100">{form.name.trim() || '—'}</dd>
+    <dl className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+      <div className={row}>
+        <dt className={dt}>Name</dt>
+        <dd className={dd}>{form.name.trim() || '—'}</dd>
       </div>
-      <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500 dark:text-zinc-400">Type</dt>
-        <dd className="font-medium text-zinc-900 dark:text-zinc-100">{accountTypeLabel(form.accountType)}</dd>
+      <div className={row}>
+        <dt className={dt}>Type</dt>
+        <dd className={dd}>{accountTypeLabel(form.accountType)}</dd>
       </div>
-      <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500 dark:text-zinc-400">Currency</dt>
-        <dd className="font-medium text-zinc-900 dark:text-zinc-100">{pnlDenominationLabel(form.pnlDenomination)}</dd>
+      <div className={row}>
+        <dt className={dt}>Currency</dt>
+        <dd className={dd}>{pnlDenominationLabel(form.pnlDenomination)}</dd>
       </div>
-      <div className="flex justify-between gap-3">
-        <dt className="text-zinc-500 dark:text-zinc-400">Sync</dt>
-        <dd className="font-medium text-zinc-900 dark:text-zinc-100">
+      <div className={row}>
+        <dt className={dt}>Sync</dt>
+        <dd className={dd}>
           {form.syncMode === 'investor' ? 'Investor password' : 'EA sync key'}
         </dd>
       </div>
       {form.syncMode === 'investor' ? (
         <>
-          <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500 dark:text-zinc-400">Broker</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-100">{form.brokerName || '—'}</dd>
+          <div className={row}>
+            <dt className={dt}>Broker</dt>
+            <dd className={dd}>{form.brokerName || '—'}</dd>
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500 dark:text-zinc-400">Server</dt>
-            <dd className="max-w-[60%] truncate font-medium text-zinc-900 dark:text-zinc-100" title={form.brokerServer}>
+          <div className={row}>
+            <dt className={dt}>Server</dt>
+            <dd className={`max-w-[60%] truncate ${dd}`} title={form.brokerServer}>
               {form.brokerServer || '—'}
             </dd>
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500 dark:text-zinc-400">Login</dt>
-            <dd className="font-medium text-zinc-900 dark:text-zinc-100">{form.mt5Login || '—'}</dd>
+          <div className={row}>
+            <dt className={dt}>Login</dt>
+            <dd className={dd}>{form.mt5Login || '—'}</dd>
           </div>
         </>
       ) : null}
@@ -259,7 +269,7 @@ function ReviewStep({ form }) {
 }
 
 export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) {
-  const { alert } = useDialog();
+  const { alert, confirm } = useDialog();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState(() => (isEdit ? accountToForm(account) : EMPTY_FORM));
   const [busy, setBusy] = useState(false);
@@ -386,6 +396,19 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
       if (isEdit) {
         const oldDenom = normalizePnlDenomination(account.pnl_denomination);
         const newDenom = normalizePnlDenomination(form.pnlDenomination);
+        if (oldDenom !== newDenom) {
+          const ok = await confirm({
+            title: 'Change account currency?',
+            message: newDenom === 'cent'
+              ? 'Existing trade PnL will be multiplied by 100 so amounts match MT5 cent accounts (¢).'
+              : 'Existing trade PnL will be divided by 100 so amounts match USD ($).',
+            confirmLabel: 'Update trades',
+          });
+          if (!ok) {
+            setBusy(false);
+            return;
+          }
+        }
         await updateTradingAccount(account.id, {
           name,
           slug: normalizeSlug(name),
@@ -479,8 +502,8 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
         aria-labelledby="account-form-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 id="account-form-title" className="text-base font-semibold text-zinc-900">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+          <h2 id="account-form-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
             {isEdit ? `Edit account — ${account.name}` : 'New trading account'}
           </h2>
           <button className={btnGhost} type="button" disabled={busy} onClick={onClose}>Close</button>
@@ -494,7 +517,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
               {step?.id === 'basics' ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account name</label>
+                    <label className={label}>Account name</label>
                     <input
                       className={input}
                       placeholder="e.g. ST Markets Live, Personal"
@@ -505,26 +528,29 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-zinc-700">Type</label>
+                      <label className={label}>Type</label>
                       <CustomDropdown
                         className="w-full"
                         menuClassName="w-full"
+                        buttonClassName={formSelectBtn}
                         value={form.accountType}
                         onChange={(v) => setField('accountType', v)}
                         options={ACCOUNT_TYPES}
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-zinc-700">Account currency</label>
+                      <label className={label}>Account currency</label>
                       <CustomDropdown
                         className="w-full"
                         menuClassName="w-full"
+                        buttonClassName={formSelectBtn}
                         value={form.pnlDenomination}
                         onChange={(v) => setField('pnlDenomination', v)}
                         options={PNL_DENOMINATIONS}
                       />
                     </div>
                   </div>
+                  {CENT_HELPER}
                 </div>
               ) : null}
               {step?.id === 'sync' ? <SyncModeStep form={form} setField={setField} /> : null}
@@ -547,23 +573,29 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                 />
               ) : null}
               {step?.id === 'credentials' ? (
-                <div className="space-y-2">
-                  <input
-                    className={input}
-                    placeholder="MT5 login number"
-                    value={form.mt5Login}
-                    onChange={(e) => setField('mt5Login', e.target.value)}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    autoFocus
-                  />
-                  <PasswordInput
-                    placeholder="Investor (read-only) password"
-                    value={form.investorPassword}
-                    onChange={(e) => setField('investorPassword', e.target.value)}
-                    autoComplete="new-password"
-                  />
-                  <p className="text-xs text-zinc-500">
+                <div className="space-y-3">
+                  <div>
+                    <label className={label}>MT5 login</label>
+                    <input
+                      className={input}
+                      placeholder="MT5 login number"
+                      value={form.mt5Login}
+                      onChange={(e) => setField('mt5Login', e.target.value)}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className={label}>Investor password</label>
+                    <PasswordInput
+                      placeholder="Investor (read-only) password"
+                      value={form.investorPassword}
+                      onChange={(e) => setField('investorPassword', e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     We encrypt the password before storing it.
                   </p>
                 </div>
@@ -572,7 +604,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
             </>
           )}
           {msg && <p className={`mt-3 ${msg.type === 'error' ? msgError : msgSuccess}`}>{msg.text}</p>}
-          <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-zinc-100 pt-4">
+          <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
             <div>
               {!isEdit && stepIndex > 0 ? (
                 <button className={btnGhost} type="button" disabled={busy} onClick={goBack}>
@@ -638,17 +670,17 @@ export function SyncKeyModal({ account, syncKey, onClose }) {
         aria-labelledby="sync-key-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 id="sync-key-title" className="text-base font-semibold text-zinc-900">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+          <h2 id="sync-key-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
             MT5 sync key — {account.name}
           </h2>
           <button className={btnGhost} type="button" onClick={onClose}>Close</button>
         </div>
         <div className="px-5 py-4">
-          <p className="text-sm text-zinc-500">
-            Paste this key into the EA <strong className="font-medium text-zinc-700">Sync Key</strong> field on this MT5 account only.
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Paste this key into the EA <strong className="font-medium text-zinc-700 dark:text-zinc-300">Sync Key</strong> field on this MT5 account only.
           </p>
-          <div className="mt-3 break-all rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-mono text-xs text-zinc-800 select-all">
+          <div className="mt-3 break-all rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-mono text-xs text-zinc-800 select-all dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
             {syncKey}
           </div>
           <div className="mt-4 flex justify-end gap-2">
@@ -804,29 +836,6 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
     }
   }
 
-  async function handleRepair() {
-    const ok = await confirm({
-      title: 'Fix cent PnL?',
-      message: 'Divides all trade PnL for this account by 100. Only use if profits look 100x too high.',
-      confirmLabel: 'Fix PnL',
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      const count = await repairCentAccountPnl({ id: account.id, name: account.name });
-      await onUpdated();
-      if (count === 0) {
-        await alert({ title: 'No trades found', message: 'No trades are linked to this account yet.' });
-      } else {
-        await alert({ title: 'PnL fixed', message: `Updated ${count} trade${count === 1 ? '' : 's'}.` });
-      }
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not fix PnL.' });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
@@ -848,21 +857,21 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
 
   return (
     <>
-      <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:border-zinc-300">
+      <article className={`${card} overflow-hidden transition hover:border-zinc-300 dark:hover:border-zinc-700`}>
         <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 md:px-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
+                className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-zinc-900"
                 style={{ backgroundColor: account.color || '#7c3aed' }}
                 aria-hidden
               />
-              <h4 className="truncate text-base font-semibold tracking-tight text-zinc-900">{account.name}</h4>
+              <h4 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{account.name}</h4>
               {account.is_default ? <Badge tone="accent">Default</Badge> : null}
             </div>
-            <p className="mt-1.5 text-sm text-zinc-500">
+            <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
               {accountTypeLabel(account.account_type)}
-              <span className="mx-1.5 text-zinc-300">·</span>
+              <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
               {pnlDenominationLabel(account.pnl_denomination)}
             </p>
           </div>
@@ -871,13 +880,13 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
           </button>
         </div>
 
-        <div className="grid gap-px border-t border-zinc-100 bg-zinc-100 sm:grid-cols-2">
-          <div className="bg-white px-4 py-4 md:px-5">
+        <div className="grid gap-px border-t border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800 sm:grid-cols-2">
+          <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Sharing</p>
+              <p className={sectionLabel}>Sharing</p>
               {account.is_public ? <Badge tone="success">Public</Badge> : <Badge tone="muted">Private</Badge>}
             </div>
-            <p className="text-xs leading-relaxed text-zinc-500">
+            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
               {account.is_public
                 ? 'Anyone with the link can view stats and trade history (notes stay private).'
                 : 'Only you can see this account. Publish to share a read-only link.'}
@@ -888,7 +897,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
               </button>
               {account.is_public && shareUrl ? (
                 <>
-                  <button className={btnOutline} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
+                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
                     Copy link
                   </button>
                   <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
@@ -899,18 +908,18 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
             </div>
           </div>
 
-          <div className="bg-white px-4 py-4 md:px-5">
+          <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">MT5 sync</p>
+              <p className={sectionLabel}>MT5 sync</p>
               {hasSyncKey ? <Badge tone="success">Connected</Badge> : <Badge tone="muted">No key</Badge>}
             </div>
-            <p className="text-xs leading-relaxed text-zinc-500">
+            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
               {hasSyncKey
                 ? 'A sync key is active for this account. Show it to reconnect the EA if needed.'
                 : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
             </p>
             {hasSyncKey ? (
-              <p className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700' : 'text-zinc-400'}`}>
+              <p className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
                 {lastSyncedAt ? `Last synced: ${formatLastSynced(lastSyncedAt)}` : 'Not synced yet'}
               </p>
             ) : null}
@@ -924,7 +933,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
                     Regenerate
                   </button>
                   <button
-                    className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-45"
+                    className={btnDanger}
                     type="button"
                     disabled={busy}
                     onClick={() => void handleRevokeKey()}
@@ -952,11 +961,6 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
             ) : (
               <span className="self-center text-xs text-zinc-400">Used as your default account</span>
             )}
-            {account.pnl_denomination === 'cent' ? (
-              <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRepair()}>
-                Fix cent PnL
-              </button>
-            ) : null}
           </div>
           <button className={btnDanger} type="button" disabled={busy} onClick={() => void handleRemove()}>
             Remove

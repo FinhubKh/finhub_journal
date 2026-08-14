@@ -6,7 +6,9 @@ import { toast } from 'react-toastify';
 import SyncLoadingModal from '../common/SyncLoadingModal';
 import PasswordInput from '../common/PasswordInput';
 import BrokerServerFields from './BrokerServerFields';
-import { btnGhost, btnOutline, btnSm, input, msgError } from '../../lib/ui';
+import {
+  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, input, label, msgError, sectionLabel,
+} from '../../lib/ui';
 
 function formatLastSynced(iso) {
   if (!iso) return null;
@@ -15,6 +17,20 @@ function formatLastSynced(iso) {
   return date.toLocaleString(undefined, {
     weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   });
+}
+
+function StatusBadge({ ok, okLabel, idleLabel }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+        ok
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : 'bg-zinc-50 text-zinc-500 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700'
+      }`}
+    >
+      {ok ? okLabel : idleLabel}
+    </span>
+  );
 }
 
 const EMPTY_CONNECT = {
@@ -126,40 +142,36 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
   }
 
   return (
-    <div className={`${compact ? 'bg-transparent px-5 py-4' : 'bg-white px-4 py-4 md:px-5 dark:bg-zinc-950'}`}>
+    <div className={`${compact ? 'bg-transparent px-4 py-4 md:px-5' : 'border-t border-zinc-100 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900 md:px-5'}`}>
       <SyncLoadingModal open={syncing} accountName={account?.name} stage={syncStage} />
       {!compact ? (
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Investor password sync</p>
-          {status ? (
-            <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-              Connected
-            </span>
-          ) : (
-            <span className="inline-flex items-center rounded-md bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 ring-1 ring-inset ring-zinc-200">
-              Not connected
-            </span>
-          )}
+          <p className={sectionLabel}>Investor password sync</p>
+          <StatusBadge
+            ok={Boolean(status)}
+            okLabel="Connected"
+            idleLabel="Not connected"
+          />
         </div>
       ) : null}
 
       {status ? (
         <>
-          <p className="text-xs leading-relaxed text-zinc-500">
+          <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
             {status.broker_server} · login {status.login}
           </p>
-          <p className={`mt-2 text-xs font-medium ${status.last_synced_at ? 'text-emerald-700' : 'text-zinc-400'}`}>
+          <p className={`mt-2 text-xs font-medium ${status.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
             {status.last_synced_at ? `Last synced: ${formatLastSynced(status.last_synced_at)}` : 'Not synced yet'}
           </p>
           {status.last_sync_error ? (
-            <p className="mt-1 text-xs font-medium text-rose-600">Last sync failed: {status.last_sync_error}</p>
+            <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">Last sync failed: {status.last_sync_error}</p>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button className={btnSm} type="button" disabled={busy} onClick={() => void handleSyncNow()}>
               Sync now
             </button>
             <button
-              className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-45"
+              className={btnDanger}
               type="button"
               disabled={busy}
               onClick={() => void handleDisconnect()}
@@ -169,7 +181,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
           </div>
         </>
       ) : formOpen ? (
-        <form className="mt-1 space-y-2" onSubmit={handleSave}>
+        <form className="mt-1 space-y-3" onSubmit={handleSave}>
           <BrokerServerFields
             brokerId={form.brokerId}
             serverChoice={form.serverChoice}
@@ -186,29 +198,35 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
               }));
             }}
           />
-          <input
-            className={input}
-            placeholder="MT5 login number"
-            value={form.login}
-            onChange={(e) => setField('login', e.target.value)}
-            inputMode="numeric"
-            autoComplete="off"
-          />
-          <PasswordInput
-            placeholder="Investor (read-only) password"
-            value={form.investorPassword}
-            onChange={(e) => setField('investorPassword', e.target.value)}
-            autoComplete="new-password"
-          />
+          <div>
+            <label className={label}>MT5 login</label>
+            <input
+              className={input}
+              placeholder="MT5 login number"
+              value={form.login}
+              onChange={(e) => setField('login', e.target.value)}
+              inputMode="numeric"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className={label}>Investor password</label>
+            <PasswordInput
+              placeholder="Investor (read-only) password"
+              value={form.investorPassword}
+              onChange={(e) => setField('investorPassword', e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
           {msg && <p className={msgError}>{msg}</p>}
           <div className="flex flex-wrap gap-2 pt-1">
-            <button className={btnSm} type="submit" disabled={busy}>{busy ? 'Verifying...' : 'Connect'}</button>
+            <button className={btnPrimary} type="submit" disabled={busy}>{busy ? 'Verifying...' : 'Connect'}</button>
             <button className={btnGhost} type="button" disabled={busy} onClick={() => setFormOpen(false)}>Cancel</button>
           </div>
         </form>
       ) : (
         <>
-          <p className="text-xs leading-relaxed text-zinc-500">
+          <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
             Alternative to the EA: choose your broker, pick the MT5 server, then paste a read-only investor password.
           </p>
           <button className={`${btnOutline} mt-3`} type="button" onClick={() => setFormOpen(true)}>

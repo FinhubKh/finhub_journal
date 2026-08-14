@@ -28,8 +28,8 @@ export function fromDisplayPnl(displayValue) {
 }
 
 /**
- * Format stored USD PnL for the UI.
- * Cent accounts show MT5-style amounts with ¢ (stored value × 100).
+ * Format stored PnL for the UI.
+ * Values are 1:1 with the broker; denomination only switches $ vs ¢.
  */
 export function fmtPnl(v, denomination = 'usd', { empty = '' } = {}) {
   if (v == null || v === '') return empty;

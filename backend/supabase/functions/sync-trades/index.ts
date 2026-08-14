@@ -81,19 +81,13 @@ Deno.serve(async (req) => {
     }
 
     function resolvePnlUsd(t: IncomingTrade): number {
-      const isCent = matchedAccount.pnl_denomination === 'cent';
+      // Store broker/MT5 amounts 1:1. Cent vs USD is a display label only.
       const raw = t.pnl_raw != null ? Number(t.pnl_raw) : null;
       const fallback = Number(t.pnl_usd) || 0;
-      const val = raw != null ? raw : fallback;
-
-      if (isCent) {
-        // If incoming trade PnL is in USD dollars (e.g. from investor bridge),
-        // scale USD dollars to Cents (* 100) so FinhubKH stores 1:1 cents!
-        if (Math.abs(val) < 500 && val !== 0) {
-          return val * 100;
-        }
+      if (raw != null) {
+        return raw;
       }
-      return val;
+      return fallback;
     }
 
     const rows = trades.map(t => {

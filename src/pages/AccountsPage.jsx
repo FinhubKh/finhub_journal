@@ -70,7 +70,7 @@ function ChevronIcon() {
 function AccountListCard({ account, onOpen, onEdit, onDelete, busy }) {
   return (
     <div
-      className={`${card} group relative w-full overflow-hidden transition duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md dark:hover:border-emerald-700`}
+      className={`${card} group relative w-full overflow-hidden transition duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md dark:hover:border-violet-600`}
     >
       <div
         className="absolute inset-y-0 left-0 w-1.5"
@@ -106,7 +106,7 @@ function AccountListCard({ account, onOpen, onEdit, onDelete, busy }) {
             disabled={busy}
             aria-label={`Open ${account.name}`}
             title="Open account"
-            className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 transition hover:bg-violet-100 hover:text-violet-600 dark:bg-zinc-800 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400"
+            className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 transition hover:bg-violet-100 hover:text-violet-600 dark:bg-zinc-800 dark:hover:bg-violet-950/50 dark:hover:text-violet-400"
           >
             <ChevronIcon />
           </button>
@@ -159,10 +159,10 @@ export default function AccountsPage() {
     <div className={`${dashboardPageWideFull} overflow-y-auto`}>
       <header className="mb-6 flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-emerald-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
             Trading desk
           </p>
-          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="mt-1.5 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Accounts
           </h1>
           <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">

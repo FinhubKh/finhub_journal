@@ -191,14 +191,19 @@ async function patchTradePnl(trades, factor) {
   }
 }
 
-/** Adjust stored PnL when switching account between cent and USD. (No-op: values are 1:1) */
-export async function recalculateTradesForDenomination() {
-  return 0;
-}
-
-/** One-time repair: no-op since values are stored 1:1. */
-export async function repairCentAccountPnl() {
-  return 0;
+/**
+ * When switching Cent ↔ USD, rescale stored trade PnL so amounts keep matching
+ * what MT5 shows (cent units ↔ dollar units = ×100 / ÷100).
+ */
+export async function recalculateTradesForDenomination(account, oldDenom, newDenom) {
+  const from = oldDenom === 'cent' ? 'cent' : 'usd';
+  const to = newDenom === 'cent' ? 'cent' : 'usd';
+  if (from === to) return 0;
+  const trades = await fetchTradesForAccount(account);
+  if (!trades.length) return 0;
+  const factor = to === 'cent' ? 100 : 0.01;
+  await patchTradePnl(trades, factor);
+  return trades.length;
 }
 
 export async function fetchAllTrades() {

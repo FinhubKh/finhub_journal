@@ -1,6 +1,7 @@
+// src/components/settings/BrokerServerFields.jsx
 import { useMemo, useState } from 'react';
 import CustomDropdown from '../common/CustomDropdown';
-import { input } from '../../lib/ui';
+import { input, label, select } from '../../lib/ui';
 import {
   CUSTOM_SERVER_VALUE,
   OTHER_BROKER_ID,
@@ -9,6 +10,8 @@ import {
   resolveMt5Server,
   serverSelectOptions,
 } from '../../data/mt5Brokers';
+
+const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 text-left font-normal`;
 
 /**
  * Broker → server picker for investor connect.
@@ -87,10 +90,10 @@ export default function BrokerServerFields({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {showBroker ? (
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Broker</label>
+          <label className={label}>Broker</label>
           <input
             className={`${input} mb-2`}
             placeholder="Search brokers (ST Markets, Lirunex, Exness…)"
@@ -102,6 +105,7 @@ export default function BrokerServerFields({
           <CustomDropdown
             className="w-full"
             menuClassName="w-full"
+            buttonClassName={formSelectBtn}
             ariaLabel="Broker"
             value={brokerId || ''}
             onChange={handleBroker}
@@ -112,16 +116,17 @@ export default function BrokerServerFields({
 
       {showServer && brokerId && brokerId !== OTHER_BROKER_ID && serverOpts.some((o) => o.value !== CUSTOM_SERVER_VALUE) ? (
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Server</label>
+          <label className={label}>Server</label>
           <CustomDropdown
             className="w-full"
             menuClassName="w-full max-h-72"
+            buttonClassName={formSelectBtn}
             ariaLabel="MT5 server"
             value={serverChoice || CUSTOM_SERVER_VALUE}
             onChange={(v) => patch({ serverChoice: v })}
             options={serverOpts}
           />
-          <p className="mt-1.5 text-xs text-zinc-500">
+          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
             Use the exact server from your broker portal / MT5 login. Wrong server = login fails even with the right password.
           </p>
         </div>
@@ -129,7 +134,7 @@ export default function BrokerServerFields({
 
       {showCustom ? (
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <label className={label}>
             {brokerId && brokerId !== OTHER_BROKER_ID ? 'Exact server name' : 'MT5 server name'}
           </label>
           <input

@@ -9,7 +9,6 @@ import {
   listAccountSyncKeys,
   listInvestorCredentialsStatus,
   regenerateTradingAccountShareToken,
-  repairCentAccountPnl,
   revokeAccountSyncKey,
   setTradingAccountPublic,
   updateTradingAccount,
@@ -25,8 +24,8 @@ import { useDialog } from '../context/DialogContext';
 import { accountTypeLabel, pnlDenominationLabel } from '../lib/accounts';
 import { invalidateLeaderboardCache } from '../lib/leaderboardCache';
 import {
-  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card,
-  dashboardPageWideFull, emptyState,
+  btnDanger, btnGhost, btnOutline, btnSm, card, cardBody, cardHd, cardTitle,
+  dashboardPageWideFull, emptyState, sectionLabel,
 } from '../lib/ui';
 
 function formatLastSynced(iso) {
@@ -43,27 +42,21 @@ function formatLastSynced(iso) {
   });
 }
 
-function Panel({ eyebrow, title, badge, children, accent = 'violet' }) {
-  const accentBar =
-    accent === 'emerald'
-      ? 'from-emerald-500 to-teal-500'
-      : 'from-violet-600 to-indigo-500';
-
+function Panel({ eyebrow, title, badge, children, danger = false }) {
   return (
-    <section className={`${card} relative overflow-hidden`}>
-      <div className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${accentBar}`} aria-hidden />
-      <div className="border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-              {eyebrow}
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</h2>
-          </div>
-          {badge}
+    <section
+      className={`${card} overflow-hidden ${
+        danger ? 'border-rose-200 dark:border-rose-900/50' : ''
+      }`}
+    >
+      <div className={cardHd}>
+        <div className="min-w-0">
+          <p className={`${sectionLabel} mb-1`}>{eyebrow}</p>
+          <h2 className={cardTitle}>{title}</h2>
         </div>
+        {badge}
       </div>
-      <div className="px-5 py-4">{children}</div>
+      <div className={cardBody}>{children}</div>
     </section>
   );
 }
@@ -71,10 +64,10 @@ function Panel({ eyebrow, title, badge, children, accent = 'violet' }) {
 function StatusBadge({ ok, okLabel, idleLabel }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
         ok
-          ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50'
-          : 'bg-zinc-100 text-zinc-500 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : 'bg-zinc-50 text-zinc-500 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700'
       }`}
     >
       {ok ? okLabel : idleLabel}
@@ -274,30 +267,6 @@ export default function AccountDetailPage() {
     }
   }
 
-  async function handleRepair() {
-    const ok = await confirm({
-      title: 'Fix cent PnL?',
-      message: 'Divides all trade PnL for this account by 100. Only use if profits look 100x too high.',
-      confirmLabel: 'Fix PnL',
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      const count = await repairCentAccountPnl({ id: account.id, name: account.name });
-      await refreshAll();
-      await alert({
-        title: count === 0 ? 'No trades found' : 'PnL fixed',
-        message: count === 0
-          ? 'No trades are linked to this account yet.'
-          : `Updated ${count} trade${count === 1 ? '' : 's'}.`,
-      });
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not fix PnL.' });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
@@ -394,7 +363,6 @@ export default function AccountDetailPage() {
         <Panel
           eyebrow="Option A"
           title="EA sync key"
-          accent="violet"
           badge={<StatusBadge ok={hasSyncKey} okLabel="Key active" idleLabel="No key" />}
         >
           <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -417,7 +385,7 @@ export default function AccountDetailPage() {
                   Regenerate
                 </button>
                 <button
-                  className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-45 dark:hover:bg-rose-950/30"
+                  className={btnDanger}
                   type="button"
                   disabled={busy}
                   onClick={() => void handleRevokeKey()}
@@ -426,7 +394,7 @@ export default function AccountDetailPage() {
                 </button>
               </>
             ) : (
-              <button className={btnPrimary} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+              <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
                 Generate sync key
               </button>
             )}
@@ -436,7 +404,6 @@ export default function AccountDetailPage() {
         <Panel
           eyebrow="Option B"
           title="Investor password"
-          accent="emerald"
           badge={(
             <StatusBadge
               ok={Boolean(investorStatus)}
@@ -448,7 +415,7 @@ export default function AccountDetailPage() {
           <p className="mb-3 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
             Read-only MT5 login. We pull closed trades for you — no EA install required.
           </p>
-          <div className="-mx-5 -mb-4 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="-mx-4 -mb-4 border-t border-zinc-100 dark:border-zinc-800 md:-mx-5 md:-mb-5">
             <InvestorSyncPanel
               account={account}
               status={investorStatus}
@@ -482,7 +449,7 @@ export default function AccountDetailPage() {
             </button>
             {account.is_public && shareUrl ? (
               <>
-                <button className={btnOutline} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
+                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
                   Copy link
                 </button>
                 <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
@@ -493,16 +460,11 @@ export default function AccountDetailPage() {
           </div>
         </Panel>
 
-        <Panel eyebrow="Danger zone" title="Account controls">
+        <Panel eyebrow="Danger zone" title="Account controls" danger>
           <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Remove this account or fix cent-account PnL if numbers look 100x too high.
+            Remove this account permanently. To fix Cent ↔ USD amounts, edit the account and change Account currency — trades rescale automatically.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {account.pnl_denomination === 'cent' ? (
-              <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRepair()}>
-                Fix cent PnL
-              </button>
-            ) : null}
             <button className={btnDanger} type="button" disabled={busy} onClick={() => void handleRemove()}>
               Remove account
             </button>
