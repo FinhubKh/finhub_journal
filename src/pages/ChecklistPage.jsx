@@ -1,11 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ChecklistCard from '../components/journal/ChecklistCard';
 import ChecklistStepModal from '../components/modals/ChecklistStepModal';
-import CreateStrategyModal from '../components/modals/CreateStrategyModal';
-import StrategyChecklistList from '../components/checklist/StrategyChecklistList';
 import MarketChartFrame from '../components/checklist/MarketChartFrame';
-import BackButton from '../components/common/BackButton';
-import { useAppData } from '../context/AppDataContext';
 import { dashboardPageWideFull, btnPrimary, btnOutline } from '../lib/ui';
 
 const MARKET_VISIBLE_KEY = 'finhub_checklist_market_visible';
@@ -22,17 +18,8 @@ function readMarketVisible() {
 }
 
 export default function ChecklistPage() {
-  const { userModels } = useAppData();
-  const [scope, setScope] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingModel, setEditingModel] = useState(null);
   const [marketVisible, setMarketVisible] = useState(readMarketVisible);
-
-  useEffect(() => {
-    if (scope?.type !== 'strategy') return;
-    if (!userModels.some((m) => m.id === scope.id)) setScope(null);
-  }, [scope, userModels]);
 
   useEffect(() => {
     try {
@@ -42,71 +29,12 @@ export default function ChecklistPage() {
     }
   }, [marketVisible]);
 
-  const entryModelId = scope?.type === 'strategy' ? scope.id : null;
-
-  const title = useMemo(() => {
-    if (!scope) return 'Checklist';
-    if (scope.type === 'general') return 'General';
-    return userModels.find((m) => m.id === scope.id)?.name || scope.name || 'Strategy';
-  }, [scope, userModels]);
-
-  const subtitle = !scope
-    ? 'Choose a strategy to run its checklist.'
-    : scope.type === 'general'
-      ? 'Steps not tied to a strategy.'
-      : 'Complete before every session with this strategy.';
-
-  function handleCreated(model) {
-    setScope({ type: 'strategy', id: model.id, name: model.name });
-  }
-
-  function handleUpdated(model) {
-    if (scope?.type === 'strategy' && scope.id === model.id) {
-      setScope({ type: 'strategy', id: model.id, name: model.name });
-    }
-  }
-
-  if (!scope) {
-    return (
-      <div className={dashboardPageWideFull}>
-        <header className="mb-6">
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900">Checklist</h1>
-          <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
-        </header>
-
-        <StrategyChecklistList
-          onSelect={setScope}
-          onCreate={() => {
-            setEditingModel(null);
-            setIsCreateOpen(true);
-          }}
-          onEdit={(model) => {
-            setEditingModel(model);
-            setIsCreateOpen(true);
-          }}
-        />
-
-        <CreateStrategyModal
-          isOpen={isCreateOpen}
-          model={editingModel}
-          onClose={() => {
-            setIsCreateOpen(false);
-            setEditingModel(null);
-          }}
-          onCreated={handleCreated}
-          onUpdated={handleUpdated}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className={dashboardPageWideFull}>
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <BackButton className="mb-2 -ml-2" onClick={() => setScope(null)} />
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900">{title}</h1>
-          <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900">Checklist</h1>
+          <p className="mt-1 text-sm text-zinc-500">Complete before every session.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!marketVisible ? (
@@ -131,13 +59,12 @@ export default function ChecklistPage() {
             marketVisible ? 'flex-1 lg:max-w-[30%] lg:basis-[30%]' : 'h-full w-full flex-1'
           }`}
         >
-          <ChecklistCard entryModelId={entryModelId} />
+          <ChecklistCard />
         </div>
       </div>
 
       <ChecklistStepModal
         isOpen={isModalOpen}
-        entryModelId={entryModelId}
         onClose={() => setIsModalOpen(false)}
       />
     </div>

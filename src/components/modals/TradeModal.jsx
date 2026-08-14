@@ -13,11 +13,10 @@ import {
 
 export default function TradeModal() {
   const { trade, close } = useTradeModal();
-  const { userModels, refreshTrades, resolveTradeAccount } = useAppData();
+  const { refreshTrades, resolveTradeAccount } = useAppData();
   const { alert, confirm } = useDialog();
 
   const [session, setSession] = useState('');
-  const [model, setModel] = useState('');
   const [rVal, setRVal] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -26,7 +25,6 @@ export default function TradeModal() {
   useEffect(() => {
     if (trade) {
       setSession(trade.session || '');
-      setModel(trade.model || '');
       setRVal(trade.r_value ?? '');
       setNotes(trade.notes || '');
       setAnnMsg(null);
@@ -76,7 +74,6 @@ export default function TradeModal() {
     try {
       await updateTradeAnnotation(t.id, {
         r_value: rVal !== '' ? parseFloat(rVal) : null,
-        model: model || null,
         session: session || null,
         notes: notes || null,
       });
@@ -107,7 +104,6 @@ export default function TradeModal() {
             {isApi && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600">API</span>}
             {isManual && <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">Manual</span>}
             {t.account && <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">{t.account}</span>}
-            {t.model && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.model}</span>}
             {t.session && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.session}</span>}
           </div>
 
@@ -156,19 +152,6 @@ export default function TradeModal() {
                       { value: 'asian', label: 'Asian' },
                       { value: 'london', label: 'London' },
                       { value: 'ny', label: 'New York' },
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label className={label}>Model</label>
-                  <CustomDropdown
-                    className="w-full"
-                    menuClassName="w-full"
-                    value={model}
-                    onChange={setModel}
-                    options={[
-                      { value: '', label: 'Select...' },
-                      ...userModels.map((m) => ({ value: m.name, label: m.name })),
                     ]}
                   />
                 </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchAllTrades, fetchSteps, fetchModels, fetchTradingAccounts } from '../api';
+import { fetchAllTrades, fetchSteps, fetchTradingAccounts } from '../api';
 import {
   filterTradesForView,
   legacyAccountNames,
@@ -26,7 +26,6 @@ export function AppDataProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [allTrades, setAllTrades] = useState([]);
   const [userSteps, setUserSteps] = useState([]);
-  const [userModels, setUserModels] = useState([]);
   const [tradingAccounts, setTradingAccounts] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [viewMode, setViewModeState] = useState(readViewMode);
@@ -45,10 +44,6 @@ export function AppDataProvider({ children }) {
     try { setUserSteps(await fetchSteps()); } catch (e) { setUserSteps([]); }
   }, []);
 
-  const refreshModels = useCallback(async () => {
-    try { setUserModels(await fetchModels()); } catch (e) { setUserModels([]); }
-  }, []);
-
   const refreshTradingAccounts = useCallback(async () => {
     try {
       setTradingAccounts(await fetchTradingAccounts());
@@ -65,7 +60,6 @@ export function AppDataProvider({ children }) {
       if (!isAuthenticated) {
         setAllTrades([]);
         setUserSteps([]);
-        setUserModels([]);
         setTradingAccounts([]);
         setViewModeState('portfolio');
         setActiveAccountIdState('');
@@ -82,15 +76,15 @@ export function AppDataProvider({ children }) {
       }
 
       if (cancelled) return;
-      // Secondary: checklist / models can load after first paint.
-      void Promise.all([refreshSteps(), refreshModels()]);
+      // Secondary: checklist can load after first paint.
+      void refreshSteps();
     }
 
     load();
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, refreshTrades, refreshSteps, refreshModels, refreshTradingAccounts]);
+  }, [isAuthenticated, refreshTrades, refreshSteps, refreshTradingAccounts]);
 
   const setViewMode = useCallback((mode) => {
     setViewModeState(mode);
@@ -150,10 +144,8 @@ export function AppDataProvider({ children }) {
     setViewMode,
     setActiveAccountId,
     userSteps,
-    userModels,
     refreshTrades,
     refreshSteps,
-    refreshModels,
     refreshTradingAccounts,
     setActiveAccountByName: (name) => {
       if (!name) {

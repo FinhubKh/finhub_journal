@@ -11,7 +11,6 @@ export const TRADE_SELECT = [
   'r_value',
   'pnl_usd',
   'notes',
-  'model',
   'session',
   'account',
   'account_id',
@@ -272,7 +271,7 @@ export async function deleteTrade(id) {
 }
 
 export async function updateTradeAnnotation(id, fields) {
-  const allowed = { r_value: fields.r_value, model: fields.model, session: fields.session, notes: fields.notes };
+  const allowed = { r_value: fields.r_value, session: fields.session, notes: fields.notes };
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${id}`, {
     method: 'PATCH',
     headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
@@ -291,7 +290,7 @@ export async function fetchSteps() {
   return res.json();
 }
 
-export async function insertStep(section, title, position, entryModelId = null) {
+export async function insertStep(section, title, position) {
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/checklist_steps`, {
     method: 'POST',
     headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
@@ -300,7 +299,6 @@ export async function insertStep(section, title, position, entryModelId = null) 
       section,
       title,
       position,
-      entry_model_id: entryModelId || null,
     }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -322,49 +320,6 @@ export async function deleteStep(id) {
     method: 'DELETE',
     headers: authHeaders(getToken()),
   });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-// ── ENTRY MODELS ──
-export async function fetchModels() {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/entry_models?select=*&order=created_at.asc`, {
-    headers: authHeaders(getToken()),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function insertModel(name) {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/entry_models`, {
-    method: 'POST',
-    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
-    body: JSON.stringify({ user_id: getUserId(), name }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function updateModel(id, name) {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/entry_models?id=eq.${id}&user_id=eq.${getUserId()}`,
-    {
-      method: 'PATCH',
-      headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
-      body: JSON.stringify({ name }),
-    },
-  );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function deleteModel(id) {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/entry_models?id=eq.${id}&user_id=eq.${getUserId()}`,
-    {
-      method: 'DELETE',
-      headers: authHeaders(getToken()),
-    },
-  );
   if (!res.ok) throw new Error(await res.text());
 }
 

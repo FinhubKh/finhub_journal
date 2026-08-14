@@ -62,8 +62,8 @@ export default function SettingsPage() {
       await alert({ title: 'Nothing to export', message: 'No trades to export yet.' });
       return;
     }
-    const headers = ['Date', 'Result', 'R Value', 'PnL (USD)', 'Account', 'Model', 'Session', 'Notes'];
-    const rows = allTrades.map((t) => [t.date, t.result, t.r_value || '', t.pnl_usd || '', t.account || '', t.model || '', t.session || '', (t.notes || '').replace(/,/g, ' ')]);
+    const headers = ['Date', 'Result', 'R Value', 'PnL (USD)', 'Account', 'Session', 'Notes'];
+    const rows = allTrades.map((t) => [t.date, t.result, t.r_value || '', t.pnl_usd || '', t.account || '', t.session || '', (t.notes || '').replace(/,/g, ' ')]);
     const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);

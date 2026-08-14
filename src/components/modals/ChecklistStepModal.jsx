@@ -4,7 +4,7 @@ import { insertStep, updateStep } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { btnGhost, btnPrimary, card, input } from '../../lib/ui';
 
-export default function ChecklistStepModal({ isOpen, onClose, step = null, entryModelId = null }) {
+export default function ChecklistStepModal({ isOpen, onClose, step = null }) {
   const { userSteps, refreshSteps } = useAppData();
   const { alert } = useDialog();
   const isEdit = Boolean(step);
@@ -12,10 +12,6 @@ export default function ChecklistStepModal({ isOpen, onClose, step = null, entry
   const [section, setSection] = useState('');
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const scopedCount = userSteps.filter((s) => (
-    entryModelId ? s.entry_model_id === entryModelId : !s.entry_model_id
-  )).length;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -53,7 +49,7 @@ export default function ChecklistStepModal({ isOpen, onClose, step = null, entry
       if (isEdit) {
         await updateStep(step.id, { section: sec, title: tit });
       } else {
-        await insertStep(sec, tit, scopedCount, entryModelId);
+        await insertStep(sec, tit, userSteps.length);
       }
       await refreshSteps();
       onClose();

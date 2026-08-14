@@ -28,7 +28,7 @@ const FEATURE_SECTIONS = [
     id: 'journal',
     tag: 'Trade log',
     title: 'Log every trade with context that actually matters',
-    desc: 'Capture result, R-multiple, session, model, and notes in seconds. Filter by account, date, or setup so reviews stay focused.',
+    desc: 'Capture result, R-multiple, session, and notes in seconds. Filter by account, date, or setup so reviews stay focused.',
     bullets: ['Manual logging with smart defaults', 'Account-level filtering', 'Edit and review any past trade'],
     mock: 'journal',
   },
@@ -36,7 +36,7 @@ const FEATURE_SECTIONS = [
     id: 'analytics',
     tag: 'Analytics',
     title: 'See what is driving profits and what is costing you',
-    desc: 'Equity curve, breakdown by model and session, and overview tiles update as soon as trades are logged or synced.',
+    desc: 'Equity curve, breakdown by pair and session, and overview tiles update as soon as trades are logged or synced.',
     bullets: ['Equity curve in $ or R', 'Breakdown pie charts', 'Win rate, PF, and expectancy'],
     mock: 'analytics',
     reverse: true,
@@ -61,7 +61,7 @@ const FEATURE_SECTIONS = [
 ];
 
 const STEPS = [
-  { n: '01', title: 'Create your account', desc: 'Sign up free and set your display name, models, and checklist steps.' },
+  { n: '01', title: 'Create your account', desc: 'Sign up free and set your display name and checklist steps.' },
   { n: '02', title: 'Log or sync trades', desc: 'Add trades manually or connect the MT5 EA to import closed history automatically.' },
   { n: '03', title: 'Review and improve', desc: 'Use overview, calendar, and breakdown reports to refine your edge every week.' },
 ];
@@ -125,7 +125,7 @@ function MockJournal() {
           <div key={r.sym} className="flex items-center justify-between px-4 py-3">
             <div>
               <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{r.sym}</div>
-              <div className="text-xs text-zinc-400 dark:text-zinc-500">London · Model A</div>
+              <div className="text-xs text-zinc-400 dark:text-zinc-500">London session</div>
             </div>
             <div className="text-right">
               <div className={`text-sm font-semibold ${r.res === 'win' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>{r.pnl}</div>

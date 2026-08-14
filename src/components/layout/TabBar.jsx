@@ -141,8 +141,8 @@ function NewsNavGroup({ activeTab, onSwitchTab, tabClass }) {
 
 const SIDEBAR_WIDTH_KEY = 'finhub_sidebar_width';
 const SIDEBAR_MIN = 72;
-const SIDEBAR_MAX = 320;
-const SIDEBAR_DEFAULT = 224;
+const SIDEBAR_MAX = 196;
+const SIDEBAR_DEFAULT = 176;
 const SIDEBAR_COMPACT_BELOW = 148;
 
 function readSidebarWidth() {
@@ -185,8 +185,10 @@ export default function TabBar({ activeTab, onSwitchTab }) {
   const email = getUserEmail(user);
   const displayName = getUserDisplayName(user);
   const isHovering = isDesktop && (isHovered || dragging);
-  const expanded = isDesktop && (isHovering || width >= SIDEBAR_COMPACT_BELOW);
-  const navWidth = isDesktop ? (isHovering ? Math.max(224, width) : SIDEBAR_MIN) : 72;
+  const navWidth = isDesktop
+    ? (isHovering ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_DEFAULT, width)) : SIDEBAR_MIN)
+    : 72;
+  const expanded = navWidth >= SIDEBAR_COMPACT_BELOW;
 
   useEffect(() => {
     if (!dragging) return undefined;
@@ -242,14 +244,14 @@ export default function TabBar({ activeTab, onSwitchTab }) {
     <nav
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative flex h-full shrink-0 flex-col border-r border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950 ${
+      className={`relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950 ${
         expanded ? 'px-3' : 'px-2'
       } ${dragging ? '' : 'transition-[width] duration-300 ease-in-out'}`}
       style={{ width: navWidth }}
       role="tablist"
       aria-label="Main navigation"
     >
-      <div className={`mb-5 flex px-1 md:mb-6 ${expanded ? 'justify-start md:px-2' : 'justify-center'}`}>
+      <div className={`mb-5 flex min-w-0 overflow-hidden px-1 md:mb-6 ${expanded ? 'justify-start md:px-2' : 'justify-center'}`}>
         {expanded ? (
           <BrandLogo size="md" showWordmark />
         ) : (

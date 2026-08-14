@@ -13,7 +13,7 @@ import SyncNowButton from '../common/SyncNowButton';
 import AccountViewDropdown from '../layout/AccountViewDropdown';
 import ManualTradeModal from '../modals/ManualTradeModal';
 
-const EMPTY_FILTERS = { result: '', session: '', model: '', from: '', to: '' };
+const EMPTY_FILTERS = { result: '', session: '', from: '', to: '' };
 const PAGE_SIZE = 50;
 
 const filterControl =
@@ -41,7 +41,6 @@ export default function TradeList() {
     tradingAccounts,
     setViewMode,
     setActiveAccountId,
-    userModels,
     resolveTradeAccount,
     refreshTrades,
   } = useAppData();
@@ -76,7 +75,6 @@ export default function TradeList() {
     let list = visibleTrades;
     if (filters.result) list = list.filter((t) => t.result === filters.result);
     if (filters.session) list = list.filter((t) => t.session === filters.session);
-    if (filters.model) list = list.filter((t) => t.model === filters.model);
     if (filters.from) list = list.filter((t) => t.date >= filters.from);
     if (filters.to) list = list.filter((t) => t.date <= filters.to);
     return list;
@@ -96,7 +94,7 @@ export default function TradeList() {
   }, [page, totalPages]);
 
   const hasFilters = Object.values(filters).some((v) => v !== '');
-  const unannotatedCount = visibleTrades.filter((t) => t.source === 'api' && !t.notes && !t.model).length;
+  const unannotatedCount = visibleTrades.filter((t) => t.source === 'api' && !t.notes).length;
 
   async function confirmDelete(id, e) {
     e.stopPropagation();
@@ -146,7 +144,7 @@ export default function TradeList() {
       </div>
 
       <div className="relative z-20 shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-zinc-900/90 px-4 py-3 md:px-5">
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           <FilterField label="Result">
             <CustomDropdown
               className="w-full"
@@ -174,19 +172,6 @@ export default function TradeList() {
                 { value: 'asian', label: 'Asian' },
                 { value: 'london', label: 'London' },
                 { value: 'ny', label: 'New York' },
-              ]}
-            />
-          </FilterField>
-          <FilterField label="Model">
-            <CustomDropdown
-              className="w-full"
-              menuClassName="w-full"
-              buttonClassName={`${filterControl} inline-flex items-center justify-between gap-2 text-left hover:border-violet-300`}
-              value={filters.model}
-              onChange={(v) => setFilter('model', v)}
-              options={[
-                { value: '', label: 'All models' },
-                ...userModels.map((m) => ({ value: m.name, label: m.name })),
               ]}
             />
           </FilterField>
@@ -247,7 +232,6 @@ export default function TradeList() {
                   <th className={`${th} text-right`}>R</th>
                   <th className={`${th} text-right`}>PnL</th>
                   <th className={th}>Session</th>
-                  <th className={th}>Model</th>
                   <th className={`${th} min-w-[180px]`}>Notes</th>
                   <th className={`${th} w-16 text-right`} aria-label="Actions" />
                 </tr>
@@ -255,7 +239,7 @@ export default function TradeList() {
               <tbody className="divide-y divide-zinc-100 bg-white">
                 {pageTrades.map((t) => {
                   const isApi = t.source === 'api';
-                  const needsReview = isApi && !t.notes && !t.model;
+                  const needsReview = isApi && !t.notes;
                   const rDisplay = fmtR(t.r_value) || '—';
                   const denom = tradePnlDenomination(t, resolveTradeAccount);
                   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denom);
@@ -292,9 +276,6 @@ export default function TradeList() {
                       <td className={`${tdNum} ${rTone}`}>{rDisplay}</td>
                       <td className={`${tdNum} ${pnlTone}`}>{pnlDisplay}</td>
                       <td className={td}>{t.session ? capitalize(t.session) : '—'}</td>
-                      <td className={td}>
-                        <span className="max-w-[120px] truncate block">{t.model || '—'}</span>
-                      </td>
                       <td className="px-4 py-3.5 text-sm text-zinc-500">
                         <span className="line-clamp-2 max-w-[220px]">{t.notes || '—'}</span>
                       </td>

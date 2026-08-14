@@ -179,7 +179,6 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                   <th className={`${tableTh} text-right`}>R</th>
                   <th className={`${tableTh} text-right`}>PnL</th>
                   <th className={tableTh}>Session</th>
-                  <th className={tableTh}>Model</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -194,7 +193,6 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                       {fmtPnlStrict(t.pnl_usd, denomination)}
                     </td>
                     <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                    <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -237,7 +235,6 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
               <th className={`${tableTh} text-right`}>R</th>
               <th className={`${tableTh} text-right`}>PnL</th>
               <th className={tableTh}>Session</th>
-              <th className={tableTh}>Model</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -253,7 +250,6 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                   {fmtPnlStrict(t.pnl_usd, denomination)}
                 </td>
                 <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -281,7 +277,6 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                       {fmtPnlStrict(t.pnl_usd, denomination)}
                     </td>
                     <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
-                    <td className={`${tableTd} text-zinc-500 dark:text-zinc-400`}>{t.model || '—'}</td>
                   </tr>
                 ))}
               </tbody>

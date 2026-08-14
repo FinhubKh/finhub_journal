@@ -67,7 +67,7 @@ export function BrandLogo({
   if (as === 'div' || !to) return content;
 
   return (
-    <Link to={to} className="inline-flex no-underline" aria-label="FinhubKH Journal home">
+    <Link to={to} className="inline-flex min-w-0 overflow-hidden no-underline" aria-label="FinhubKH Journal home">
       {content}
     </Link>
   );

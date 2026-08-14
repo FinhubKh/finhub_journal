@@ -8,7 +8,6 @@ const LIGHT_PIE_COLORS = ['#7c3aed', '#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd',
 const DARK_PIE_COLORS = ['#4ade80', '#22d3ee', '#60a5fa', '#a78bfa', '#fbbf24', '#fb923c', '#f472b6', '#5eead4'];
 const KINDS = [
   { id: 'symbol', label: 'Pair' },
-  { id: 'model', label: 'Model' },
   { id: 'session', label: 'Session' },
 ];
 

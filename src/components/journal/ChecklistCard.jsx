@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
 import { deleteStep } from '../../api';
 import { useDialog } from '../../context/DialogContext';
@@ -22,32 +22,23 @@ function IconTrash() {
   );
 }
 
-export default function ChecklistCard({ entryModelId = null }) {
+export default function ChecklistCard() {
   const { userSteps, refreshSteps } = useAppData();
   const { alert, confirm } = useDialog();
   const [checked, setChecked] = useState(() => new Set());
   const [editingStep, setEditingStep] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
-  const scopedSteps = useMemo(
-    () => userSteps.filter((s) => (entryModelId ? s.entry_model_id === entryModelId : !s.entry_model_id)),
-    [userSteps, entryModelId],
-  );
-
   const sections = useMemo(() => {
     const map = {};
-    scopedSteps.forEach((s) => { (map[s.section] ||= []).push(s); });
+    userSteps.forEach((s) => { (map[s.section] ||= []).push(s); });
     return Object.entries(map);
-  }, [scopedSteps]);
+  }, [userSteps]);
 
-  const total = scopedSteps.length;
+  const total = userSteps.length;
   const done = checked.size;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const complete = total > 0 && done === total;
-
-  useEffect(() => {
-    setChecked(new Set());
-  }, [entryModelId]);
 
   function toggle(id) {
     unlockAudio();
@@ -205,7 +196,6 @@ export default function ChecklistCard({ entryModelId = null }) {
       <ChecklistStepModal
         isOpen={Boolean(editingStep)}
         step={editingStep}
-        entryModelId={entryModelId}
         onClose={() => setEditingStep(null)}
       />
     </div>

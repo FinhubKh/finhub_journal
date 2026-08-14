@@ -19,7 +19,7 @@ function todayIso() {
 }
 
 export default function ManualTradeModal({ isOpen, onClose }) {
-  const { userModels, tradingAccounts, activeAccount, refreshTrades } = useAppData();
+  const { tradingAccounts, activeAccount, refreshTrades } = useAppData();
   const { alert } = useDialog();
 
   const [date, setDate] = useState(todayIso());
@@ -27,7 +27,6 @@ export default function ManualTradeModal({ isOpen, onClose }) {
   const [rValue, setRValue] = useState('');
   const [pnl, setPnl] = useState('');
   const [session, setSession] = useState('');
-  const [model, setModel] = useState('');
   const [notes, setNotes] = useState('');
   const [accountId, setAccountId] = useState('');
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -41,7 +40,6 @@ export default function ManualTradeModal({ isOpen, onClose }) {
     setRValue('');
     setPnl('');
     setSession('');
-    setModel('');
     setNotes('');
     setAccountId(activeAccount?.id || tradingAccounts[0]?.id || '');
     setPendingFiles([]);
@@ -117,7 +115,6 @@ export default function ManualTradeModal({ isOpen, onClose }) {
         r_value: rValue !== '' ? Number(rValue) : 0,
         pnl_usd: pnl !== '' ? fromDisplayPnl(pnl, denomination) : 0,
         notes: notes.trim() || null,
-        model: model || null,
         session: session || null,
         source: 'manual',
         account: account.name,
@@ -204,19 +201,6 @@ export default function ManualTradeModal({ isOpen, onClose }) {
                   { value: 'asian', label: 'Asian' },
                   { value: 'london', label: 'London' },
                   { value: 'ny', label: 'New York' },
-                ]}
-              />
-            </div>
-            <div>
-              <label className={label}>Model</label>
-              <CustomDropdown
-                className="w-full"
-                menuClassName="w-full"
-                value={model}
-                onChange={setModel}
-                options={[
-                  { value: '', label: 'Select...' },
-                  ...userModels.map((m) => ({ value: m.name, label: m.name })),
                 ]}
               />
             </div>

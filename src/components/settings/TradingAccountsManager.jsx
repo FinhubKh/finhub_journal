@@ -705,7 +705,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
       const ok = await confirm({
         title: `Publish "${account.name}"?`,
         message:
-          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session, model). Journal notes and MT5 sync keys stay private. The account also becomes eligible for the public leaderboard.',
+          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session). Journal notes and MT5 sync keys stay private. The account also becomes eligible for the public leaderboard.',
         confirmLabel: 'Publish',
       });
       if (!ok) return;
