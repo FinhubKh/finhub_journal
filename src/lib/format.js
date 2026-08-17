@@ -7,21 +7,26 @@ export function moneySymbol(denomination = 'usd') {
   return normalizeDenom(denomination) === 'cent' ? '¢' : '$';
 }
 
-/** Display value for the UI. Handles cent accounts (scaling 100x if stored in dollars). */
-export function toDisplayPnl(usdValue, denomination = 'usd') {
-  const n = Number(usdValue);
+/**
+ * Display value for a single account view.
+ * Stored values are already in account units (dollars or cents) — no magnitude heuristics.
+ */
+export function toDisplayPnl(storedValue, denomination = 'usd') {
+  const n = Number(storedValue);
   if (!Number.isFinite(n)) return 0;
-  if (normalizeDenom(denomination) === 'cent') {
-    // If stored trade/total PnL is in dollars (e.g. 0.08 or 54.83), scale by 100 to display full Cents!
-    if (Math.abs(n) < 500 && n !== 0) {
-      return n * 100;
-    }
-  }
+  void denomination;
   return n;
 }
 
-/** Convert a user-entered display amount back to stored value (1:1). */
-export function fromDisplayPnl(displayValue) {
+/** Convert stored account-unit PnL to USD for portfolio aggregates. */
+export function toUsdPnl(storedValue, denomination = 'usd') {
+  const n = Number(storedValue);
+  if (!Number.isFinite(n)) return 0;
+  return normalizeDenom(denomination) === 'cent' ? n / 100 : n;
+}
+
+/** Convert a user-entered display amount back to stored value (1:1 with account units). */
+export function fromDisplayPnl(displayValue, _denomination = 'usd') {
   const n = Number(displayValue);
   if (!Number.isFinite(n)) return 0;
   return n;
@@ -66,9 +71,17 @@ export function fmtDateShort(dateStr) {
 }
 
 export function fmtDateLong(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
 }
 
 export function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Other';
+}
+
+/** Escape a CSV field (quotes, commas, newlines, formula injection). */
+export function escapeCsvField(value) {
+  let s = value == null ? '' : String(value);
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }

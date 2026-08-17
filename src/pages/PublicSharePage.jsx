@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { getSession, subscribeAuth } from '../api/auth';
-import { computeStats } from '../lib/stats';
 import { accountTypeLabel, pnlDenominationLabel, normalizePnlDenomination } from '../lib/accounts';
 import { fmtPnlStrict } from '../lib/format';
 import {
@@ -256,7 +255,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
         </table>
       </div>
 
-      {/* Compact blurred extension table (4 rows) with GateBanner */}
+      {/* Compact blurred placeholder rows (no real trade data) */}
       <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[170px]">
         <div
           aria-hidden="true"
@@ -266,17 +265,15 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-left">
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                {trades.slice(3, 7).map((t) => (
-                  <tr key={t.id}>
-                    <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                    <td className={tableTd}>{t.symbol || '—'}</td>
-                    <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                    <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                    <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      {fmtPnlStrict(t.pnl_usd, denomination)}
-                    </td>
-                    <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
+                {[0, 1, 2, 3].map((i) => (
+                  <tr key={`gate-placeholder-${i}`}>
+                    <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>2026-01-0{i + 1}</td>
+                    <td className={tableTd}>••••</td>
+                    <td className={`${tableTd} capitalize`}>long</td>
+                    <td className={tableTd}><span className={tradeResultBadge('win')}>win</span></td>
+                    <td className={`${tableTd} text-right tabular-nums`}>—</td>
+                    <td className={`${tableTd} text-right tabular-nums font-medium text-zinc-400`}>••••</td>
+                    <td className={`${tableTd} capitalize`}>london</td>
                   </tr>
                 ))}
               </tbody>
@@ -312,7 +309,9 @@ export default function PublicSharePage() {
     setLoading(true);
     setError(null);
     setPage(1);
-    fetchPublishedTradingAccount(token)
+    // Guests only get a teaser; signed-in users get the capped full payload.
+    const limit = isLoggedIn ? 500 : 3;
+    fetchPublishedTradingAccount(token, { limit })
       .then((payload) => {
         if (cancelled) return;
         if (!payload) { setData(null); setError('This share link is invalid or the account is no longer public.'); return; }
@@ -321,12 +320,13 @@ export default function PublicSharePage() {
       .catch((e) => { if (!cancelled) setError(e?.message || 'Could not load this shared account.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, isLoggedIn]);
 
   const trades      = data?.trades ?? [];
+  const daily       = data?.daily ?? [];
   const tradeCount  = data?.tradeCount ?? trades.length;
   const tradesCapped = Boolean(data?.tradesCapped);
-  const stats       = useMemo(() => (trades.length ? computeStats(trades) : null), [trades]);
+  const stats       = data?.stats ?? null;
 
   const totalPages  = Math.max(1, Math.ceil(trades.length / PAGE_SIZE));
   const pageSafe    = Math.min(page, totalPages);
@@ -396,13 +396,13 @@ export default function PublicSharePage() {
           </p>
         </div>
 
-        {!trades.length ? (
+        {!stats && !trades.length ? (
           <div className={`${card} ${emptyState}`}>No trades on this account yet.</div>
         ) : (
           <div className="space-y-0">
             {tradesCapped && (
               <p className="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                Showing the latest {trades.length.toLocaleString()} of {tradeCount.toLocaleString()} trades. Stats and equity below use this window.
+                Showing the latest {trades.length.toLocaleString()} of {tradeCount.toLocaleString()} trades in the log. Summary stats and equity use the full account history.
               </p>
             )}
 
@@ -412,7 +412,7 @@ export default function PublicSharePage() {
             <div className="pt-6 space-y-6">
 
               {/* ── OVERVIEW TAB ── */}
-              {activeTab === 'overview' && (
+              {activeTab === 'overview' && stats && (
                 <>
                   <section>
                     <h2 className={`${sectionLabel} mb-3`}>Summary</h2>
@@ -426,7 +426,7 @@ export default function PublicSharePage() {
 
                   <section>
                     <h2 className={`${sectionLabel} mb-3`}>Equity</h2>
-                    <EquityChart trades={trades} denomination={denomination} />
+                    <EquityChart daily={daily} denomination={denomination} />
                   </section>
 
                   {/* Overview Recent Trades for unauthenticated users */}
@@ -474,7 +474,7 @@ export default function PublicSharePage() {
                           </table>
                         </div>
 
-                        {/* Compact blurred extension table (4 rows) with GateBanner */}
+                        {/* Compact blurred placeholder rows (no real trade data) */}
                         <div className="relative border-t border-zinc-100 dark:border-zinc-800/60 min-h-[170px]">
                           <div
                             aria-hidden="true"
@@ -484,16 +484,14 @@ export default function PublicSharePage() {
                             <div className="overflow-x-auto">
                               <table className="w-full min-w-[640px] border-collapse text-left">
                                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                                  {trades.slice(3, 7).map((t) => (
-                                    <tr key={t.id}>
-                                      <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
-                                      <td className={tableTd}>{t.symbol || '—'}</td>
-                                      <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
-                                      <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                                      <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
-                                      <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                        {fmtPnlStrict(t.pnl_usd, denomination)}
-                                      </td>
+                                  {[0, 1, 2, 3].map((i) => (
+                                    <tr key={`overview-gate-${i}`}>
+                                      <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>2026-01-0{i + 1}</td>
+                                      <td className={tableTd}>••••</td>
+                                      <td className={`${tableTd} capitalize`}>long</td>
+                                      <td className={tableTd}><span className={tradeResultBadge('win')}>win</span></td>
+                                      <td className={`${tableTd} text-right tabular-nums`}>—</td>
+                                      <td className={`${tableTd} text-right tabular-nums font-medium text-zinc-400`}>••••</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -516,10 +514,10 @@ export default function PublicSharePage() {
               {/* ── CALENDAR TAB ── */}
               {activeTab === 'calendar' && (
                 isLoggedIn
-                  ? <PublicCalendar trades={trades} denomination={denomination} />
+                  ? <PublicCalendar daily={daily} denomination={denomination} />
                   : (
                     <GatedCalendarSection ownerName={owner.display_name}>
-                      <PublicCalendar trades={trades} denomination={denomination} />
+                      <PublicCalendar daily={[]} denomination={denomination} />
                     </GatedCalendarSection>
                   )
               )}

@@ -101,7 +101,7 @@ export default function DashboardPage() {
     <TradeModalProvider>
       <div className={appShell} id="main-app">
         <TabBar activeTab={shellTab} onSwitchTab={switchTab} />
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-50 pb-16 dark:bg-zinc-950 md:pb-0">
           <div
             className={`flex h-full min-h-0 min-w-0 flex-col ${
               fillHeight ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'

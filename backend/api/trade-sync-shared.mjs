@@ -17,16 +17,12 @@ export function resolvePnlUsd(trade, matchedAccount, source) {
   const fallback = trade.pnl_usd != null ? Number(trade.pnl_usd) : (trade.profit != null ? Number(trade.profit) : 0);
   const val = raw != null ? raw : fallback;
 
-  if (isCentAccount) {
-    // Investor password bridge (MetaApi) sends values in USD dollars (e.g. 54.83).
-    // Scale USD dollars to Cents (* 100) so FinhubKH stores 5483.00 cents 1:1!
-    if (source === 'investor_bridge' || (Math.abs(val) < 500 && val !== 0)) {
-      return val * 100;
-    }
-    return val;
+  if (isCentAccount && source === 'investor_bridge') {
+    // Investor bridge sends USD dollars — store as cents (×100) for 1:1 cent display.
+    return val * 100;
   }
 
-  // USD Account: values are in USD dollars (e.g. 54.83)
+  // EA / API sync already sends account units (cents for cent accounts, dollars for USD).
   return val;
 }
 

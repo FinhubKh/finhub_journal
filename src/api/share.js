@@ -43,7 +43,9 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
   const clean = String(token || '').trim();
   if (!clean) return null;
 
-  const limit = Number.isFinite(opts.limit) ? opts.limit : null;
+  const limit = Number.isFinite(opts.limit)
+    ? Math.max(1, Math.min(Math.floor(opts.limit), 1000))
+    : 500;
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_published_trading_account`, {
     method: 'POST',
@@ -60,11 +62,29 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
 
   const trades = Array.isArray(data.trades) ? data.trades : [];
   const tradeCount = Number.isFinite(data.trade_count) ? data.trade_count : trades.length;
+  const daily = Array.isArray(data.daily) ? data.daily : [];
+  const stats = data.stats && typeof data.stats === 'object' ? {
+    ...data.stats,
+    total: Number(data.stats.total) || 0,
+    wins: Number(data.stats.wins) || 0,
+    losses: Number(data.stats.losses) || 0,
+    totalPnl: Number(data.stats.totalPnl) || 0,
+    wr: Number(data.stats.wr) || 0,
+    avgWin: Number(data.stats.avgWin) || 0,
+    avgLoss: Number(data.stats.avgLoss) || 0,
+    avgR: Number(data.stats.avgR) || 0,
+    expectancy: Number(data.stats.expectancy) || 0,
+    bestStreak: Number(data.stats.bestStreak) || 0,
+    worstStreak: Number(data.stats.worstStreak) || 0,
+    maxDD: Number(data.stats.maxDD) || 0,
+  } : null;
 
   return {
     account: data.account,
     owner: data.owner || { display_name: 'Trader' },
     trades,
+    daily,
+    stats,
     tradeCount,
     tradesReturned: Number.isFinite(data.trades_returned) ? data.trades_returned : trades.length,
     tradesCapped: Boolean(data.trades_capped),

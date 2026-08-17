@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
-import { deleteTrade } from '../../api';
+import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, TRADE_PAGE_SIZE } from '../../api';
 import { fmtR, fmtDateShort, capitalize, fmtPnlStrict } from '../../lib/format';
 import { tradePnlDenomination } from '../../lib/accounts';
 import {
@@ -14,7 +14,7 @@ import AccountViewDropdown from '../layout/AccountViewDropdown';
 import ManualTradeModal from '../modals/ManualTradeModal';
 
 const EMPTY_FILTERS = { result: '', session: '', from: '', to: '' };
-const PAGE_SIZE = 50;
+const PAGE_SIZE = TRADE_PAGE_SIZE;
 
 const filterControl =
   'h-9 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 outline-none transition placeholder:text-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50';
@@ -35,20 +35,26 @@ function FilterField({ label, children }) {
 
 export default function TradeList() {
   const {
-    visibleTrades,
     viewMode,
     activeAccount,
+    activeAccountId,
     tradingAccounts,
     setViewMode,
     setActiveAccountId,
     resolveTradeAccount,
     refreshTrades,
+    tradesEpoch,
+    journalStats,
   } = useAppData();
   const { open } = useTradeModal();
   const { alert, confirm } = useDialog();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [manualOpen, setManualOpen] = useState(false);
+  const [pageTrades, setPageTrades] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [listLoading, setListLoading] = useState(true);
+  const [unannotatedCount, setUnannotatedCount] = useState(0);
 
   function setFilter(key, value) { setFilters((f) => ({ ...f, [key]: value })); }
   function clearFilters() { setFilters(EMPTY_FILTERS); }
@@ -71,30 +77,64 @@ export default function TradeList() {
     setActiveAccountId(value);
   }
 
-  const filtered = useMemo(() => {
-    let list = visibleTrades;
-    if (filters.result) list = list.filter((t) => t.result === filters.result);
-    if (filters.session) list = list.filter((t) => t.session === filters.session);
-    if (filters.from) list = list.filter((t) => t.date >= filters.from);
-    if (filters.to) list = list.filter((t) => t.date <= filters.to);
-    return list;
-  }, [visibleTrades, filters]);
+  const scopedAccountId = viewMode === 'account' ? (activeAccountId || activeAccount?.id || '') : '';
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
-  const pageStart = (pageSafe - 1) * PAGE_SIZE;
-  const pageTrades = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const pageStart = total === 0 ? 0 : (pageSafe - 1) * PAGE_SIZE;
 
   useEffect(() => {
     setPage(1);
-  }, [filters, viewMode, visibleTrades.length]);
+  }, [filters, viewMode, scopedAccountId]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setListLoading(true);
+    (async () => {
+      try {
+        const { trades, total: nextTotal } = await fetchTradesPage({
+          accountId: scopedAccountId || undefined,
+          result: filters.result || undefined,
+          session: filters.session || undefined,
+          from: filters.from || undefined,
+          to: filters.to || undefined,
+          page: pageSafe,
+          pageSize: PAGE_SIZE,
+        });
+        if (cancelled) return;
+        setPageTrades(trades);
+        setTotal(nextTotal);
+      } catch {
+        if (!cancelled) {
+          setPageTrades([]);
+          setTotal(0);
+        }
+      } finally {
+        if (!cancelled) setListLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filters, scopedAccountId, pageSafe, tradesEpoch]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const count = await fetchUnannotatedCount(scopedAccountId || undefined);
+        if (!cancelled) setUnannotatedCount(count);
+      } catch {
+        if (!cancelled) setUnannotatedCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [scopedAccountId, tradesEpoch]);
+
   const hasFilters = Object.values(filters).some((v) => v !== '');
-  const unannotatedCount = visibleTrades.filter((t) => t.source === 'api' && !t.notes).length;
+  const unfilteredTotal = journalStats?.total || 0;
 
   async function confirmDelete(id, e) {
     e.stopPropagation();
@@ -130,8 +170,8 @@ export default function TradeList() {
               ? 'All accounts'
               : activeAccount?.name || 'Account'}
             {' · '}
-            {filtered.length} trade{filtered.length === 1 ? '' : 's'}
-            {hasFilters ? ` · filtered from ${visibleTrades.length}` : ''}
+            {total} trade{total === 1 ? '' : 's'}
+            {hasFilters && unfilteredTotal > 0 ? ` · filtered from ${unfilteredTotal}` : ''}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -215,9 +255,11 @@ export default function TradeList() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {filtered.length === 0 ? (
+        {listLoading && total === 0 ? (
+          <div className={`${emptyState} min-h-0 flex-1`}>Loading trades…</div>
+        ) : total === 0 ? (
           <div className={`${emptyState} min-h-0 flex-1`}>
-            {visibleTrades.length === 0 ? 'No trades yet. Log a manual trade or sync from MT5.' : 'No trades match your filters.'}
+            {hasFilters || unfilteredTotal > 0 ? 'No trades match your filters.' : 'No trades yet. Log a manual trade or sync from MT5.'}
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
@@ -298,14 +340,14 @@ export default function TradeList() {
           </div>
         )}
 
-        {filtered.length > 0 && (
+        {total > 0 && (
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90 px-4 py-3 md:px-5">
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              {filtered.length > PAGE_SIZE
-                ? `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, filtered.length)} of ${filtered.length}`
-                : `${filtered.length} trade${filtered.length === 1 ? '' : 's'}`}
+              {total > PAGE_SIZE
+                ? `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}`
+                : `${total} trade${total === 1 ? '' : 's'}`}
             </span>
-            {filtered.length > PAGE_SIZE && (
+            {total > PAGE_SIZE && (
               <div className="flex items-center gap-2">
                 <button
                   className={btnSm}

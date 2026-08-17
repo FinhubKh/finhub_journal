@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
-import { computeStats } from '../lib/stats';
 import { viewPnlDenomination } from '../lib/accounts';
 import { fmtPnlStrict } from '../lib/format';
 import {
@@ -113,7 +112,7 @@ function EmptyOverview({ onOpenSetup }) {
   );
 }
 
-function SummarySection({ stats, pfPositive, trades, denomination }) {
+function SummarySection({ stats, pfPositive, daily, denomination }) {
   return (
     <section
       aria-labelledby="overview-summary-heading"
@@ -132,7 +131,7 @@ function SummarySection({ stats, pfPositive, trades, denomination }) {
           <StatTile
             label="Win rate"
             value={stats ? `${stats.wr}%` : '—'}
-            hint={stats ? `${stats.wins.length}W · ${stats.losses.length}L` : undefined}
+            hint={stats ? `${stats.wins}W · ${stats.losses}L` : undefined}
             tone={stats && stats.wr >= 50 ? 'positive' : stats ? 'negative' : 'neutral'}
           />
           <StatTile
@@ -151,7 +150,7 @@ function SummarySection({ stats, pfPositive, trades, denomination }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <h2 className={`${sectionLabel} mb-3 shrink-0`}>Equity</h2>
         <div className="min-h-0 flex-1">
-          <EquityChart trades={trades} denomination={denomination} fill />
+          <EquityChart daily={daily} denomination={denomination} fill />
         </div>
       </div>
     </section>
@@ -238,10 +237,9 @@ function RiskSection({ stats, showAccounts, denomination }) {
 
 export default function OverviewPage() {
   const navigate = useNavigate();
-  const { visibleTrades, viewMode, activeAccount, dataLoading } = useAppData();
-  const stats = useMemo(() => computeStats(visibleTrades), [visibleTrades]);
+  const { journalStats: stats, journalDaily, journalBreakdown, viewMode, activeAccount, dataLoading } = useAppData();
   const denomination = useMemo(() => viewPnlDenomination(viewMode, activeAccount), [viewMode, activeAccount]);
-  const hasTrades = visibleTrades.length > 0;
+  const hasTrades = (stats?.total || 0) > 0;
   const showAccounts = viewMode === 'portfolio';
 
   const tabs = useMemo(
@@ -292,7 +290,7 @@ export default function OverviewPage() {
                   <SummarySection
                     stats={stats}
                     pfPositive={pfPositive}
-                    trades={visibleTrades}
+                    daily={journalDaily}
                     denomination={denomination}
                   />
                 )}
@@ -303,7 +301,7 @@ export default function OverviewPage() {
 
                 {activeSection === 'breakdown' && (
                   <section aria-label="Breakdown" role="tabpanel" className="flex h-full min-h-0 w-full flex-col">
-                    <BreakdownCard trades={visibleTrades} denomination={denomination} fill />
+                    <BreakdownCard breakdown={journalBreakdown} denomination={denomination} fill />
                   </section>
                 )}
 

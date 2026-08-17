@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   insertTradingAccount, deleteTradingAccount, updateTradingAccount,
   recalculateTradesForDenomination,
-  listAccountSyncKeys, getAccountSyncKey, generateAccountSyncKey, revokeAccountSyncKey,
+  listAccountSyncKeys, generateAccountSyncKey, revokeAccountSyncKey,
   setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
   listInvestorCredentialsStatus,
   connectAndVerifyInvestorCredentials,
@@ -801,20 +801,10 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
   }
 
   async function handleShowKey() {
-    setBusy(true);
-    try {
-      const key = await getAccountSyncKey(account.id);
-      if (!key) {
-        await alert({ title: 'No key found', message: 'Generate a sync key for this account first.' });
-        await onKeysChanged();
-        return;
-      }
-      setRevealedKey(key);
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not load sync key.' });
-    } finally {
-      setBusy(false);
-    }
+    await alert({
+      title: 'Key shown only once',
+      message: 'For security, the sync key cannot be retrieved again. Generate a new key and update MT5 if you lost it.',
+    });
   }
 
   async function handleRevokeKey() {
@@ -927,7 +917,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
               {hasSyncKey ? (
                 <>
                   <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
-                    Show key
+                    Key info
                   </button>
                   <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
                     Regenerate

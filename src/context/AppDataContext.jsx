@@ -1,8 +1,6 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchAllTrades, fetchSteps, fetchTradingAccounts } from '../api';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { fetchSteps, fetchTradingAccounts, fetchJournalBundle } from '../api';
 import {
-  filterTradesForView,
-  legacyAccountNames,
   resolveTradeAccount,
   buildAccountLookups,
 } from '../lib/accounts';
@@ -13,6 +11,13 @@ const AppDataContext = createContext(null);
 const VIEW_KEY = 'nxuu_view_mode';
 const ACCOUNT_KEY = 'nxuu_active_account_id';
 
+const EMPTY_JOURNAL = {
+  stats: null,
+  daily: [],
+  breakdown: { symbol: [], session: [] },
+  accounts: [],
+};
+
 function readViewMode() {
   const v = localStorage.getItem(VIEW_KEY);
   return v === 'account' ? 'account' : 'portfolio';
@@ -22,34 +27,94 @@ function readActiveAccountId() {
   return localStorage.getItem(ACCOUNT_KEY) || '';
 }
 
+function normalizeStats(stats) {
+  if (!stats) return null;
+  return {
+    ...stats,
+    total: Number(stats.total) || 0,
+    wins: Number(stats.wins) || 0,
+    losses: Number(stats.losses) || 0,
+    totalPnl: Number(stats.totalPnl) || 0,
+    wr: Number(stats.wr) || 0,
+    avgWin: Number(stats.avgWin) || 0,
+    avgLoss: Number(stats.avgLoss) || 0,
+    avgR: Number(stats.avgR) || 0,
+    expectancy: Number(stats.expectancy) || 0,
+    bestStreak: Number(stats.bestStreak) || 0,
+    worstStreak: Number(stats.worstStreak) || 0,
+    maxDD: Number(stats.maxDD) || 0,
+  };
+}
+
 export function AppDataProvider({ children }) {
   const { isAuthenticated } = useAuth();
-  const [allTrades, setAllTrades] = useState([]);
   const [userSteps, setUserSteps] = useState([]);
   const [tradingAccounts, setTradingAccounts] = useState([]);
+  const [journal, setJournal] = useState(EMPTY_JOURNAL);
   const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState(null);
   const [viewMode, setViewModeState] = useState(readViewMode);
   const [activeAccountId, setActiveAccountIdState] = useState(readActiveAccountId);
+  const [tradesEpoch, setTradesEpoch] = useState(0);
+  const aliveRef = useRef(true);
+  const initialDoneRef = useRef(false);
 
-  const refreshTrades = useCallback(async () => {
-    try {
-      const trades = await fetchAllTrades();
-      setAllTrades(trades);
-    } catch (e) {
-      console.error(e);
-    }
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
   }, []);
 
+  const scopedAccountId = viewMode === 'account' && activeAccountId ? activeAccountId : null;
+
+  const refreshJournal = useCallback(async () => {
+    try {
+      const data = await fetchJournalBundle(scopedAccountId);
+      if (!aliveRef.current) return;
+      setJournal({
+        stats: normalizeStats(data?.stats),
+        daily: Array.isArray(data?.daily) ? data.daily : [],
+        breakdown: {
+          symbol: Array.isArray(data?.breakdown?.symbol) ? data.breakdown.symbol : [],
+          session: Array.isArray(data?.breakdown?.session) ? data.breakdown.session : [],
+        },
+        accounts: Array.isArray(data?.accounts) ? data.accounts : [],
+      });
+      setDataError(null);
+    } catch (e) {
+      console.error(e);
+      if (!aliveRef.current) return;
+      setDataError(e?.message || 'Could not load journal stats.');
+    }
+  }, [scopedAccountId]);
+
+  const refreshTrades = useCallback(async () => {
+    await refreshJournal();
+    if (aliveRef.current) setTradesEpoch((n) => n + 1);
+  }, [refreshJournal]);
+
   const refreshSteps = useCallback(async () => {
-    try { setUserSteps(await fetchSteps()); } catch (e) { setUserSteps([]); }
+    try {
+      const steps = await fetchSteps();
+      if (!aliveRef.current) return;
+      setUserSteps(steps);
+    } catch {
+      if (!aliveRef.current) return;
+      setUserSteps([]);
+    }
   }, []);
 
   const refreshTradingAccounts = useCallback(async () => {
     try {
-      setTradingAccounts(await fetchTradingAccounts());
+      const accounts = await fetchTradingAccounts();
+      if (!aliveRef.current) return;
+      setTradingAccounts(accounts);
     } catch (e) {
       console.error(e);
+      if (!aliveRef.current) return;
       setTradingAccounts([]);
+      setDataError(e?.message || 'Could not load accounts.');
     }
   }, []);
 
@@ -58,33 +123,39 @@ export function AppDataProvider({ children }) {
 
     async function load() {
       if (!isAuthenticated) {
-        setAllTrades([]);
-        setUserSteps([]);
-        setTradingAccounts([]);
-        setViewModeState('portfolio');
-        setActiveAccountIdState('');
-        setDataLoading(false);
+        initialDoneRef.current = false;
+        if (!cancelled && aliveRef.current) {
+          setUserSteps([]);
+          setTradingAccounts([]);
+          setJournal(EMPTY_JOURNAL);
+          setViewModeState('portfolio');
+          setActiveAccountIdState('');
+          setDataError(null);
+          setDataLoading(false);
+        }
         return;
       }
 
-      setDataLoading(true);
+      const firstLoad = !initialDoneRef.current;
+      if (firstLoad && aliveRef.current) setDataLoading(true);
       try {
-        // Priority path: overview/log need trades + accounts first.
-        await Promise.all([refreshTrades(), refreshTradingAccounts()]);
+        const jobs = [refreshJournal()];
+        if (firstLoad) jobs.push(refreshTradingAccounts());
+        await Promise.all(jobs);
+        initialDoneRef.current = true;
       } finally {
-        if (!cancelled) setDataLoading(false);
+        if (!cancelled && aliveRef.current) setDataLoading(false);
       }
 
-      if (cancelled) return;
-      // Secondary: checklist can load after first paint.
-      void refreshSteps();
+      if (cancelled || !aliveRef.current) return;
+      if (firstLoad) void refreshSteps();
     }
 
     load();
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, refreshTrades, refreshSteps, refreshTradingAccounts]);
+  }, [isAuthenticated, refreshJournal, refreshSteps, refreshTradingAccounts]);
 
   const setViewMode = useCallback((mode) => {
     setViewModeState(mode);
@@ -117,24 +188,22 @@ export function AppDataProvider({ children }) {
     }
   }, [viewMode, activeAccountId, activeAccount, setViewMode]);
 
-  const visibleTrades = useMemo(
-    () => filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId),
-    [allTrades, tradingAccounts, viewMode, activeAccountId],
-  );
-
   const accounts = useMemo(
-    () => legacyAccountNames(tradingAccounts, allTrades),
-    [tradingAccounts, allTrades],
+    () => tradingAccounts.map((a) => a.name).sort(),
+    [tradingAccounts],
   );
 
   const lookups = useMemo(() => buildAccountLookups(tradingAccounts), [tradingAccounts]);
 
-  const value = {
-    allTrades,
-    visibleTrades,
-    accountTrades: visibleTrades,
+  const value = useMemo(() => ({
+    journalStats: journal.stats,
+    journalDaily: journal.daily,
+    journalBreakdown: journal.breakdown,
+    journalAccounts: journal.accounts,
+    tradesEpoch,
     tradingAccounts,
     dataLoading,
+    dataError,
     viewMode,
     activeAccountId,
     activeAccount,
@@ -157,7 +226,24 @@ export function AppDataProvider({ children }) {
       );
       if (match) setActiveAccountId(match.id);
     },
-  };
+  }), [
+    journal,
+    tradesEpoch,
+    tradingAccounts,
+    dataLoading,
+    dataError,
+    viewMode,
+    activeAccountId,
+    activeAccount,
+    accounts,
+    lookups,
+    setViewMode,
+    setActiveAccountId,
+    userSteps,
+    refreshTrades,
+    refreshSteps,
+    refreshTradingAccounts,
+  ]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }

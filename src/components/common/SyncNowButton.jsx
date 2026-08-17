@@ -38,33 +38,35 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   const singleAccount = viewMode === 'account' && activeAccount;
   const hasInvestor = Boolean(investorStatus);
 
-  const reloadStatus = useCallback(async () => {
+  const reloadStatus = useCallback(async (alive = () => true) => {
     if (viewMode !== 'account' || !activeAccount?.id) {
-      setInvestorStatus(null);
-      setLoadingStatus(false);
+      if (alive()) {
+        setInvestorStatus(null);
+        setLoadingStatus(false);
+      }
       return null;
     }
-    setLoadingStatus(true);
+    if (alive()) setLoadingStatus(true);
     try {
       const rows = await listInvestorCredentialsStatus();
+      if (!alive()) return null;
       const row = findStatus(rows, activeAccount.id);
       setInvestorStatus(row);
       return row;
     } catch {
-      setInvestorStatus(null);
-      toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
+      if (alive()) {
+        setInvestorStatus(null);
+        toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
+      }
       return null;
     } finally {
-      setLoadingStatus(false);
+      if (alive()) setLoadingStatus(false);
     }
   }, [viewMode, activeAccount?.id]);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      if (cancelled) return;
-      await reloadStatus();
-    })();
+    void reloadStatus(() => !cancelled);
     return () => {
       cancelled = true;
     };

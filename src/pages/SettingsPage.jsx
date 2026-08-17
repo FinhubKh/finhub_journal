@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useAppData } from '../context/AppDataContext';
+import { fetchAllTrades } from '../api';
 import { useDialog } from '../context/DialogContext';
 import { getUserDisplayName, getUserEmail } from '../api/auth';
+import { escapeCsvField } from '../lib/format';
 import {
   btnDanger, btnGhost, btnPrimary, card, cardBody,
   input, label, msgError, msgSuccess, sectionLabel,
@@ -34,13 +35,13 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { alert } = useDialog();
   const { signOut, setDisplayName } = useAuth();
-  const { allTrades } = useAppData();
 
   const email = getUserEmail();
 
   const [dnInput, setDnInput] = useState(getUserDisplayName());
   const [dnMsg, setDnMsg] = useState(null);
   const [dnSaving, setDnSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   async function saveDisplayName() {
     const name = dnInput.trim();
@@ -58,17 +59,35 @@ export default function SettingsPage() {
   }
 
   async function exportCSV() {
-    if (allTrades.length === 0) {
-      await alert({ title: 'Nothing to export', message: 'No trades to export yet.' });
-      return;
+    setExporting(true);
+    try {
+      const trades = await fetchAllTrades();
+      if (trades.length === 0) {
+        await alert({ title: 'Nothing to export', message: 'No trades to export yet.' });
+        return;
+      }
+      const headers = ['Date', 'Result', 'R Value', 'PnL (USD)', 'Account', 'Session', 'Notes'];
+      const rows = trades.map((t) => [
+        t.date,
+        t.result,
+        t.r_value || '',
+        t.pnl_usd || '',
+        t.account || '',
+        t.session || '',
+        t.notes || '',
+      ]);
+      const csv = [headers, ...rows]
+        .map((r) => r.map(escapeCsvField).join(','))
+        .join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = `nxuu-trades-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    } catch (e) {
+      await alert({ title: 'Export failed', message: e?.message || 'Could not export trades.' });
+    } finally {
+      setExporting(false);
     }
-    const headers = ['Date', 'Result', 'R Value', 'PnL (USD)', 'Account', 'Session', 'Notes'];
-    const rows = allTrades.map((t) => [t.date, t.result, t.r_value || '', t.pnl_usd || '', t.account || '', t.session || '', (t.notes || '').replace(/,/g, ' ')]);
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    a.download = `nxuu-trades-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
   }
 
   return (
@@ -103,7 +122,9 @@ export default function SettingsPage() {
 
         <SettingsSection title="Export">
           <SettingsRow title="Export trades" sub="Download all your trades as CSV">
-            <button className={btnGhost} type="button" onClick={exportCSV}>Export CSV</button>
+            <button className={btnGhost} type="button" disabled={exporting} onClick={exportCSV}>
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </button>
           </SettingsRow>
         </SettingsSection>
       </div>

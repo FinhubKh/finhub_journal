@@ -1,3 +1,5 @@
+import { toUsdPnl } from './format';
+
 export const ACCOUNT_TYPES = [
   { value: 'live', label: 'Live' },
   { value: 'prop', label: 'Prop / Challenge' },
@@ -22,9 +24,20 @@ export function viewPnlDenomination(viewMode, activeAccount) {
 }
 
 /** Denomination for a single trade's account (portfolio rows may mix $ and ¢). */
-export function tradePnlDenomination(trade, resolveTradeAccount) {
-  const account = typeof resolveTradeAccount === 'function' ? resolveTradeAccount(trade) : null;
+export function tradePnlDenomination(trade, resolveTradeAccountFn) {
+  const account = typeof resolveTradeAccountFn === 'function' ? resolveTradeAccountFn(trade) : null;
   return normalizePnlDenomination(account?.pnl_denomination);
+}
+
+/** Normalize trade PnL to USD so portfolio aggregates stay comparable across denominations. */
+export function tradesNormalizedToUsd(trades, resolveAccount) {
+  if (!Array.isArray(trades) || trades.length === 0) return trades || [];
+  return trades.map((t) => {
+    const account = typeof resolveAccount === 'function' ? resolveAccount(t) : null;
+    const denom = normalizePnlDenomination(account?.pnl_denomination);
+    if (denom !== 'cent') return t;
+    return { ...t, pnl_usd: toUsdPnl(t.pnl_usd, denom) };
+  });
 }
 
 export const ACCOUNT_COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#dc2626'];
@@ -110,8 +123,8 @@ export function groupTradesByAccount(allTrades, tradingAccounts) {
     });
   }
   return rows.sort((a, b) => {
-    const pnlA = a.trades.reduce((s, t) => s + (t.pnl_usd || 0), 0);
-    const pnlB = b.trades.reduce((s, t) => s + (t.pnl_usd || 0), 0);
+    const pnlA = a.trades.reduce((s, t) => s + toUsdPnl(t.pnl_usd || 0, a.account?.pnl_denomination), 0);
+    const pnlB = b.trades.reduce((s, t) => s + toUsdPnl(t.pnl_usd || 0, b.account?.pnl_denomination), 0);
     return pnlB - pnlA;
   });
 }

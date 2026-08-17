@@ -7,18 +7,16 @@ import { getUserEmail, getUserDisplayName } from '../../api/auth';
 import { btnGhost } from '../../lib/ui';
 import { BrandLogo } from '../BrandLogo';
 
-// News temporarily disabled
-// const NEWS_TAB_IDS = ['economic-calendar', 'world-news'];
-
 const PRIMARY_TABS = [
-  { id: 'overview', label: 'Overview', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
-  { id: 'log', label: 'Log', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
-  { id: 'calendar', label: 'Calendar', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
-  { id: 'checklist', label: 'Checklist', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
-  { id: 'compound', label: 'Compound', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
+  { id: 'overview', label: 'Overview', short: 'Home', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
+  { id: 'log', label: 'Log', short: 'Log', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
+  { id: 'calendar', label: 'Calendar', short: 'Cal', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
+  { id: 'checklist', label: 'Checklist', short: 'List', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
+  { id: 'compound', label: 'Compound', short: 'Cmp', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   {
     id: 'ai-advisor',
     label: 'Advisor',
+    short: 'AI',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M8 2a3.2 3.2 0 00-3.2 3.2v1c0 .4-.15.8-.4 1.1L3.3 9.2A1.2 1.2 0 004.4 11.2h7.2a1.2 1.2 0 001.1-2l-1.1-1.9c-.25-.3-.4-.7-.4-1.1v-1A3.2 3.2 0 008 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
@@ -26,35 +24,14 @@ const PRIMARY_TABS = [
       </svg>
     ),
   },
-  { id: 'leaderboard', label: 'Leaderboard', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13h10M5 13V8.5M8 13V4.5M11 13v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /><path d="M5.5 6.5l2.5-3 2.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
+  { id: 'leaderboard', label: 'Leaderboard', short: 'Board', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13h10M5 13V8.5M8 13V4.5M11 13v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /><path d="M5.5 6.5l2.5-3 2.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
 ];
-
-/* News temporarily disabled
-const NEWS_GROUP = {
-  id: 'news',
-  label: 'News',
-  icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3V13.5a1 1 0 01-1 1H3a1 1 0 01-1-1V3.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M10 2.5V6h3M5 8h6M5 10.5h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>,
-  children: [
-    {
-      id: 'economic-calendar',
-      label: 'Economic calendar',
-      shortLabel: 'Econ',
-      icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12M5 9.5h2M5 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>,
-    },
-    {
-      id: 'world-news',
-      label: 'World news',
-      shortLabel: 'World',
-      icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" /><path d="M2.5 8h11M8 2.5c1.5 1.8 2.3 4 2.3 5.5S9.5 11.7 8 13.5M8 2.5C6.5 4.3 5.7 6.5 5.7 8s.8 3.7 2.3 5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>,
-    },
-  ],
-};
-*/
 
 const TRAILING_TABS = [
   {
     id: 'accounts',
     label: 'Accounts',
+    short: 'Acct',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
@@ -63,10 +40,11 @@ const TRAILING_TABS = [
       </svg>
     ),
   },
-  { id: 'settings', label: 'Settings', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" /><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
+  { id: 'settings', label: 'Settings', short: 'Set', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" /><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
   {
     id: 'setup',
     label: 'How to install',
+    short: 'Setup',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M3 4.5h10v7a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 11.5v-7z" stroke="currentColor" strokeWidth="1.4" />
@@ -76,68 +54,18 @@ const TRAILING_TABS = [
   },
 ];
 
-/* News temporarily disabled
-function isNewsTab(activeTab) {
-  return NEWS_TAB_IDS.includes(activeTab);
-}
+const MOBILE_TABS = [
+  PRIMARY_TABS[0],
+  PRIMARY_TABS[1],
+  PRIMARY_TABS[2],
+  PRIMARY_TABS[3],
+  TRAILING_TABS[0],
+];
 
-function NewsNavGroup({ activeTab, onSwitchTab, tabClass }) {
-  const newsActive = isNewsTab(activeTab);
-  const [open, setOpen] = useState(newsActive);
-
-  useEffect(() => {
-    if (newsActive) setOpen(true);
-  }, [newsActive]);
-
-  const subTabClass = (active) =>
-    `group flex w-full items-center justify-center gap-0 rounded-lg px-2 py-2 text-left text-sm font-medium transition md:justify-start md:gap-2.5 md:pl-9 md:pr-3 ${
-      active
-        ? 'bg-violet-100 text-violet-700'
-        : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'
-    }`;
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <button
-        type="button"
-        className={`${tabClass(newsActive)} md:pr-2.5`}
-        aria-expanded={open}
-        aria-controls="news-nav-items"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className={newsActive ? 'text-violet-600' : 'text-zinc-400 group-hover:text-zinc-600'}>
-          {NEWS_GROUP.icon}
-        </span>
-        <span className="hidden min-w-0 flex-1 truncate text-left md:inline">{NEWS_GROUP.label}</span>
-        <span className="text-[10px] font-semibold md:hidden">News</span>
-        <Chevron open={open} className="hidden md:block" />
-      </button>
-
-      {open && (
-        <div id="news-nav-items" className="flex flex-col gap-0.5" role="group" aria-label="News sections">
-          {NEWS_GROUP.children.map((child) => (
-            <button
-              key={child.id}
-              type="button"
-              className={subTabClass(activeTab === child.id)}
-              role="tab"
-              aria-selected={activeTab === child.id}
-              title={child.label}
-              onClick={() => onSwitchTab(child.id)}
-            >
-              <span className={activeTab === child.id ? 'text-violet-600' : 'text-zinc-400 group-hover:text-zinc-600'}>
-                {child.icon}
-              </span>
-              <span className="hidden md:inline">{child.label}</span>
-              <span className="text-[10px] font-semibold md:hidden">{child.shortLabel}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-*/
+const MORE_TABS = [
+  ...PRIMARY_TABS.slice(4),
+  ...TRAILING_TABS.slice(1),
+];
 
 const SIDEBAR_WIDTH_KEY = 'finhub_sidebar_width';
 const SIDEBAR_MIN = 72;
@@ -179,6 +107,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
   const [width, setWidth] = useState(readSidebarWidth);
   const [isHovered, setIsHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(SIDEBAR_DEFAULT);
 
@@ -188,7 +117,8 @@ export default function TabBar({ activeTab, onSwitchTab }) {
   const navWidth = isDesktop
     ? (isHovering ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_DEFAULT, width)) : SIDEBAR_MIN)
     : 72;
-  const expanded = navWidth >= SIDEBAR_COMPACT_BELOW;
+  const expanded = isDesktop && navWidth >= SIDEBAR_COMPACT_BELOW;
+  const moreActive = MORE_TABS.some((t) => t.id === activeTab);
 
   useEffect(() => {
     if (!dragging) return undefined;
@@ -223,6 +153,10 @@ export default function TabBar({ activeTab, onSwitchTab }) {
     }
   }, [width, isDesktop, dragging]);
 
+  useEffect(() => {
+    if (isDesktop) setMoreOpen(false);
+  }, [isDesktop]);
+
   function startDrag(e) {
     if (!isDesktop) return;
     e.preventDefault();
@@ -240,11 +174,125 @@ export default function TabBar({ activeTab, onSwitchTab }) {
         : 'bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200'
     }`;
 
+  if (!isDesktop) {
+    return (
+      <>
+        {moreOpen ? (
+          <button
+            type="button"
+            className="fixed inset-0 z-30 bg-black/40"
+            aria-label="Close menu"
+            onClick={() => setMoreOpen(false)}
+          />
+        ) : null}
+        {moreOpen ? (
+          <div className="fixed inset-x-0 bottom-16 z-40 max-h-[55dvh] overflow-y-auto border-t border-zinc-200 bg-white px-3 py-3 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="grid grid-cols-3 gap-2">
+              {MORE_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-[11px] font-medium ${
+                    activeTab === tab.id
+                      ? 'bg-violet-100 text-violet-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                      : 'bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300'
+                  }`}
+                  onClick={() => {
+                    onSwitchTab(tab.id);
+                    setMoreOpen(false);
+                  }}
+                >
+                  <span>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+              {isAdmin ? (
+                <button
+                  type="button"
+                  className="flex flex-col items-center gap-1.5 rounded-xl bg-violet-50 px-2 py-3 text-[11px] font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    navigate('/admin');
+                  }}
+                >
+                  Admin
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="flex flex-col items-center gap-1.5 rounded-xl bg-zinc-50 px-2 py-3 text-[11px] font-medium text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
+                onClick={toggleTheme}
+              >
+                {isDark ? <LuMoon className="h-4 w-4" /> : <LuSun className="h-4 w-4" />}
+                Theme
+              </button>
+              <button
+                type="button"
+                className="flex flex-col items-center gap-1.5 rounded-xl bg-rose-50 px-2 py-3 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"
+                onClick={async () => {
+                  setMoreOpen(false);
+                  await signOut();
+                  navigate('/');
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        ) : null}
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-zinc-800 dark:bg-zinc-950"
+          role="tablist"
+          aria-label="Main navigation"
+        >
+          {MOBILE_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              title={tab.label}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ${
+                activeTab === tab.id
+                  ? 'text-violet-700 dark:text-emerald-400'
+                  : 'text-zinc-400 dark:text-zinc-500'
+              }`}
+              onClick={() => {
+                setMoreOpen(false);
+                onSwitchTab(tab.id);
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.short}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ${
+              moreOpen || moreActive
+                ? 'text-violet-700 dark:text-emerald-400'
+                : 'text-zinc-400 dark:text-zinc-500'
+            }`}
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((v) => !v)}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="3.5" cy="8" r="1.25" fill="currentColor" />
+              <circle cx="8" cy="8" r="1.25" fill="currentColor" />
+              <circle cx="12.5" cy="8" r="1.25" fill="currentColor" />
+            </svg>
+            More
+          </button>
+        </nav>
+      </>
+    );
+  }
+
   return (
     <nav
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950 ${
+      className={`relative z-20 hidden h-full shrink-0 flex-col overflow-hidden border-r border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950 md:flex ${
         expanded ? 'px-3' : 'px-2'
       } ${dragging ? '' : 'transition-[width] duration-300 ease-in-out'}`}
       style={{ width: navWidth }}
@@ -260,7 +308,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-1 overflow-x-hidden">
-        {PRIMARY_TABS.map((tab) => (
+        {[...PRIMARY_TABS, ...TRAILING_TABS].map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -268,21 +316,6 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             role="tab"
             aria-selected={activeTab === tab.id}
             title={tab.id === 'ai-advisor' ? 'AI Advisor' : tab.label}
-            onClick={() => onSwitchTab(tab.id)}
-          >
-            <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
-            {expanded ? <span className="truncate">{tab.label}</span> : null}
-          </button>
-        ))}
-
-        {TRAILING_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={tabClass(activeTab === tab.id)}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            title={tab.label}
             onClick={() => onSwitchTab(tab.id)}
           >
             <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
@@ -328,31 +361,29 @@ export default function TabBar({ activeTab, onSwitchTab }) {
         </button>
       </div>
 
-      {isDesktop ? (
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize sidebar"
-          aria-valuemin={SIDEBAR_MIN}
-          aria-valuemax={SIDEBAR_MAX}
-          aria-valuenow={width}
-          tabIndex={0}
-          className={`absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none transition ${
-            dragging ? 'bg-violet-400/70 dark:bg-emerald-500/60' : 'bg-transparent hover:bg-violet-300/50 dark:hover:bg-emerald-500/40'
-          }`}
-          onPointerDown={startDrag}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowLeft') {
-              e.preventDefault();
-              setWidth((w) => Math.max(SIDEBAR_MIN, w - 16));
-            }
-            if (e.key === 'ArrowRight') {
-              e.preventDefault();
-              setWidth((w) => Math.min(SIDEBAR_MAX, w + 16));
-            }
-          }}
-        />
-      ) : null}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        aria-valuemin={SIDEBAR_MIN}
+        aria-valuemax={SIDEBAR_MAX}
+        aria-valuenow={width}
+        tabIndex={0}
+        className={`absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none transition ${
+          dragging ? 'bg-violet-400/70 dark:bg-emerald-500/60' : 'bg-transparent hover:bg-violet-300/50 dark:hover:bg-emerald-500/40'
+        }`}
+        onPointerDown={startDrag}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            setWidth((w) => Math.max(SIDEBAR_MIN, w - 16));
+          }
+          if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            setWidth((w) => Math.min(SIDEBAR_MAX, w + 16));
+          }
+        }}
+      />
     </nav>
   );
 }

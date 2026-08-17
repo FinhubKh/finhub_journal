@@ -125,6 +125,7 @@ declare
   owner_name text;
   trade_rows jsonb;
   total_count int;
+  lim int := greatest(1, least(coalesce(nullif(p_limit, 0), 500), 1000));
 begin
   if p_token is null or length(trim(p_token)) < 8 then
     return null;
@@ -174,7 +175,7 @@ begin
     from public.trades t
     where t.account_id = acc.id
     order by t.date desc, t.created_at desc
-    limit (case when p_limit is null or p_limit <= 0 then null else p_limit end)
+    limit lim
   ) x;
 
   return jsonb_build_object(

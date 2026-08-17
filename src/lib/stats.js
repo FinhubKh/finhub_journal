@@ -9,6 +9,10 @@ export function calcStreaks(trades) {
   return { bestStreak, worstStreak };
 }
 
+function tradeHasExplicitR(t) {
+  return Math.abs(Number(t.r_value) || 0) > 0.01;
+}
+
 export function computeStats(trades) {
   if (trades.length === 0) return null;
 
@@ -25,15 +29,12 @@ export function computeStats(trades) {
   const avgLoss = losses.length > 0 ? grossLoss / losses.length : 0;
   const rrRatio = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : avgWin > 0 ? '∞' : '—';
 
-  // Calculate R-multiple & Avg R:
-  // If trades have explicit non-zero r_value (e.g. manual trades with custom R-value), use them.
-  // Otherwise, fallback to 1R = avgLoss baseline so synced trades have dynamic R stats.
-  const hasExplicitR = trades.some((t) => Math.abs(t.r_value || 0) > 0.01);
-  const totalR = hasExplicitR
-    ? trades.reduce((s, t) => s + (t.r_value || 0), 0)
-    : avgLoss > 0
-    ? totalPnl / avgLoss
-    : 0;
+  // Per-trade R: use explicit r_value when set; otherwise derive from avg loss / PnL.
+  const totalR = trades.reduce((s, t) => {
+    if (tradeHasExplicitR(t)) return s + Number(t.r_value);
+    if (avgLoss > 0) return s + ((t.pnl_usd || 0) / avgLoss);
+    return s;
+  }, 0);
   const avgR = total ? totalR / total : 0;
 
   const lr = losses.length / total;
@@ -59,11 +60,14 @@ export function computeStats(trades) {
 export function buildPerfGroups(trades, groupKey) {
   const groups = {};
   trades.forEach((t) => {
-    const k = t[groupKey] ? t[groupKey].charAt(0).toUpperCase() + t[groupKey].slice(1) : 'Other';
-    if (!groups[k]) groups[k] = { wins: 0, losses: 0, be: 0, pnl: 0, r: 0 };
-    groups[k][t.result === 'win' ? 'wins' : t.result === 'loss' ? 'losses' : 'be']++;
-    groups[k].pnl += t.pnl_usd || 0;
-    groups[k].r += t.r_value || 0;
+    const key = t[groupKey] || 'Other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
   });
-  return groups;
+  return Object.entries(groups).map(([name, list]) => ({
+    name,
+    count: list.length,
+    pnl: list.reduce((s, t) => s + (t.pnl_usd || 0), 0),
+    wr: Math.round((list.filter((t) => t.result === 'win').length / list.length) * 100),
+  })).sort((a, b) => b.pnl - a.pnl);
 }

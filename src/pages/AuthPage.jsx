@@ -104,7 +104,7 @@ export default function AuthPage() {
   const [remembered, setRemembered] = useState(getRemembered());
   const [quickLoading, setQuickLoading] = useState(false);
 
-  const [siEmail, setSiEmail] = useState('');
+  const [siEmail, setSiEmail] = useState(() => getRemembered()?.email || '');
   const [siPass, setSiPass] = useState('');
   const [siLoading, setSiLoading] = useState(false);
   const [siRemember, setSiRemember] = useState(true);
@@ -145,11 +145,15 @@ export default function AuthPage() {
     if (!configured) return toast.error('Add your Supabase keys first.');
     setSuLoading(true);
     try {
-      await signUp(suEmail.trim(), suPass);
+      const data = await signUp(suEmail.trim(), suPass);
       setSuEmail(''); setSuPass(''); setSuPass2('');
-      setShowReset(false);
-      setMode('signin');
-      toast.success('Account created. Please sign in.');
+      if (data?.access_token || data?.session?.access_token) {
+        toast.success('Account created. Welcome!');
+      } else {
+        setShowReset(false);
+        setMode('signin');
+        toast.success('Account created. Please sign in.');
+      }
     } catch (e) { toast.error(e.message); }
     finally { setSuLoading(false); }
   }
@@ -236,7 +240,13 @@ export default function AuthPage() {
                 </div>
 
                 {mode === 'signin' && (
-                  <div className="space-y-7">
+                  <form
+                    className="space-y-7"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void handleSignIn();
+                    }}
+                  >
                     <button type="button" className={googleBtn} disabled onClick={handleGoogleSignIn}>
                       {iconGoogle}
                       Coming soon
@@ -261,15 +271,21 @@ export default function AuthPage() {
                       Remember me
                     </label>
                     <div className="pt-2">
-                      <button type="button" className={submitBtn} disabled={siLoading} onClick={handleSignIn}>
+                      <button type="submit" className={submitBtn} disabled={siLoading}>
                         {siLoading ? 'Signing in...' : 'Login'}
                       </button>
                     </div>
-                  </div>
+                  </form>
                 )}
 
                 {mode === 'signup' && (
-                  <div className="space-y-7">
+                  <form
+                    className="space-y-7"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void handleSignUp();
+                    }}
+                  >
                     <button type="button" className={googleBtn} disabled onClick={handleGoogleSignIn}>
                       {iconGoogle}
                       Coming soon
@@ -296,11 +312,11 @@ export default function AuthPage() {
                       onChange={(e) => setSuPass2(e.target.value)}
                     />
                     <div className="pt-2">
-                      <button type="button" className={submitBtn} disabled={suLoading} onClick={handleSignUp}>
+                      <button type="submit" className={submitBtn} disabled={suLoading}>
                         {suLoading ? 'Creating...' : 'Sign Up'}
                       </button>
                     </div>
-                  </div>
+                  </form>
                 )}
               </>
             ) : (

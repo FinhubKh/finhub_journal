@@ -6,8 +6,23 @@ import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } fr
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
 
-function buildSeries(trades, denomination) {
-  const sorted = [...trades].sort((a, b) => new Date(a.date) - new Date(b.date));
+function pointsFromProps(daily, trades) {
+  if (Array.isArray(daily) && daily.length > 0) {
+    return daily.map((d) => ({
+      date: d.date,
+      pnl: Number(d.pnl) || 0,
+      r_value: Number(d.r_value) || 0,
+    }));
+  }
+  return (trades || []).map((t) => ({
+    date: t.date,
+    pnl: Number(t.pnl_usd) || 0,
+    r_value: Number(t.r_value) || 0,
+  }));
+}
+
+function buildSeries(points, denomination) {
+  const sorted = [...points].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const labels = [];
   const dataUsd = [];
   const dataR = [];
@@ -15,7 +30,7 @@ function buildSeries(trades, denomination) {
   let cumR = 0;
 
   sorted.forEach((t) => {
-    cumUsd += toDisplayPnl(t.pnl_usd || 0, denomination);
+    cumUsd += toDisplayPnl(t.pnl || 0, denomination);
     cumR += t.r_value || 0;
     labels.push(new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
     dataUsd.push(parseFloat(cumUsd.toFixed(2)));
@@ -25,21 +40,22 @@ function buildSeries(trades, denomination) {
   return { labels, dataUsd, dataR };
 }
 
-export default function EquityChart({ trades, denomination = 'usd', fill = false }) {
+export default function EquityChart({ trades, daily, denomination = 'usd', fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const denom = normalizePnlDenomination(denomination);
   const [mode, setMode] = useState('usd');
+  const points = useMemo(() => pointsFromProps(daily, trades), [daily, trades]);
 
-  const empty = !trades || trades.length === 0;
+  const empty = points.length === 0;
   const moneyModeLabel = moneySymbol(denom) === '¢' ? '¢' : 'USD';
 
   const lastVal = useMemo(() => {
     if (empty) return null;
     return mode === 'usd'
-      ? trades.reduce((s, t) => s + toDisplayPnl(t.pnl_usd || 0, denom), 0)
-      : trades.reduce((s, t) => s + (t.r_value || 0), 0);
-  }, [trades, mode, empty, denom]);
+      ? points.reduce((s, t) => s + toDisplayPnl(t.pnl || 0, denom), 0)
+      : points.reduce((s, t) => s + (t.r_value || 0), 0);
+  }, [points, mode, empty, denom]);
 
   useEffect(() => () => {
     if (chartRef.current) {
@@ -60,7 +76,7 @@ export default function EquityChart({ trades, denomination = 'usd', fill = false
       return;
     }
 
-    const { labels, dataUsd, dataR } = buildSeries(trades, denom);
+    const { labels, dataUsd, dataR } = buildSeries(points, denom);
     const values = mode === 'usd' ? dataUsd : dataR;
     const labelFmt = mode === 'usd'
       ? (v) => {
@@ -131,7 +147,7 @@ export default function EquityChart({ trades, denomination = 'usd', fill = false
         },
       },
     });
-  }, [trades, mode, empty, denom]);
+  }, [points, mode, empty, denom]);
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
@@ -145,7 +161,7 @@ export default function EquityChart({ trades, denomination = 'usd', fill = false
             <span className={`hidden text-sm font-semibold sm:inline ${lastVal >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
               {mode === 'usd'
                 ? fmtPnlStrict(
-                    trades.reduce((s, t) => s + (t.pnl_usd || 0), 0),
+                    points.reduce((s, t) => s + (t.pnl || 0), 0),
                     denom,
                   )
                 : `${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R`}

@@ -1,55 +1,67 @@
 import { useState, useMemo } from 'react';
 import { fmtPnlStrict } from '../../lib/format';
-import {
-  dayHasActivity,
-  resolveDayPnl,
-  resolveDayTradeCount,
-  toneFromPnl,
-  tradesSumForDay,
-} from '../../lib/dailyPnl';
+import { toneFromPnl } from '../../lib/dailyPnl';
 import { card, cardBody } from '../../lib/ui';
 
-/* ─── Constants ──────────────────────────────────────────────────── */
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/* ─── Helpers ─────────────────────────────────────────────────────── */
 function mondayFirstIndex(dow) { return dow === 0 ? 6 : dow - 1; }
 function isWeekendDow(dow) { return dow === 0 || dow === 6; }
 function dateString(y, m, d) { return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
 
-function bucketByMonth(trades, year) {
+function rowsToMap(rows) {
+  const map = {};
+  (rows || []).forEach((row) => { if (row?.date) map[row.date] = row; });
+  return map;
+}
+
+function rowPnl(row) { return Number(row?.pnl) || 0; }
+function rowTrades(row) { return Number(row?.trades) || 0; }
+function rowWins(row) { return Number(row?.wins) || 0; }
+function rowActive(row) { return rowTrades(row) > 0; }
+
+function bucketDailyByMonth(daily, year) {
   const map = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, []]));
   const prefix = `${year}-`;
-  for (const t of trades) {
-    if (!t?.date || !t.date.startsWith(prefix)) continue;
-    const month = Number(t.date.slice(5, 7));
-    if (month >= 1 && month <= 12) map[month].push(t);
+  for (const row of daily || []) {
+    if (!row?.date || !String(row.date).startsWith(prefix)) continue;
+    const month = Number(String(row.date).slice(5, 7));
+    if (month >= 1 && month <= 12) map[month].push(row);
   }
   return map;
 }
 
-function monthTotalPnl(trades) {
-  return trades.reduce((s, t) => s + (Number(t.pnl_usd) || 0), 0);
+function periodTotals(rows) {
+  let pnl = 0;
+  let trades = 0;
+  let wins = 0;
+  (rows || []).forEach((row) => {
+    pnl += rowPnl(row);
+    trades += rowTrades(row);
+    wins += rowWins(row);
+  });
+  return { pnl, trades, wins };
 }
 
-function buildMonthWeeks(year, month, tradeMap) {
+function buildMonthWeeks(year, month, dayMap) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const weeks = [];
   let cur = [null, null, null, null, null, null, null];
 
   function flush() {
     if (!cur.some(Boolean)) return;
-    let wPnl = 0; let wTrades = 0;
+    let wPnl = 0;
+    let wTrades = 0;
     cur.forEach((ds) => {
       if (!ds) return;
-      const dts = tradeMap[ds] || [];
-      wTrades += dts.length;
-      wPnl += tradesSumForDay(dts);
+      const row = dayMap[ds];
+      wTrades += rowTrades(row);
+      wPnl += rowPnl(row);
     });
-    const wActive = cur.some((ds) => ds && (tradeMap[ds] || []).length > 0);
+    const wActive = cur.some((ds) => ds && rowActive(dayMap[ds]));
     weeks.push({ days: [...cur], weekPnl: wPnl, weekTrades: wTrades, weekActive: wActive, index: weeks.length + 1 });
     cur = [null, null, null, null, null, null, null];
   }
@@ -72,7 +84,6 @@ function weekRangeLabel(days) {
   return s === e ? `Day ${s}` : `${s}–${e}`;
 }
 
-/* ─── Cell styles ─────────────────────────────────────────────────── */
 function cellClass(tone, today, weekend) {
   const base = 'relative flex flex-col rounded-xl border p-2 text-xs transition min-h-[72px]';
   if (tone === 'win') return `${base} border-violet-200 bg-violet-50 dark:border-violet-900/50 dark:bg-violet-950/30${today ? ' ring-2 ring-violet-400' : ''}`;
@@ -91,7 +102,6 @@ function miniCellClass(tone, today) {
   return `${base} text-zinc-500 dark:text-zinc-400`;
 }
 
-/* ─── Legend ──────────────────────────────────────────────────────── */
 function Legend() {
   return (
     <div className="flex flex-wrap justify-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
@@ -103,29 +113,28 @@ function Legend() {
   );
 }
 
-/* ─── Mini month card ─────────────────────────────────────────────── */
-function MonthCard({ year, month, trades, denomination, onSelect }) {
-  const tradeMap = {};
-  trades.forEach((t) => { (tradeMap[t.date] ||= []).push(t); });
+function MonthCard({ year, month, days, denomination, onSelect }) {
+  const dayMap = rowsToMap(days);
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date().toISOString().split('T')[0];
-  const totalPnl = monthTotalPnl(trades);
-  const hasActivity = trades.length > 0;
+  const totals = periodTotals(days);
+  const hasActivity = totals.trades > 0;
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(<div className="h-5 w-5" key={`e${i}`} />);
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dts = tradeMap[ds] || [];
-    const dayPnl = tradesSumForDay(dts);
-    const tone = toneFromPnl(dayPnl, dts.length > 0);
+    const row = dayMap[ds];
+    const dayPnl = rowPnl(row);
+    const active = rowActive(row);
+    const tone = toneFromPnl(dayPnl, active);
     const weekend = isWeekendDow(new Date(year, month - 1, d).getDay());
     cells.push(
       <div
         key={ds}
         className={`${miniCellClass(tone, ds === today)} ${weekend && tone === 'none' ? 'text-zinc-300 dark:text-zinc-600' : ''} ${weekend ? 'opacity-70' : ''}`}
-        title={dts.length > 0 ? fmtPnlStrict(dayPnl, denomination) : weekend ? 'Weekend' : ''}
+        title={active ? fmtPnlStrict(dayPnl, denomination) : weekend ? 'Weekend' : ''}
       >
         {d}
       </div>,
@@ -142,10 +151,10 @@ function MonthCard({ year, month, trades, denomination, onSelect }) {
         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{MONTHS_SHORT[month - 1]}</div>
         {hasActivity && (
           <div className="text-right text-[10px] leading-tight">
-            <div className={totalPnl >= 0 ? 'font-semibold text-violet-600 dark:text-emerald-400' : 'font-semibold text-rose-600 dark:text-rose-400'}>
-              {fmtPnlStrict(totalPnl, denomination)}
+            <div className={totals.pnl >= 0 ? 'font-semibold text-violet-600 dark:text-emerald-400' : 'font-semibold text-rose-600 dark:text-rose-400'}>
+              {fmtPnlStrict(totals.pnl, denomination)}
             </div>
-            <div className="text-zinc-400">{trades.length} trade{trades.length !== 1 ? 's' : ''}</div>
+            <div className="text-zinc-400">{totals.trades} trade{totals.trades !== 1 ? 's' : ''}</div>
           </div>
         )}
       </div>
@@ -157,12 +166,10 @@ function MonthCard({ year, month, trades, denomination, onSelect }) {
   );
 }
 
-/* ─── Year view ───────────────────────────────────────────────────── */
-function YearView({ year, yearTrades, denomination, availableYears, onYearChange, onSelectMonth }) {
-  const allTrades = useMemo(() => Object.values(yearTrades).flat(), [yearTrades]);
-  const totalPnl = monthTotalPnl(allTrades);
-  const wins = allTrades.filter((t) => t.result === 'win').length;
-  const wr = allTrades.length > 0 ? Math.round((wins / allTrades.length) * 100) : 0;
+function YearView({ year, yearDays, denomination, availableYears, onYearChange, onSelectMonth }) {
+  const allDays = useMemo(() => Object.values(yearDays).flat(), [yearDays]);
+  const totals = periodTotals(allDays);
+  const wr = totals.trades > 0 ? Math.round((totals.wins / totals.trades) * 100) : 0;
 
   return (
     <div className="space-y-5">
@@ -177,12 +184,12 @@ function YearView({ year, yearTrades, denomination, availableYears, onYearChange
           </select>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Click a month to see the daily breakdown</p>
         </div>
-        {allTrades.length > 0 && (
+        {totals.trades > 0 && (
           <div className="flex items-center gap-4 text-sm">
-            <span className={`font-bold tabular-nums ${totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {fmtPnlStrict(totalPnl, denomination)}
+            <span className={`font-bold tabular-nums ${totals.pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              {fmtPnlStrict(totals.pnl, denomination)}
             </span>
-            <span className="text-zinc-400 dark:text-zinc-500">{allTrades.length} trades · {wr}% WR</span>
+            <span className="text-zinc-400 dark:text-zinc-500">{totals.trades} trades · {wr}% WR</span>
           </div>
         )}
       </div>
@@ -193,7 +200,7 @@ function YearView({ year, yearTrades, denomination, availableYears, onYearChange
             key={i}
             year={year}
             month={i + 1}
-            trades={yearTrades[i + 1] || []}
+            days={yearDays[i + 1] || []}
             denomination={denomination}
             onSelect={onSelectMonth}
           />
@@ -204,26 +211,23 @@ function YearView({ year, yearTrades, denomination, availableYears, onYearChange
   );
 }
 
-/* ─── Month detail view ───────────────────────────────────────────── */
-function MonthDetailView({ year, month, monthTrades, denomination, onBack, onPrevMonth, onNextMonth }) {
+function MonthDetailView({ year, month, monthDays, denomination, onBack, onPrevMonth, onNextMonth }) {
   const today = new Date().toISOString().split('T')[0];
-  const totalPnl = monthTotalPnl(monthTrades);
-  const wins = monthTrades.filter((t) => t.result === 'win').length;
-  const wr = monthTrades.length > 0 ? Math.round((wins / monthTrades.length) * 100) : 0;
+  const totals = periodTotals(monthDays);
+  const wr = totals.trades > 0 ? Math.round((totals.wins / totals.trades) * 100) : 0;
 
-  const { weeks, tradeMap } = useMemo(() => {
-    const map = {};
-    monthTrades.forEach((t) => { (map[t.date] ||= []).push(t); });
-    return { weeks: buildMonthWeeks(year, month, map), tradeMap: map };
-  }, [year, month, monthTrades]);
+  const { weeks, dayMap } = useMemo(() => {
+    const map = rowsToMap(monthDays);
+    return { weeks: buildMonthWeeks(year, month, map), dayMap: map };
+  }, [year, month, monthDays]);
 
   const bestWeekPnl = weeks.reduce((best, w) => (w.weekActive && w.weekPnl > best ? w.weekPnl : best), -Infinity);
   const bestWeek = bestWeekPnl === -Infinity ? null : weeks.find((w) => w.weekPnl === bestWeekPnl);
 
   const statItems = [
-    { value: monthTrades.length > 0 ? fmtPnlStrict(totalPnl, denomination) : '—', label: 'Monthly PnL', coloredPnl: totalPnl, hasColor: true },
-    { value: monthTrades.length > 0 ? monthTrades.length : '—', label: 'Trades' },
-    { value: monthTrades.length > 0 ? `${wr}%` : '—', label: 'Win Rate' },
+    { value: totals.trades > 0 ? fmtPnlStrict(totals.pnl, denomination) : '—', label: 'Monthly PnL', coloredPnl: totals.pnl, hasColor: true },
+    { value: totals.trades > 0 ? totals.trades : '—', label: 'Trades' },
+    { value: totals.trades > 0 ? `${wr}%` : '—', label: 'Win Rate' },
     { value: bestWeek ? fmtPnlStrict(bestWeek.weekPnl, denomination) : '—', label: bestWeek ? `Best week (${weekRangeLabel(bestWeek.days)})` : 'Best week', coloredPnl: bestWeek?.weekPnl, hasColor: true },
   ];
 
@@ -253,7 +257,7 @@ function MonthDetailView({ year, month, monthTrades, denomination, onBack, onPre
         ))}
       </div>
 
-      {monthTrades.length === 0 ? (
+      {totals.trades === 0 ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400 dark:text-zinc-500`}>No trades in this month.</div>
       ) : (
         <div className={card}>
@@ -269,10 +273,10 @@ function MonthDetailView({ year, month, monthTrades, denomination, onBack, onPre
                 <div className="grid grid-cols-8 gap-2" key={week.index}>
                   {week.days.map((ds, idx) => {
                     if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
-                    const dts = tradeMap[ds] || [];
-                    const dayPnl = resolveDayPnl(dts, null);
-                    const count = resolveDayTradeCount(dts, null);
-                    const active = dayHasActivity(dts, null);
+                    const row = dayMap[ds];
+                    const dayPnl = rowPnl(row);
+                    const count = rowTrades(row);
+                    const active = rowActive(row);
                     const tone = toneFromPnl(dayPnl, active);
                     const dayNum = parseInt(ds.split('-')[2], 10);
                     const [dy, dm, dd] = ds.split('-').map(Number);
@@ -313,20 +317,37 @@ function MonthDetailView({ year, month, monthTrades, denomination, onBack, onPre
   );
 }
 
-/* ─── Root export ─────────────────────────────────────────────────── */
-export default function PublicCalendar({ trades = [], denomination = 'usd' }) {
+export default function PublicCalendar({ daily = [], trades, denomination = 'usd' }) {
+  // Prefer cached daily series; fall back to trade rows if an older payload still sends only trades.
+  const series = useMemo(() => {
+    if (Array.isArray(daily) && daily.length > 0) return daily;
+    if (!Array.isArray(trades) || trades.length === 0) return [];
+    const byDate = {};
+    trades.forEach((t) => {
+      if (!t?.date) return;
+      const row = byDate[t.date] || { date: t.date, pnl: 0, r_value: 0, trades: 0, wins: 0, losses: 0 };
+      row.pnl += Number(t.pnl_usd) || 0;
+      row.r_value += Number(t.r_value) || 0;
+      row.trades += 1;
+      if (t.result === 'win') row.wins += 1;
+      if (t.result === 'loss') row.losses += 1;
+      byDate[t.date] = row;
+    });
+    return Object.values(byDate).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  }, [daily, trades]);
+
   const availableYears = useMemo(() => {
-    const years = new Set(trades.map((t) => t?.date?.slice(0, 4)).filter(Boolean).map(Number));
+    const years = new Set(series.map((d) => String(d?.date || '').slice(0, 4)).filter(Boolean).map(Number));
     if (!years.size) years.add(new Date().getFullYear());
     return [...years].sort((a, b) => b - a);
-  }, [trades]);
+  }, [series]);
 
   const [year, setYear] = useState(() => availableYears[0] ?? new Date().getFullYear());
   const [screen, setScreen] = useState('year');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
-  const yearTrades = useMemo(() => bucketByMonth(trades, year), [trades, year]);
-  const monthTrades = yearTrades[month] || [];
+  const yearDays = useMemo(() => bucketDailyByMonth(series, year), [series, year]);
+  const monthDays = yearDays[month] || [];
 
   function openMonth(m) { setMonth(m); setScreen('detail'); }
   function goBack() { setScreen('year'); }
@@ -338,7 +359,7 @@ export default function PublicCalendar({ trades = [], denomination = 'usd' }) {
       <MonthDetailView
         year={year}
         month={month}
-        monthTrades={monthTrades}
+        monthDays={monthDays}
         denomination={denomination}
         onBack={goBack}
         onPrevMonth={prevMonth}
@@ -350,7 +371,7 @@ export default function PublicCalendar({ trades = [], denomination = 'usd' }) {
   return (
     <YearView
       year={year}
-      yearTrades={yearTrades}
+      yearDays={yearDays}
       denomination={denomination}
       availableYears={availableYears}
       onYearChange={setYear}

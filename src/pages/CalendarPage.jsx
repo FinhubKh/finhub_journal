@@ -5,14 +5,8 @@ import { viewPnlDenomination } from '../lib/accounts';
 import { fmtPnlStrict } from '../lib/format';
 import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import {
-  dayHasActivity,
   overridesToMap,
-  resolveDayPnl,
-  resolveDayTradeCount,
   toneFromPnl,
-  tradesSumForDay,
-  monthTradeTotal,
-  yearTradeTotal,
 } from '../lib/dailyPnl';
 import DailyPnlModal from '../components/modals/DailyPnlModal';
 import YearDropdown from '../components/common/YearDropdown';
@@ -28,16 +22,58 @@ const EMPTY_YEAR_BUCKETS = Object.freeze(
   Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, []])),
 );
 
-/** Split already-loaded trades into month buckets for a calendar year (no network). */
-function bucketTradesByMonth(trades, year) {
+function bucketDailyByMonth(daily, year) {
   const map = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, []]));
   const prefix = `${year}-`;
-  for (const t of trades) {
-    if (!t?.date || !t.date.startsWith(prefix)) continue;
-    const month = Number(t.date.slice(5, 7));
-    if (month >= 1 && month <= 12) map[month].push(t);
+  for (const row of daily || []) {
+    if (!row?.date || !String(row.date).startsWith(prefix)) continue;
+    const month = Number(String(row.date).slice(5, 7));
+    if (month >= 1 && month <= 12) map[month].push(row);
   }
   return map;
+}
+
+function rowsToMap(rows) {
+  const map = {};
+  (rows || []).forEach((row) => { if (row?.date) map[row.date] = row; });
+  return map;
+}
+
+function rowPnl(row, override) {
+  if (override != null) return Number(override.pnl_usd) || 0;
+  return Number(row?.pnl) || 0;
+}
+
+function rowTrades(row, override) {
+  if (override != null && override.trade_count != null) {
+    return Math.max(0, Number(override.trade_count) || 0);
+  }
+  return Number(row?.trades) || 0;
+}
+
+function rowActive(row, override) {
+  return rowTrades(row, override) > 0 || override != null;
+}
+
+function periodTotals(rows, overrideMap, useOverrides, prefix) {
+  const dayMap = rowsToMap(rows);
+  const dates = new Set([
+    ...Object.keys(dayMap),
+    ...(useOverrides ? Object.keys(overrideMap).filter((d) => d.startsWith(prefix)) : []),
+  ]);
+  let pnl = 0;
+  let trades = 0;
+  let wins = 0;
+  let actualTrades = 0;
+  dates.forEach((ds) => {
+    const row = dayMap[ds];
+    const override = useOverrides ? overrideMap[ds] : null;
+    pnl += rowPnl(row, override);
+    trades += rowTrades(row, override);
+    wins += Number(row?.wins) || 0;
+    actualTrades += Number(row?.trades) || 0;
+  });
+  return { pnl, trades, wins, actualTrades };
 }
 
 function isWeekendDow(dow) {
@@ -85,27 +121,31 @@ function dateString(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function summarizeWeek(days, tradeMap, overrideMap, useOverrides) {
+function summarizeWeek(days, dayMap, overrideMap, useOverrides) {
   let weekPnl = 0;
   let weekTrades = 0;
   days.forEach((ds) => {
     if (!ds) return;
-    const dts = tradeMap[ds] || [];
+    const row = dayMap[ds];
     const override = useOverrides ? overrideMap[ds] : null;
-    weekTrades += resolveDayTradeCount(dts, override);
-    weekPnl += resolveDayPnl(dts, override);
+    weekTrades += rowTrades(row, override);
+    weekPnl += rowPnl(row, override);
   });
-  return { weekPnl, weekTrades, weekActive: days.some((ds) => ds && dayHasActivity(tradeMap[ds] || [], useOverrides ? overrideMap[ds] : null)) };
+  return {
+    weekPnl,
+    weekTrades,
+    weekActive: days.some((ds) => ds && rowActive(dayMap[ds], useOverrides ? overrideMap[ds] : null)),
+  };
 }
 
-function buildMonthWeeks(year, month, tradeMap, overrideMap, useOverrides) {
+function buildMonthWeeks(year, month, dayMap, overrideMap, useOverrides) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const weeks = [];
   let currentWeek = [null, null, null, null, null, null, null];
 
   function flushWeek() {
     if (!currentWeek.some(Boolean)) return;
-    const { weekPnl, weekTrades, weekActive } = summarizeWeek(currentWeek, tradeMap, overrideMap, useOverrides);
+    const { weekPnl, weekTrades, weekActive } = summarizeWeek(currentWeek, dayMap, overrideMap, useOverrides);
     weeks.push({ days: [...currentWeek], weekPnl, weekTrades, weekActive, index: weeks.length + 1 });
     currentWeek = [null, null, null, null, null, null, null];
   }
@@ -129,15 +169,8 @@ function weekRangeLabel(days) {
   return start === end ? `Day ${start}` : `${start}–${end}`;
 }
 
-function monthTotalPnl(trades, overrideMap, useOverrides) {
-  const tradeMap = {};
-  trades.forEach((t) => { (tradeMap[t.date] ||= []).push(t); });
-  const dates = new Set([...Object.keys(tradeMap), ...(useOverrides ? Object.keys(overrideMap) : [])]);
-  let total = 0;
-  dates.forEach((ds) => {
-    total += resolveDayPnl(tradeMap[ds] || [], useOverrides ? overrideMap[ds] : null);
-  });
-  return total;
+function monthPrefix(year, month) {
+  return `${year}-${String(month).padStart(2, '0')}`;
 }
 
 function StatCard({ value, label, valueClass = 'text-zinc-900' }) {
@@ -162,30 +195,31 @@ function Legend() {
   );
 }
 
-function MonthPickerCard({ year, month, trades, overrideMap, useOverrides, denomination = 'usd', onSelect }) {
-  const tradeMap = {};
-  trades.forEach((t) => { (tradeMap[t.date] ||= []).push(t); });
+function MonthPickerCard({ year, month, days, overrideMap, useOverrides, denomination = 'usd', onSelect }) {
+  const dayMap = rowsToMap(days);
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date().toISOString().split('T')[0];
-  const totalPnl = monthTotalPnl(trades, overrideMap, useOverrides);
-  const totalTrades = monthTradeTotal(trades, overrideMap, useOverrides, year, month);
-  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-${String(month).padStart(2, '0')}`)));
+  const totals = periodTotals(days, overrideMap, useOverrides, monthPrefix(year, month));
+  const totalPnl = totals.pnl;
+  const totalTrades = totals.trades;
+  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(monthPrefix(year, month))));
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(<div className="h-5 w-5" key={`e${i}`} />);
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dts = tradeMap[ds] || [];
+    const row = dayMap[ds];
     const override = useOverrides ? overrideMap[ds] : null;
-    const dayPnl = resolveDayPnl(dts, override);
-    const tone = toneFromPnl(dayPnl, dayHasActivity(dts, override));
+    const dayPnl = rowPnl(row, override);
+    const active = rowActive(row, override);
+    const tone = toneFromPnl(dayPnl, active);
     const weekend = isWeekendDow(new Date(year, month - 1, d).getDay());
     cells.push(
       <div
         className={`${miniCellClass(tone, ds === today)} ${weekend && tone === 'none' ? 'text-zinc-300 dark:text-zinc-600' : ''} ${weekend ? 'opacity-70' : ''}`}
         key={ds}
-        title={dayHasActivity(dts, override) ? fmtPnlStrict(dayPnl, denomination) : weekend ? 'Weekend' : ''}
+        title={active ? fmtPnlStrict(dayPnl, denomination) : weekend ? 'Weekend' : ''}
       >
         {d}
       </div>
@@ -215,12 +249,12 @@ function MonthPickerCard({ year, month, trades, overrideMap, useOverrides, denom
   );
 }
 
-function YearView({ year, yearTrades, overrideMap, useOverrides, denomination = 'usd', loading, onYearChange, onSelectMonth }) {
-  const allTrades = useMemo(() => Object.values(yearTrades).flat(), [yearTrades]);
-  const totalPnl = monthTotalPnl(allTrades, overrideMap, useOverrides);
-  const totalTrades = yearTradeTotal(allTrades, overrideMap, useOverrides, year);
-  const wins = allTrades.filter((t) => t.result === 'win').length;
-  const wr = allTrades.length > 0 ? Math.round((wins / allTrades.length) * 100) : 0;
+function YearView({ year, yearDays, overrideMap, useOverrides, denomination = 'usd', loading, onYearChange, onSelectMonth }) {
+  const allDays = useMemo(() => Object.values(yearDays).flat(), [yearDays]);
+  const totals = periodTotals(allDays, overrideMap, useOverrides, `${year}-`);
+  const totalPnl = totals.pnl;
+  const totalTrades = totals.trades;
+  const wr = totals.actualTrades > 0 ? Math.round((totals.wins / totals.actualTrades) * 100) : 0;
   const currentYear = new Date().getFullYear();
   const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-`)));
 
@@ -245,7 +279,7 @@ function YearView({ year, yearTrades, overrideMap, useOverrides, denomination = 
           valueClass={totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
         />
         <StatCard value={hasActivity ? totalTrades : '—'} label="Trades" />
-        <StatCard value={allTrades.length > 0 ? `${wr}%` : '—'} label="Win Rate" />
+        <StatCard value={totals.actualTrades > 0 ? `${wr}%` : '—'} label="Win Rate" />
       </div>
 
       {loading ? (
@@ -257,7 +291,7 @@ function YearView({ year, yearTrades, overrideMap, useOverrides, denomination = 
               key={i}
               year={year}
               month={i + 1}
-              trades={yearTrades[i + 1] || []}
+              days={yearDays[i + 1] || []}
               overrideMap={overrideMap}
               useOverrides={useOverrides}
               denomination={denomination}
@@ -275,7 +309,7 @@ function YearView({ year, yearTrades, overrideMap, useOverrides, denomination = 
 function MonthDetailView({
   year,
   month,
-  monthTrades,
+  monthDays,
   overrideMap,
   useOverrides,
   denomination = 'usd',
@@ -285,21 +319,20 @@ function MonthDetailView({
   onNextMonth,
   onEditDay,
 }) {
-  const totalPnl = monthTotalPnl(monthTrades, overrideMap, useOverrides);
-  const totalTrades = monthTradeTotal(monthTrades, overrideMap, useOverrides, year, month);
-  const wins = monthTrades.filter((t) => t.result === 'win').length;
-  const wr = monthTrades.length > 0 ? Math.round((wins / monthTrades.length) * 100) : 0;
+  const totals = periodTotals(monthDays, overrideMap, useOverrides, monthPrefix(year, month));
+  const totalPnl = totals.pnl;
+  const totalTrades = totals.trades;
+  const wr = totals.actualTrades > 0 ? Math.round((totals.wins / totals.actualTrades) * 100) : 0;
   const today = new Date().toISOString().split('T')[0];
-  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-${String(month).padStart(2, '0')}`)));
+  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(monthPrefix(year, month))));
 
-  const { weeks, tradeMap } = useMemo(() => {
-    const map = {};
-    monthTrades.forEach((t) => { (map[t.date] ||= []).push(t); });
+  const { weeks, dayMap } = useMemo(() => {
+    const map = rowsToMap(monthDays);
     return {
       weeks: buildMonthWeeks(year, month, map, overrideMap, useOverrides),
-      tradeMap: map,
+      dayMap: map,
     };
-  }, [year, month, monthTrades, overrideMap, useOverrides]);
+  }, [year, month, monthDays, overrideMap, useOverrides]);
 
   const bestWeekPnl = weeks.reduce((best, w) => (w.weekActive && w.weekPnl > best ? w.weekPnl : best), -Infinity);
   const bestWeek = bestWeekPnl === -Infinity ? null : weeks.find((w) => w.weekPnl === bestWeekPnl);
@@ -324,7 +357,7 @@ function MonthDetailView({
           valueClass={totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
         />
         <StatCard value={hasActivity ? totalTrades : '—'} label="Trades" />
-        <StatCard value={monthTrades.length > 0 ? `${wr}%` : '—'} label="Win Rate" />
+        <StatCard value={totals.actualTrades > 0 ? `${wr}%` : '—'} label="Win Rate" />
         <StatCard
           value={bestWeek ? fmtPnlStrict(bestWeek.weekPnl, denomination) : '—'}
           label={bestWeek ? `Best week (${weekRangeLabel(bestWeek.days)})` : 'Best week'}
@@ -360,11 +393,11 @@ function MonthDetailView({
                 <div className="grid grid-cols-8 gap-2" key={week.index}>
                   {week.days.map((ds, idx) => {
                     if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
-                    const dts = tradeMap[ds] || [];
+                    const row = dayMap[ds];
                     const override = useOverrides ? overrideMap[ds] : null;
-                    const dayPnl = resolveDayPnl(dts, override);
-                    const count = resolveDayTradeCount(dts, override);
-                    const active = dayHasActivity(dts, override);
+                    const dayPnl = rowPnl(row, override);
+                    const count = rowTrades(row, override);
+                    const active = rowActive(row, override);
                     const tone = toneFromPnl(dayPnl, active);
                     const dayNum = parseInt(ds.split('-')[2], 10);
                     const manual = Boolean(override);
@@ -398,7 +431,7 @@ function MonthDetailView({
                           type="button"
                           className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left`}
                           key={ds}
-                          onClick={() => onEditDay(ds, dts, override)}
+                          onClick={() => onEditDay(ds, row, override)}
                         >
                           {inner}
                         </button>
@@ -440,7 +473,7 @@ function MonthDetailView({
 
 export default function CalendarPage() {
   const {
-    visibleTrades,
+    journalDaily,
     viewMode,
     activeAccount,
     dataLoading,
@@ -456,12 +489,11 @@ export default function CalendarPage() {
   const [loadingOverrides, setLoadingOverrides] = useState(false);
   const [editDay, setEditDay] = useState(null);
 
-  // Trades are already loaded by AppDataContext — bucket locally instead of 12 monthly API calls.
-  const yearTrades = useMemo(
-    () => (dataLoading ? EMPTY_YEAR_BUCKETS : bucketTradesByMonth(visibleTrades, year)),
-    [visibleTrades, year, dataLoading],
+  const yearDays = useMemo(
+    () => (dataLoading ? EMPTY_YEAR_BUCKETS : bucketDailyByMonth(journalDaily, year)),
+    [journalDaily, year, dataLoading],
   );
-  const monthTrades = yearTrades[month] || [];
+  const monthDays = yearDays[month] || [];
 
   useEffect(() => {
     if (!useOverrides) {
@@ -538,7 +570,7 @@ export default function CalendarPage() {
       {screen === 'year' ? (
         <YearView
           year={year}
-          yearTrades={yearTrades}
+          yearDays={yearDays}
           overrideMap={dailyOverrides}
           useOverrides={useOverrides}
           denomination={denomination}
@@ -550,7 +582,7 @@ export default function CalendarPage() {
         <MonthDetailView
           year={year}
           month={month}
-          monthTrades={monthTrades}
+          monthDays={monthDays}
           overrideMap={dailyOverrides}
           useOverrides={useOverrides}
           denomination={denomination}
@@ -558,10 +590,10 @@ export default function CalendarPage() {
           onBack={goBackToYear}
           onPrevMonth={prevMonth}
           onNextMonth={nextMonth}
-          onEditDay={(date, dts, override) => setEditDay({
+          onEditDay={(date, row, override) => setEditDay({
             date,
-            tradesSum: tradesSumForDay(dts),
-            tradeCount: dts.length,
+            tradesSum: Number(row?.pnl) || 0,
+            tradeCount: Number(row?.trades) || 0,
             override,
           })}
         />

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { ToastContainer } from 'react-toastify';
 import { useAuth } from './context/AuthContext';
 import { AppDataProvider } from './context/AppDataContext';
@@ -27,28 +27,25 @@ function RouteFallback() {
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, ready } = useAuth();
-  if (!ready) return null;
+  if (!ready) return <RouteFallback />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 }
 
 function JournalRoute({ children }) {
-  const { isAdmin, ready, profileLoading } = useAuth();
-  if (!ready || profileLoading) return null;
-  if (isAdmin) return <Navigate to="/admin" replace />;
   return children;
 }
 
 function GuestRoute({ children }) {
   const { isAuthenticated, isAdmin, ready, profileLoading } = useAuth();
-  if (!ready || profileLoading) return null;
+  if (!ready || (isAuthenticated && profileLoading)) return <RouteFallback />;
   if (isAuthenticated) return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
   return children;
 }
 
 function AdminRoute({ children }) {
   const { isAuthenticated, isAdmin, ready, profileLoading } = useAuth();
-  if (!ready || profileLoading) return null;
+  if (!ready || profileLoading) return <RouteFallback />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
@@ -79,7 +76,7 @@ export default function App() {
   const { ready } = useAuth();
 
   return (
-    !ready ? null : (
+    !ready ? <RouteFallback /> : (
       <BrowserRouter>
         <AppChrome>
           <Suspense fallback={<RouteFallback />}>

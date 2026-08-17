@@ -59,16 +59,16 @@ for (const table of tables) {
   }
 }
 
-const rpc = await fetch(`${url}/rest/v1/rpc/get_leaderboard`, {
+const rpc = await fetch(`${url}/rest/v1/rpc/get_public_leaderboard`, {
   method: 'POST',
   headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-  body: '{}',
+  body: JSON.stringify({ p_limit: 5, p_min_trades: 1 }),
 });
 
 if (rpc.ok) {
-  console.log('  get_leaderboard(): ok');
+  console.log('  get_public_leaderboard(): ok');
 } else {
-  console.log(`  get_leaderboard(): missing or error (${rpc.status})`);
+  console.log(`  get_public_leaderboard(): missing or error (${rpc.status})`);
 }
 
 const adminRpc = await fetch(`${url}/rest/v1/rpc/admin_platform_stats`, {

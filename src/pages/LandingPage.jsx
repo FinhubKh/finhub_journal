@@ -202,7 +202,7 @@ function MockCalendar() {
         <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+$840 month</span>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => <span key={d}>{d}</span>)}
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={`${d}-${i}`}>{d}</span>)}
       </div>
       <div className="mt-1 grid grid-cols-7 gap-1">
         {cells.map((c, i) => (

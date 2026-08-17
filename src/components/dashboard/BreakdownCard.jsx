@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import { buildPerfGroups } from '../../lib/stats';
-import { fmtPnlStrict } from '../../lib/format';
+import { fmtPnlStrict, capitalize } from '../../lib/format';
 import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
 
 const LIGHT_PIE_COLORS = ['#7c3aed', '#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe', '#f5f3ff'];
@@ -13,22 +12,21 @@ const KINDS = [
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
 
-export default function BreakdownCard({ trades, denomination = 'usd', fill = false }) {
+export default function BreakdownCard({ breakdown, denomination = 'usd', fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [kind, setKind] = useState('symbol');
+  const groups = useMemo(
+    () => (Array.isArray(breakdown?.[kind]) ? breakdown[kind] : []),
+    [breakdown, kind],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const totals = {};
-    trades.forEach((t) => {
-      const k = t[kind] ? t[kind].charAt(0).toUpperCase() + t[kind].slice(1) : 'Other';
-      totals[k] = (totals[k] || 0) + 1;
-    });
-    const labels = Object.keys(totals);
-    const data = Object.values(totals);
+    const labels = groups.map((g) => capitalize(g.name));
+    const data = groups.map((g) => Number(g.count) || 0);
 
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
     if (labels.length === 0) return;
@@ -68,10 +66,9 @@ export default function BreakdownCard({ trades, denomination = 'usd', fill = fal
     });
 
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [trades, kind]);
+  }, [groups, kind]);
 
-  const groups = trades.length === 0 ? null : buildPerfGroups(trades, kind);
-  const entries = groups ? Object.entries(groups).sort((a, b) => b[1].pnl - a[1].pnl) : [];
+  const entries = [...groups].sort((a, b) => (Number(b.pnl) || 0) - (Number(a.pnl) || 0));
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
@@ -90,7 +87,7 @@ export default function BreakdownCard({ trades, denomination = 'usd', fill = fal
       </div>
 
       <div className={`${cardBody} relative ${fill ? 'min-h-[200px] flex-[1.1]' : 'h-[180px]'}`}>
-        {trades.length === 0 ? (
+        {groups.length === 0 ? (
           <div className={emptyState}>No breakdown data yet.</div>
         ) : (
           <canvas ref={canvasRef} className="h-full w-full" />
@@ -103,23 +100,24 @@ export default function BreakdownCard({ trades, denomination = 'usd', fill = fal
             fill ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-[220px] overflow-y-auto'
           }`}
         >
-          {entries.map(([name, d]) => {
-            const t = d.wins + d.losses + d.be;
-            const wr = t > 0 ? Math.round((d.wins / t) * 100) : 0;
+          {entries.map((d) => {
+            const wr = Number(d.wr) || 0;
+            const count = Number(d.count) || 0;
+            const pnl = Number(d.pnl) || 0;
             return (
               <div
                 className="flex items-center justify-between gap-3 border-b border-zinc-50 px-4 py-3 last:border-0 dark:border-zinc-900 md:px-5"
-                key={name}
+                key={d.name}
               >
-                <div className="min-w-0 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{name}</div>
+                <div className="min-w-0 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{capitalize(d.name)}</div>
                 <div className="flex shrink-0 items-center gap-3 text-xs">
                   <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                     {wr}% WR
                   </span>
-                  <span className={`font-semibold tabular-nums ${d.pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {fmtPnlStrict(d.pnl, denomination)}
+                  <span className={`font-semibold tabular-nums ${pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {fmtPnlStrict(pnl, denomination)}
                   </span>
-                  <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{t}t</span>
+                  <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{count}t</span>
                 </div>
               </div>
             );

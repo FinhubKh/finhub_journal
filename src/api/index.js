@@ -140,7 +140,6 @@ async function fetchPaginated(urlStr, pageSize = TRADE_PAGE_SIZE) {
       headers: {
         ...authHeaders(getToken()),
         Range: `${from}-${to}`,
-        Prefer: 'count=exact',
       },
     });
     if (!res.ok) {
@@ -345,16 +344,18 @@ export async function listAccountSyncKeys() {
   return res.json();
 }
 
-export async function getAccountSyncKey(accountId) {
+/** Returns whether a sync key exists for the account (never returns the raw key). */
+export async function hasAccountSyncKey(accountId) {
   const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?select=raw_key&trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}&limit=1`,
+    `${SUPABASE_URL}/rest/v1/sync_keys?select=id&trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}&limit=1`,
     { headers: authHeaders(getToken()) },
   );
-  if (!res.ok) return null;
+  if (!res.ok) return false;
   const rows = await res.json();
-  return rows[0]?.raw_key || null;
+  return Boolean(rows[0]?.id);
 }
 
+/** Creates a new sync key. Raw key is returned once and is not stored in the database. */
 export async function generateAccountSyncKey(accountId) {
   const rawKey = await generateRandomKey();
   const keyHash = await sha256Hex(rawKey);
@@ -364,12 +365,11 @@ export async function generateAccountSyncKey(accountId) {
   );
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys`, {
     method: 'POST',
-    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+    headers: { ...authHeaders(getToken()), Prefer: 'return=minimal' },
     body: JSON.stringify({
       user_id: getUserId(),
       trading_account_id: accountId,
       key_hash: keyHash,
-      raw_key: rawKey,
     }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -387,3 +387,4 @@ export async function revokeAccountSyncKey(accountId) {
 export * from './compounding';
 export * from './share';
 export * from './investorSync';
+export * from './journal';

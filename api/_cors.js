@@ -16,7 +16,8 @@ function isAllowedOrigin(origin) {
   if (ALLOWED_ORIGINS.has(origin)) return true;
   try {
     const host = new URL(origin).hostname;
-    return host.endsWith('.vercel.app');
+    // Only this project's Vercel previews (finhubjournal*) — not every *.vercel.app app.
+    return host === 'finhubjournal.vercel.app' || /^finhubjournal(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(host);
   } catch {
     return false;
   }

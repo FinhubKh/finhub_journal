@@ -5,7 +5,6 @@ import {
   deleteTradingAccount,
   generateAccountSyncKey,
   getAccountShareUrl,
-  getAccountSyncKey,
   listAccountSyncKeys,
   listInvestorCredentialsStatus,
   regenerateTradingAccountShareToken,
@@ -231,20 +230,10 @@ export default function AccountDetailPage() {
   }
 
   async function handleShowKey() {
-    setBusy(true);
-    try {
-      const key = await getAccountSyncKey(account.id);
-      if (!key) {
-        await alert({ title: 'No key found', message: 'Generate a sync key for this account first.' });
-        await reloadSyncState();
-        return;
-      }
-      setRevealedKey(key);
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not load sync key.' });
-    } finally {
-      setBusy(false);
-    }
+    await alert({
+      title: 'Key shown only once',
+      message: 'For security, the sync key cannot be retrieved again. Generate a new key and update MT5 if you lost it.',
+    });
   }
 
   async function handleRevokeKey() {
@@ -379,7 +368,7 @@ export default function AccountDetailPage() {
             {hasSyncKey ? (
               <>
                 <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
-                  Show key
+                  Key info
                 </button>
                 <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
                   Regenerate

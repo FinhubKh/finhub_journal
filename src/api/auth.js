@@ -48,25 +48,19 @@ function normalizeSession(data, prev = null) {
   };
 }
 
-/** Active session always lives in sessionStorage for this browser tab. */
+/** Active session in sessionStorage; remembered sessions also mirror to localStorage (no separate refresh blob). */
 function persistSession() {
   if (!_session) {
     sessionStorage.removeItem('nxuu_session');
+    if (!_rememberPreferred && !readRememberPreferred()) {
+      localStorage.removeItem('nxuu_session');
+    }
     return;
   }
-  sessionStorage.setItem('nxuu_session', JSON.stringify(_session));
-
-  // Keep remembered refresh token in sync when "Remember me" is on.
-  try {
-    const rem = JSON.parse(localStorage.getItem('nxuu_remember') || 'null');
-    if (rem?.email && _session.refresh_token) {
-      localStorage.setItem(
-        'nxuu_remember',
-        JSON.stringify({ email: rem.email, refresh_token: _session.refresh_token }),
-      );
-    }
-  } catch {
-    /* ignore */
+  const raw = JSON.stringify(_session);
+  sessionStorage.setItem('nxuu_session', raw);
+  if (_rememberPreferred || readRememberPreferred()) {
+    localStorage.setItem('nxuu_session', raw);
   }
 }
 
@@ -80,6 +74,16 @@ export function getToken() { return _session?.access_token || SUPABASE_ANON_KEY;
 export function getUserId() { return _session?.user?.id || null; }
 export function getUserEmail() { return _session?.user?.email || ''; }
 export function getUserDisplayName() { return _session?.user?.user_metadata?.display_name || ''; }
+
+let _rememberPreferred = false;
+
+function readRememberPreferred() {
+  try {
+    return Boolean(JSON.parse(localStorage.getItem('nxuu_remember') || 'null')?.email);
+  } catch {
+    return false;
+  }
+}
 
 function secondsUntilExpiry() {
   if (!_session?.expires_at) return null;
@@ -137,6 +141,13 @@ export async function signUp(email, password) {
   if (!res.ok || data.error || data.error_code || data.msg) {
     throw new Error(data.error_description || data.msg || data.error?.message || data.error || 'Sign up failed');
   }
+  if (data.access_token) {
+    clearSessionStorage();
+    _rememberPreferred = false;
+    _session = normalizeSession(data);
+    persistSession();
+    notify();
+  }
   return data;
 }
 
@@ -151,44 +162,55 @@ export async function signIn(email, password, remember = false) {
     throw new Error(data.error_description || data.msg || data.error || 'Invalid email or password.');
   }
   clearSessionStorage();
+  _rememberPreferred = Boolean(remember);
   _session = normalizeSession(data);
-  persistSession();
   if (remember) {
-    localStorage.setItem('nxuu_remember', JSON.stringify({ email, refresh_token: data.refresh_token }));
+    localStorage.setItem('nxuu_remember', JSON.stringify({ email }));
   } else {
     localStorage.removeItem('nxuu_remember');
+    localStorage.removeItem('nxuu_session');
   }
+  persistSession();
   notify();
   return _session;
 }
 
-// "Remember Me" — stored separately from the active session so the app
-// always lands on the login page, but the user can relogin in one tap.
+// "Remember Me" stores email only (for prefilling). Session lives in localStorage when remembered.
 export function getRemembered() {
-  try { return JSON.parse(localStorage.getItem('nxuu_remember') || 'null'); }
-  catch (e) { return null; }
+  try {
+    const rem = JSON.parse(localStorage.getItem('nxuu_remember') || 'null');
+    if (!rem?.email) return null;
+    return { email: rem.email };
+  } catch (e) { return null; }
 }
 
 export function clearRemembered() {
   localStorage.removeItem('nxuu_remember');
+  localStorage.removeItem('nxuu_session');
+  _rememberPreferred = false;
 }
 
+/** Prefer restoring a remembered localStorage session; otherwise ask the user to sign in. */
 export async function quickSignIn() {
   const rem = getRemembered();
-  if (!rem?.refresh_token) throw new Error('No remembered session.');
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
-    body: JSON.stringify({ refresh_token: rem.refresh_token }),
-  });
-  const data = await res.json();
-  if (!res.ok || !data.access_token) {
+  if (!rem?.email) throw new Error('No remembered session.');
+  _rememberPreferred = true;
+  const raw = localStorage.getItem('nxuu_session');
+  if (!raw) throw new Error('Session expired, please sign in again.');
+  const s = JSON.parse(raw);
+  if (!s?.access_token || !s?.refresh_token) {
     clearRemembered();
     throw new Error('Session expired, please sign in again.');
   }
-  _session = normalizeSession(data);
+  _session = normalizeSession(s);
   persistSession();
-  localStorage.setItem('nxuu_remember', JSON.stringify({ email: rem.email, refresh_token: data.refresh_token }));
+  try {
+    await ensureFreshSession({ force: true });
+  } catch {
+    clearRemembered();
+    await forceSignOutLocal();
+    throw new Error('Session expired, please sign in again.');
+  }
   notify();
   return _session;
 }
@@ -243,9 +265,9 @@ async function looksLikeJwtExpired(res) {
   try {
     const data = await res.clone().json();
     const msg = String(data?.message || data?.msg || data?.error_description || '');
-    return data?.code === 'PGRST303' || /jwt expired|invalid jwt/i.test(msg) || true;
+    return data?.code === 'PGRST303' || /jwt expired|invalid jwt|token.*expired/i.test(msg);
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -284,17 +306,15 @@ export async function signOut() {
 }
 
 export function restoreSession() {
-  // Only restore from sessionStorage (same browser session). This means
-  // reopening the site (new browser session) always lands on the login page.
-  localStorage.removeItem('nxuu_session');
   try {
-    const raw = sessionStorage.getItem('nxuu_session');
+    const raw = sessionStorage.getItem('nxuu_session') || localStorage.getItem('nxuu_session');
     if (!raw) return false;
     const s = JSON.parse(raw);
     if (!s?.access_token || !s?.user?.id || !s?.user?.email) {
       clearSessionStorage();
       return false;
     }
+    _rememberPreferred = readRememberPreferred();
     _session = normalizeSession(s);
     persistSession();
     notify();
