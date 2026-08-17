@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
-import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, TRADE_PAGE_SIZE } from '../../api';
-import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue } from '../../lib/format';
+import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, fetchCashflows, TRADE_PAGE_SIZE } from '../../api';
+import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue, fmtBalance } from '../../lib/format';
 import { tradePnlDenomination } from '../../lib/accounts';
 import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
@@ -33,6 +33,40 @@ function FilterField({ label, children }) {
   );
 }
 
+function cashflowToRow(c) {
+  return {
+    id: `cash-${c.id}`,
+    date: c.date,
+    symbol: null,
+    direction: null,
+    lot_size: null,
+    result: c.op_type,
+    r_value: null,
+    pnl_usd: c.amount,
+    session: null,
+    notes: c.comment,
+    account_id: c.account_id,
+    source: c.source,
+    ticket: c.ticket,
+    isCashflow: true,
+  };
+}
+
+function mergeCashflowsIntoPage(trades, cashflows, { pageSafe, totalPages, hideCash }) {
+  if (hideCash || !cashflows.length) return trades;
+  const rows = cashflows.map(cashflowToRow);
+  if (trades.length === 0) return pageSafe === 1 ? rows : [];
+  const newest = trades[0]?.date;
+  const oldest = trades[trades.length - 1]?.date;
+  const extra = rows.filter((c) => {
+    if (c.date >= oldest && c.date <= newest) return true;
+    if (pageSafe === 1 && c.date > newest) return true;
+    if (pageSafe === totalPages && c.date < oldest) return true;
+    return false;
+  });
+  return [...trades, ...extra].sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
+}
+
 export default function TradeList() {
   const {
     viewMode,
@@ -52,6 +86,7 @@ export default function TradeList() {
   const [page, setPage] = useState(1);
   const [manualOpen, setManualOpen] = useState(false);
   const [pageTrades, setPageTrades] = useState([]);
+  const [cashflows, setCashflows] = useState([]);
   const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(true);
   const [unannotatedCount, setUnannotatedCount] = useState(0);
@@ -96,21 +131,32 @@ export default function TradeList() {
     setListLoading(true);
     (async () => {
       try {
-        const { trades, total: nextTotal } = await fetchTradesPage({
-          accountId: scopedAccountId || undefined,
-          result: filters.result || undefined,
-          session: filters.session || undefined,
-          from: filters.from || undefined,
-          to: filters.to || undefined,
-          page: pageSafe,
-          pageSize: PAGE_SIZE,
-        });
+        const [{ trades, total: nextTotal }, nextCash] = await Promise.all([
+          fetchTradesPage({
+            accountId: scopedAccountId || undefined,
+            result: filters.result || undefined,
+            session: filters.session || undefined,
+            from: filters.from || undefined,
+            to: filters.to || undefined,
+            page: pageSafe,
+            pageSize: PAGE_SIZE,
+          }),
+          filters.result || filters.session
+            ? Promise.resolve([])
+            : fetchCashflows({
+                accountId: scopedAccountId || undefined,
+                from: filters.from || undefined,
+                to: filters.to || undefined,
+              }),
+        ]);
         if (cancelled) return;
         setPageTrades(trades);
+        setCashflows(nextCash);
         setTotal(nextTotal);
       } catch {
         if (!cancelled) {
           setPageTrades([]);
+          setCashflows([]);
           setTotal(0);
         }
       } finally {
@@ -135,6 +181,11 @@ export default function TradeList() {
 
   const hasFilters = Object.values(filters).some((v) => v !== '');
   const unfilteredTotal = journalStats?.total || 0;
+  const hideCash = Boolean(filters.result || filters.session);
+  const visibleRows = useMemo(
+    () => mergeCashflowsIntoPage(pageTrades, cashflows, { pageSafe, totalPages, hideCash }),
+    [pageTrades, cashflows, pageSafe, totalPages, hideCash],
+  );
 
   async function confirmDelete(id, e) {
     e.stopPropagation();
@@ -169,6 +220,7 @@ export default function TradeList() {
             {viewMode === 'portfolio'
               ? 'All accounts'
               : activeAccount?.name || 'Account'}
+            {journalStats?.balance != null ? ` · Balance ${fmtBalance(journalStats.balance, activeAccount?.pnl_denomination)}` : ''}
             {' · '}
             {total} trade{total === 1 ? '' : 's'}
             {hasFilters && unfilteredTotal > 0 ? ` · filtered from ${unfilteredTotal}` : ''}
@@ -255,9 +307,9 @@ export default function TradeList() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {listLoading && total === 0 ? (
+        {listLoading && total === 0 && visibleRows.length === 0 ? (
           <div className={`${emptyState} min-h-0 flex-1`}>Loading trades…</div>
-        ) : total === 0 ? (
+        ) : total === 0 && visibleRows.length === 0 ? (
           <div className={`${emptyState} min-h-0 flex-1`}>
             {hasFilters || unfilteredTotal > 0 ? 'No trades match your filters.' : 'No trades yet. Log a manual trade or sync from MT5.'}
           </div>
@@ -280,22 +332,25 @@ export default function TradeList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 bg-white">
-                {pageTrades.map((t) => {
-                  const isApi = t.source === 'api';
-                  const needsReview = isApi && !t.notes;
-                  const r = tradeRValue(t, journalStats?.avgLoss);
-                  const rDisplay = fmtTradeR(t, journalStats?.avgLoss);
+                {visibleRows.map((t) => {
+                  const isCashflow = Boolean(t.isCashflow);
+                  const isApi = t.source === 'api' || t.source === 'investor_bridge';
+                  const r = isCashflow ? null : tradeRValue(t, journalStats?.avgLoss);
+                  const rDisplay = isCashflow ? '—' : fmtTradeR(t, journalStats?.avgLoss);
                   const denom = tradePnlDenomination(t, resolveTradeAccount);
                   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denom);
                   const accountName = resolveTradeAccount(t)?.name || t.account || '—';
                   const pnlTone = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
                   const rTone = (r || 0) > 0 ? 'text-violet-600' : (r || 0) < 0 ? 'text-rose-600' : 'text-amber-600';
+                  const resultLabel = t.result === 'win' || t.result === 'loss' || t.result === 'be'
+                    ? t.result
+                    : capitalize(t.result);
 
                   return (
                     <tr
                       key={t.id}
-                      className="cursor-pointer transition hover:bg-violet-50/40"
-                      onClick={() => open(t)}
+                      className={isCashflow ? 'bg-zinc-50/80' : 'cursor-pointer transition hover:bg-violet-50/40'}
+                      onClick={isCashflow ? undefined : () => open(t)}
                     >
                       <td className={`${td} font-medium text-zinc-900`}>{fmtDateShort(t.date)}</td>
                       <td className={`${td} font-semibold text-zinc-900`}>{t.symbol || '—'}</td>
@@ -309,14 +364,7 @@ export default function TradeList() {
                         <span className="max-w-[140px] truncate block text-zinc-600">{accountName}</span>
                       </td>
                       <td className={td}>
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className={tradeResultBadge(t.result)}>{t.result}</span>
-                          {needsReview && (
-                            <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                              Review
-                            </span>
-                          )}
-                        </span>
+                        <span className={tradeResultBadge(t.result)}>{resultLabel}</span>
                       </td>
                       <td className={`${tdNum} ${rTone}`}>{rDisplay}</td>
                       <td className={`${tdNum} ${pnlTone}`}>{pnlDisplay}</td>
@@ -325,7 +373,7 @@ export default function TradeList() {
                         <span className="line-clamp-2 max-w-[220px]">{t.notes || '—'}</span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {!isApi && (
+                        {!isApi && !isCashflow && (
                           <button
                             className={btnDanger}
                             type="button"

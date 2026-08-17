@@ -83,6 +83,19 @@ export function fmtTradeR(t, avgLoss = 0) {
   return fmtR(r) || '—';
 }
 
+/** Unsigned account balance (no leading +). */
+export function fmtBalance(v, denomination = 'usd') {
+  if (v == null || v === '') return '—';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  const displayed = toDisplayPnl(n, denomination);
+  const sym = moneySymbol(denomination);
+  if (displayed === 0) return `${sym}0.00`;
+  return displayed > 0
+    ? `${sym}${displayed.toFixed(2)}`
+    : `-${sym}${Math.abs(displayed).toFixed(2)}`;
+}
+
 /** Lot size for trade tables (2 decimals, em dash when missing). */
 export function fmtLot(v) {
   if (v == null || v === '') return '—';

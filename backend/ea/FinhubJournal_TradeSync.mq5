@@ -4,7 +4,7 @@
 //| Read-only: only reads history, never places/modifies trades.      |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.06"
+#property version   "1.07"
 
 input string SyncKey           = "";  // Paste sync key from Settings > Account
 input int    SyncEveryMinutes  = 5;   // Repeat sync while the EA stays on a chart
@@ -62,6 +62,43 @@ bool IsExitDeal(long entryType)
    return(entryType == DEAL_ENTRY_OUT
        || entryType == DEAL_ENTRY_INOUT
        || entryType == DEAL_ENTRY_OUT_BY);
+  }
+
+//+------------------------------------------------------------------+
+bool IsCashDeal(long dealType)
+  {
+   return(dealType == DEAL_TYPE_BALANCE
+       || dealType == DEAL_TYPE_CREDIT
+       || dealType == DEAL_TYPE_CHARGE
+       || dealType == DEAL_TYPE_CORRECTION
+       || dealType == DEAL_TYPE_BONUS
+       || dealType == DEAL_TYPE_INTEREST);
+  }
+
+//+------------------------------------------------------------------+
+string CashOpType(long dealType, double amount)
+  {
+   if(dealType == DEAL_TYPE_CREDIT)     return "credit";
+   if(dealType == DEAL_TYPE_CHARGE)     return "charge";
+   if(dealType == DEAL_TYPE_CORRECTION) return "correction";
+   if(dealType == DEAL_TYPE_BONUS)      return "bonus";
+   if(dealType == DEAL_TYPE_INTEREST)   return "interest";
+   return (amount >= 0) ? "deposit" : "withdrawal";
+  }
+
+//+------------------------------------------------------------------+
+string CashflowJson(ulong dealTicket, string opType, double amount, string comment, datetime when)
+  {
+   string json = "{";
+   json += "\"ticket\":" + IntegerToString((long)dealTicket) + ",";
+   json += "\"op_type\":\"" + opType + "\",";
+   json += "\"amount\":" + DoubleToString(amount, 2) + ",";
+   json += "\"pnl_raw\":" + DoubleToString(amount, 2) + ",";
+   json += "\"comment\":\"" + JsonEscape(comment) + "\",";
+   json += "\"open_time\":\"" + TimeToISO(when) + "\",";
+   json += "\"close_time\":\"" + TimeToISO(when) + "\"";
+   json += "}";
+   return json;
   }
 
 //+------------------------------------------------------------------+
@@ -147,6 +184,8 @@ void SyncHistory(bool fullHistory)
    int total = HistoryDealsTotal();
    string batch = "";
    int batchCount = 0;
+   string cashBatch = "";
+   int cashCount = 0;
    int sent = 0;
    int failed = 0;
 
@@ -154,6 +193,28 @@ void SyncHistory(bool fullHistory)
      {
       ulong dealTicket = HistoryDealGetTicket(i);
       if(dealTicket == 0) continue;
+
+      long dealType = HistoryDealGetInteger(dealTicket, DEAL_TYPE);
+      if(IsCashDeal(dealType))
+        {
+         double amount = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+         if(amount == 0) continue;
+         datetime when = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
+         string comment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
+         if(cashCount > 0) cashBatch += ",";
+         cashBatch += CashflowJson(dealTicket, CashOpType(dealType, amount), amount, comment, when);
+         cashCount++;
+         if(cashCount >= BatchSize)
+           {
+            if(SendCashBatch(cashBatch, cashCount))
+               sent += cashCount;
+            else
+               failed += cashCount;
+            cashBatch = "";
+            cashCount = 0;
+           }
+         continue;
+        }
 
       long entryType = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
       if(!IsExitDeal(entryType)) continue;
@@ -201,9 +262,17 @@ void SyncHistory(bool fullHistory)
          failed += batchCount;
      }
 
+   if(cashCount > 0)
+     {
+      if(SendCashBatch(cashBatch, cashCount))
+         sent += cashCount;
+      else
+         failed += cashCount;
+     }
+
    if(sent + failed == 0)
      {
-      Print("FinhubJournal_TradeSync: No closed trades found.");
+      Print("FinhubJournal_TradeSync: No closed trades or cashflows found.");
       return;
      }
 
@@ -265,6 +334,37 @@ bool SendBatch(string tradesCsv, int count)
      }
 
    Print("FinhubJournal_TradeSync: HTTP ", res, " batch=", count, " Response: ", response);
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+bool SendCashBatch(string cashCsv, int count)
+  {
+   string json = "{\"cashflows\":[" + cashCsv + "]}";
+   string response;
+   int res = PostJson(EndpointPrimary, json, response);
+
+   if(res == -1)
+     {
+      int err = GetLastError();
+      Print("FinhubJournal_TradeSync: cashflow primary WebRequest failed. Error ", err, " — trying fallback.");
+      ResetLastError();
+      res = PostJson(EndpointFallback, json, response);
+     }
+
+   if(res == -1)
+     {
+      Print("FinhubJournal_TradeSync: cashflow WebRequest failed. Error ", GetLastError());
+      return false;
+     }
+
+   if(res < 200 || res >= 300)
+     {
+      Print("FinhubJournal_TradeSync: cashflow HTTP ", res, " Response: ", response);
+      return false;
+     }
+
+   Print("FinhubJournal_TradeSync: cashflow HTTP ", res, " batch=", count);
    return true;
   }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { viewPnlDenomination } from '../lib/accounts';
-import { fmtPnlStrict } from '../lib/format';
+import { fmtPnlStrict, fmtBalance } from '../lib/format';
 import {
   btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, sectionLabel,
 } from '../lib/ui';
@@ -121,7 +121,17 @@ function SummarySection({ stats, pfPositive, daily, denomination }) {
     >
       <div className="shrink-0">
         <h2 id="overview-summary-heading" className={`${sectionLabel} mb-3`}>Summary</h2>
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
+          <StatTile
+            label="Balance"
+            value={stats?.balance == null ? '—' : fmtBalance(stats.balance, denomination)}
+            hint={
+              stats && (stats.deposits > 0 || stats.withdrawals > 0)
+                ? `${fmtPnlStrict(stats.deposits, denomination)} in · ${fmtPnlStrict(-stats.withdrawals, denomination)} out`
+                : 'Deposits + PnL − withdrawals'
+            }
+            tone={stats && Number(stats.balance) >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
+          />
           <StatTile
             label="Net result"
             value={fmtPnlStrict(stats?.totalPnl, denomination)}
@@ -240,6 +250,8 @@ export default function OverviewPage() {
   const { journalStats: stats, journalDaily, journalBreakdown, viewMode, activeAccount, dataLoading } = useAppData();
   const denomination = useMemo(() => viewPnlDenomination(viewMode, activeAccount), [viewMode, activeAccount]);
   const hasTrades = (stats?.total || 0) > 0;
+  const hasCashflow = (stats?.deposits || 0) > 0 || (stats?.withdrawals || 0) > 0;
+  const hasActivity = hasTrades || hasCashflow;
   const showAccounts = viewMode === 'portfolio';
 
   const tabs = useMemo(
@@ -271,13 +283,13 @@ export default function OverviewPage() {
         <OverviewLoading />
       ) : (
         <>
-          {!hasTrades && (
+          {!hasActivity && (
             <div className="mb-5 shrink-0">
               <EmptyOverview onOpenSetup={() => navigate('/dashboard', { state: { tab: 'setup' } })} />
             </div>
           )}
 
-          {hasTrades && (
+          {hasActivity && (
             <>
               <OverviewSectionNav
                 tabs={tabs}

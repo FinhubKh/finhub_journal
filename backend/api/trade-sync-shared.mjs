@@ -89,6 +89,55 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
   });
 }
 
+const CASHFLOW_OPS = new Set([
+  'deposit', 'withdrawal', 'credit', 'bonus', 'charge', 'correction', 'interest', 'other',
+]);
+
+const DEAL_TYPE_TO_OP = {
+  3: 'credit',
+  4: 'charge',
+  5: 'correction',
+  6: 'bonus',
+  12: 'interest',
+};
+
+export function cashflowOpType(item) {
+  const explicit = String(item?.op_type || '').toLowerCase();
+  if (CASHFLOW_OPS.has(explicit)) return explicit;
+  const dealType = Number(item?.deal_type ?? item?.type);
+  const amount = Number(item?.amount ?? item?.pnl_usd ?? item?.pnl_raw ?? item?.profit ?? 0);
+  if (dealType === 2 || !Number.isFinite(dealType)) {
+    return amount >= 0 ? 'deposit' : 'withdrawal';
+  }
+  return DEAL_TYPE_TO_OP[dealType] || 'other';
+}
+
+export function cashflowsToRows(cashflows, userId, matchedAccount, source) {
+  if (!Array.isArray(cashflows)) return [];
+  return cashflows.map((c) => {
+    const amount = resolvePnlUsd(
+      {
+        pnl_raw: c.pnl_raw != null ? c.pnl_raw : c.amount,
+        pnl_usd: c.amount ?? c.pnl_usd ?? c.profit,
+      },
+      matchedAccount,
+      source,
+    );
+    const occurred = c.occurred_at || c.close_time || c.open_time || new Date().toISOString();
+    return {
+      user_id: userId,
+      account_id: matchedAccount.id,
+      ticket: c.ticket,
+      op_type: cashflowOpType({ ...c, amount }),
+      amount,
+      comment: c.comment || c.notes || null,
+      occurred_at: occurred,
+      date: String(occurred).slice(0, 10),
+      source,
+    };
+  }).filter((row) => row.ticket != null && Number.isFinite(Number(row.amount)) && Number(row.amount) !== 0);
+}
+
 const UPSERT_CHUNK = 200;
 
 export async function upsertSyncedTrades({ trades, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
@@ -109,6 +158,32 @@ export async function upsertSyncedTrades({ trades, userId, matchedAccount, sourc
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || 'Failed to save trades');
+    }
+    const body = await res.json();
+    if (Array.isArray(body)) saved.push(...body);
+  }
+  return saved;
+}
+
+export async function upsertSyncedCashflows({ cashflows, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
+  const rows = cashflowsToRows(cashflows, userId, matchedAccount, source);
+  if (rows.length === 0) return [];
+  const saved = [];
+  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+    const chunk = rows.slice(i, i + UPSERT_CHUNK);
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/account_cashflows?on_conflict=account_id,ticket`,
+      {
+        method: 'POST',
+        headers: supabaseHeaders(serviceKey, {
+          Prefer: 'resolution=merge-duplicates,return=representation',
+        }),
+        body: JSON.stringify(chunk),
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || 'Failed to save cashflows');
     }
     const body = await res.json();
     if (Array.isArray(body)) saved.push(...body);

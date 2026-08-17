@@ -13,7 +13,7 @@
  *    failure is recorded instead of silently vanishing.
  */
 import { readJsonBody } from './ai-checklist-handler.mjs';
-import { supabaseHeaders, upsertSyncedTrades } from './trade-sync-shared.mjs';
+import { supabaseHeaders, upsertSyncedTrades, upsertSyncedCashflows } from './trade-sync-shared.mjs';
 import { timingSafeTokenEqual } from './crypto-helper.mjs';
 
 export async function handleBridgeSync(req, { supabaseUrl, serviceKey, bridgeServiceToken }) {
@@ -49,9 +49,10 @@ export async function handleBridgeSync(req, { supabaseUrl, serviceKey, bridgeSer
     return { status: 200, body: { acknowledged: true, error_recorded: true } };
   }
 
-  const trades = body?.trades;
-  if (!Array.isArray(trades) || trades.length === 0) {
-    return { status: 400, body: { error: 'No trades provided' } };
+  const trades = Array.isArray(body?.trades) ? body.trades : [];
+  const cashflows = Array.isArray(body?.cashflows) ? body.cashflows : [];
+  if (trades.length === 0 && cashflows.length === 0) {
+    return { status: 400, body: { error: 'No trades or cashflows provided' } };
   }
 
   const accountRes = await fetch(
@@ -67,16 +68,29 @@ export async function handleBridgeSync(req, { supabaseUrl, serviceKey, bridgeSer
     return { status: 404, body: { error: 'Trading account not found' } };
   }
 
-  let saved;
+  let saved = [];
+  let savedCash = [];
   try {
-    saved = await upsertSyncedTrades({
-      trades,
-      userId: matchedAccount.user_id,
-      matchedAccount,
-      source: 'investor_bridge',
-      supabaseUrl,
-      serviceKey,
-    });
+    if (trades.length > 0) {
+      saved = await upsertSyncedTrades({
+        trades,
+        userId: matchedAccount.user_id,
+        matchedAccount,
+        source: 'investor_bridge',
+        supabaseUrl,
+        serviceKey,
+      });
+    }
+    if (cashflows.length > 0) {
+      savedCash = await upsertSyncedCashflows({
+        cashflows,
+        userId: matchedAccount.user_id,
+        matchedAccount,
+        source: 'investor_bridge',
+        supabaseUrl,
+        serviceKey,
+      });
+    }
   } catch (err) {
     return { status: 500, body: { error: err.message || 'Failed to save trades' } };
   }
@@ -96,6 +110,7 @@ export async function handleBridgeSync(req, { supabaseUrl, serviceKey, bridgeSer
     body: {
       received: trades.length,
       inserted: saved.length,
+      cashflows: savedCash.length,
       account: matchedAccount.name,
       last_synced_at: syncedAt,
     },

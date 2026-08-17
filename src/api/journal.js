@@ -118,3 +118,28 @@ export async function fetchUnannotatedCount(accountId) {
   if (!res.ok) return 0;
   return parseContentRangeTotal(res) || 0;
 }
+
+export async function fetchCashflows({ accountId, from, to } = {}) {
+  const uid = getUserId();
+  const params = new URLSearchParams({
+    select: 'id,account_id,ticket,op_type,amount,comment,occurred_at,date,source',
+    order: 'date.desc,occurred_at.desc',
+    limit: '500',
+  });
+  if (uid) params.set('user_id', `eq.${uid}`);
+  if (accountId) params.set('account_id', `eq.${accountId}`);
+  if (from && to) {
+    params.set('and', `(date.gte.${from},date.lte.${to})`);
+  } else if (from) {
+    params.set('date', `gte.${from}`);
+  } else if (to) {
+    params.set('date', `lte.${to}`);
+  }
+
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/account_cashflows?${params}`, {
+    headers: authHeaders(getToken()),
+  });
+  if (!res.ok) return [];
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows : [];
+}

@@ -15,7 +15,8 @@ export default async function handler(req, res) {
 
   const syncKey = req.headers['x-sync-key'];
   const trades = req.body?.trades;
+  const cashflows = req.body?.cashflows;
   const accountMeta = req.body?.account_meta;
-  const result = await handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, serviceKey });
+  const result = await handleEaSync({ syncKey, trades, cashflows, accountMeta, supabaseUrl, serviceKey });
   res.status(result.status).json(result.body);
 }

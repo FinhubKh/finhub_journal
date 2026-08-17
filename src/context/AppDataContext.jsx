@@ -43,6 +43,10 @@ function normalizeStats(stats) {
     bestStreak: Number(stats.bestStreak) || 0,
     worstStreak: Number(stats.worstStreak) || 0,
     maxDD: Number(stats.maxDD) || 0,
+    deposits: Number(stats.deposits) || 0,
+    withdrawals: Number(stats.withdrawals) || 0,
+    netCashflow: Number(stats.netCashflow) || 0,
+    balance: stats.balance == null ? null : Number(stats.balance),
   };
 }
 

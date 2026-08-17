@@ -1,16 +1,18 @@
 import { createHash } from 'crypto';
-import { supabaseHeaders, accountDenomination, upsertSyncedTrades } from './trade-sync-shared.mjs';
+import { supabaseHeaders, accountDenomination, upsertSyncedTrades, upsertSyncedCashflows } from './trade-sync-shared.mjs';
 
 function sha256Hex(text) {
   return createHash('sha256').update(text).digest('hex');
 }
 
-export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, serviceKey }) {
+export async function handleEaSync({ syncKey, trades, cashflows, accountMeta, supabaseUrl, serviceKey }) {
   if (!syncKey?.trim()) {
     return { status: 401, body: { error: 'Missing x-sync-key header' } };
   }
-  if (!Array.isArray(trades) || trades.length === 0) {
-    return { status: 400, body: { error: 'No trades provided' } };
+  const tradeList = Array.isArray(trades) ? trades : [];
+  const cashList = Array.isArray(cashflows) ? cashflows : [];
+  if (tradeList.length === 0 && cashList.length === 0) {
+    return { status: 400, body: { error: 'No trades or cashflows provided' } };
   }
 
   const keyHash = sha256Hex(syncKey.trim());
@@ -46,16 +48,29 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
 
   const accountLabel = matchedAccount.name;
 
-  let saved;
+  let saved = [];
+  let savedCash = [];
   try {
-    saved = await upsertSyncedTrades({
-      trades,
-      userId,
-      matchedAccount,
-      source: 'api',
-      supabaseUrl,
-      serviceKey,
-    });
+    if (tradeList.length > 0) {
+      saved = await upsertSyncedTrades({
+        trades: tradeList,
+        userId,
+        matchedAccount,
+        source: 'api',
+        supabaseUrl,
+        serviceKey,
+      });
+    }
+    if (cashList.length > 0) {
+      savedCash = await upsertSyncedCashflows({
+        cashflows: cashList,
+        userId,
+        matchedAccount,
+        source: 'api',
+        supabaseUrl,
+        serviceKey,
+      });
+    }
   } catch (err) {
     return { status: 500, body: { error: err.message || 'Failed to save trades' } };
   }
@@ -73,9 +88,10 @@ export async function handleEaSync({ syncKey, trades, accountMeta, supabaseUrl, 
   return {
     status: 200,
     body: {
-      received: trades.length,
+      received: tradeList.length,
       inserted: saved.length,
       updated: saved.length,
+      cashflows: savedCash.length,
       account: accountLabel,
       pnl_denomination: accountDenomination(matchedAccount),
       last_synced_at: syncedAt,

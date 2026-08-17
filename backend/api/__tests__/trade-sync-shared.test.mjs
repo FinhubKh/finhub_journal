@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { resolvePnlUsd, sessionFromTime, tradesToRows, upsertSyncedTrades } from '../trade-sync-shared.mjs';
+import { resolvePnlUsd, sessionFromTime, tradesToRows, cashflowsToRows, upsertSyncedTrades } from '../trade-sync-shared.mjs';
 
 describe('resolvePnlUsd', () => {
   it('uses pnl_raw as-is for cent accounts on EA sync (source api)', () => {
@@ -80,6 +80,33 @@ describe('tradesToRows', () => {
       'api',
     );
     expect(rows[0].r_value).toBeUndefined();
+  });
+
+  it('maps a positive balance deal to a deposit cashflow', () => {
+    const rows = cashflowsToRows(
+      [{ ticket: 99, amount: 500, open_time: '2026-08-01T10:00:00Z' }],
+      'user-1',
+      { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      'api',
+    );
+    expect(rows[0]).toEqual(expect.objectContaining({
+      ticket: 99,
+      op_type: 'deposit',
+      amount: 500,
+      account_id: 'acct-1',
+      date: '2026-08-01',
+    }));
+  });
+
+  it('maps a negative balance deal to a withdrawal', () => {
+    const rows = cashflowsToRows(
+      [{ ticket: 100, deal_type: 2, amount: -200, close_time: '2026-08-02T10:00:00Z' }],
+      'user-1',
+      { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      'api',
+    );
+    expect(rows[0].op_type).toBe('withdrawal');
+    expect(rows[0].amount).toBe(-200);
   });
 });
 
