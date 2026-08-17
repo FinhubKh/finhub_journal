@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync, statSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
@@ -41,14 +41,14 @@ function resolveEndpoint(vars) {
 
 function patchEaUrl(endpoint) {
   const src = readFileSync(eaFile, 'utf8');
-  const pattern = /const string EndpointURL\s*=\s*"[^"]*";/;
+  const pattern = /const string EndpointPrimary\s*=\s*"[^"]*";/;
   if (!pattern.test(src)) {
-    console.error('Could not find EndpointURL in FinhubJournal_TradeSync.mq5');
+    console.error('Could not find EndpointPrimary in FinhubJournal_TradeSync.mq5');
     process.exit(1);
   }
-  const next = src.replace(pattern, `const string EndpointURL  = "${endpoint}";`);
+  const next = src.replace(pattern, `const string EndpointPrimary  = "${endpoint}";`);
   if (next !== src) writeFileSync(eaFile, next);
-  console.log(`EA sync URL: ${endpoint}`);
+  console.log(`EA primary sync URL: ${endpoint}`);
 }
 
 function findMt5Paths() {
@@ -57,12 +57,13 @@ function findMt5Paths() {
   const mt5Root = resolve(wineData, 'drive_c/Program Files/MetaTrader 5');
   const wine64 = '/Applications/MetaTrader 5.app/Contents/SharedSupport/wine/bin/wine64';
   const terminal = resolve(mt5Root, 'terminal64.exe');
+  const metaeditor = resolve(mt5Root, 'MetaEditor64.exe');
   const expertsDir = resolve(mt5Root, 'MQL5/Experts');
 
-  if (!existsSync(wine64) || !existsSync(terminal)) {
+  if (!existsSync(wine64) || !existsSync(metaeditor)) {
     return null;
   }
-  return { wineData, mt5Root, wine64, terminal, expertsDir };
+  return { wineData, mt5Root, wine64, terminal, metaeditor, expertsDir };
 }
 
 function compileEa() {
@@ -72,40 +73,52 @@ function compileEa() {
     process.exit(1);
   }
 
-  mkdirSync(mt5.expertsDir, { recursive: true });
-  const targetMq5 = resolve(mt5.expertsDir, 'FinhubJournal_TradeSync.mq5');
-  copyFileSync(eaFile, targetMq5);
+  const zPath = `Z:${eaFile.replace(/\//g, '\\')}`;
+  const beforeMtime = existsSync(resolve(eaDir, 'FinhubJournal_TradeSync.ex5'))
+    ? statSync(resolve(eaDir, 'FinhubJournal_TradeSync.ex5')).mtimeMs
+    : 0;
 
-  const winPath = 'C:\\Program Files\\MetaTrader 5\\MQL5\\Experts\\FinhubJournal_TradeSync.mq5';
   const result = spawnSync(
     mt5.wine64,
-    [mt5.terminal, `/compile:${winPath}`],
+    [mt5.metaeditor, `/compile:${zPath}`, '/log'],
     {
       env: { ...process.env, WINEPREFIX: mt5.wineData },
       stdio: 'inherit',
-      timeout: 120000,
+      timeout: 90000,
     },
   );
 
-  const builtEx5 = resolve(mt5.expertsDir, 'FinhubJournal_TradeSync.ex5');
-  const repoEx5 = resolve(eaDir, 'FinhubJournal_TradeSync.ex5');
-  const publicEx5 = resolve(root, 'public/FinhubJournal_TradeSync.ex5');
+  const logPath = resolve(eaDir, 'FinhubJournal_TradeSync.log');
+  if (existsSync(logPath)) {
+    try {
+      console.log(readFileSync(logPath, 'utf16le').replace(/\u0000/g, ''));
+    } catch {
+      console.log(readFileSync(logPath, 'utf8'));
+    }
+  }
 
-  if (!existsSync(builtEx5)) {
-    console.error('Compile finished but .ex5 was not produced. Open MetaEditor and compile manually (F7).');
+  const builtEx5 = resolve(eaDir, 'FinhubJournal_TradeSync.ex5');
+  const publicEx5 = resolve(root, 'public/FinhubJournal_TradeSync.ex5');
+  const afterMtime = existsSync(builtEx5) ? statSync(builtEx5).mtimeMs : 0;
+
+  if (!existsSync(builtEx5) || afterMtime <= beforeMtime) {
+    console.error('Compile finished but a fresh .ex5 was not produced. Open MetaEditor and compile manually (F7).');
     process.exit(result.status ?? 1);
   }
 
-  copyFileSync(builtEx5, repoEx5);
   mkdirSync(resolve(root, 'public'), { recursive: true });
   copyFileSync(builtEx5, publicEx5);
-  console.log(`Compiled: ${repoEx5}`);
+  console.log(`Compiled: ${builtEx5}`);
   console.log(`Download: ${publicEx5}`);
 }
 
 const vars = loadEnv();
 const endpoint = resolveEndpoint(vars);
-patchEaUrl(endpoint);
+if (process.argv.includes('--patch-url')) {
+  patchEaUrl(endpoint);
+} else {
+  console.log(`EA URLs left as in source. Pass --patch-url to bake ${endpoint}`);
+}
 
 if (process.argv.includes('--compile')) {
   compileEa();

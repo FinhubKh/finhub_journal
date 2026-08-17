@@ -1,13 +1,20 @@
 //+------------------------------------------------------------------+
 //|                                    FinhubJournal_TradeSync.mq5    |
-//| Sends full closed trade history to FinhubKH Journal on start     |
-//| Read-only: only reads history, never places/modifies trades.     |
+//| Sends closed trade history to FinhubKH Journal.                   |
+//| Read-only: only reads history, never places/modifies trades.      |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.03"
+#property version   "1.04"
 
-input string SyncKey = "";  // Paste sync key from Settings > Account (per trading account)
-const string EndpointURL  = "https://finhubjournal.vercel.app/v1/ea/sync";
+input string SyncKey           = "";  // Paste sync key from Settings > Account
+input int    SyncEveryMinutes  = 5;   // Repeat sync while the EA stays on a chart
+
+const string EndpointPrimary  = "https://journal.finhubkh.com/v1/ea/sync";
+const string EndpointFallback = "https://finhubjournal.vercel.app/v1/ea/sync";
+const int    BatchSize        = 80;
+const int    RequestTimeoutMs = 60000;
+
+int g_timerSeconds = 300;
 
 //+------------------------------------------------------------------+
 string JsonEscape(string s)
@@ -25,27 +32,112 @@ int OnInit()
       Alert("FinhubJournal_TradeSync: Please set your Sync Key in EA inputs.");
       return(INIT_FAILED);
      }
-   // Allow WebRequest must be enabled for EndpointURL's domain in
+
+   g_timerSeconds = MathMax(60, SyncEveryMinutes * 60);
+   EventSetTimer(g_timerSeconds);
+
+   // Allow WebRequest for BOTH:
+   //   https://journal.finhubkh.com
+   //   https://finhubjournal.vercel.app
    // Tools > Options > Expert Advisors > Allow WebRequest for listed URL
-   SyncHistory();
+   SyncHistory(true);
    return(INIT_SUCCEEDED);
   }
 
 //+------------------------------------------------------------------+
-void SyncHistory()
+void OnDeinit(const int reason)
   {
-   datetime from = D'2000.01.01';
+   EventKillTimer();
+  }
+
+//+------------------------------------------------------------------+
+void OnTimer()
+  {
+   SyncHistory(false);
+  }
+
+//+------------------------------------------------------------------+
+bool IsExitDeal(long entryType)
+  {
+   return(entryType == DEAL_ENTRY_OUT
+       || entryType == DEAL_ENTRY_INOUT
+       || entryType == DEAL_ENTRY_OUT_BY);
+  }
+
+//+------------------------------------------------------------------+
+string TradeJson(ulong dealTicket, string symbol, string direction,
+                 double entryPx, double exitPx, double volume, double profit,
+                 double rValue, datetime openTime, datetime closeTime)
+  {
+   string json = "{";
+   json += "\"ticket\":" + IntegerToString((long)dealTicket) + ",";
+   json += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
+   json += "\"direction\":\"" + direction + "\",";
+   json += "\"entry_price\":" + DoubleToString(entryPx, 5) + ",";
+   json += "\"exit_price\":" + DoubleToString(exitPx, 5) + ",";
+   json += "\"lot_size\":" + DoubleToString(volume, 2) + ",";
+   json += "\"pnl_raw\":" + DoubleToString(profit, 2) + ",";
+   json += "\"pnl_usd\":" + DoubleToString(profit, 2) + ",";
+   json += "\"r_value\":" + DoubleToString(rValue, 2) + ",";
+   json += "\"open_time\":\"" + TimeToISO(openTime) + "\",";
+   json += "\"close_time\":\"" + TimeToISO(closeTime) + "\"";
+   json += "}";
+   return json;
+  }
+
+//+------------------------------------------------------------------+
+void FindEntry(long posId, int total,
+               double &entryPx, datetime &openTime, ulong &entryOrderTicket)
+  {
+   for(int j = 0; j < total; j++)
+     {
+      ulong dt2 = HistoryDealGetTicket(j);
+      if(dt2 == 0) continue;
+      if(HistoryDealGetInteger(dt2, DEAL_POSITION_ID) == posId &&
+         HistoryDealGetInteger(dt2, DEAL_ENTRY) == DEAL_ENTRY_IN)
+        {
+         entryPx  = HistoryDealGetDouble(dt2, DEAL_PRICE);
+         openTime = (datetime)HistoryDealGetInteger(dt2, DEAL_TIME);
+         entryOrderTicket = (ulong)HistoryDealGetInteger(dt2, DEAL_ORDER);
+         return;
+        }
+     }
+  }
+
+//+------------------------------------------------------------------+
+double CalcR(ulong entryOrderTicket, double entryPx, double exitPx, double profit)
+  {
+   if(entryOrderTicket == 0 || !HistoryOrderSelect(entryOrderTicket))
+      return 0;
+   double slPrice = HistoryOrderGetDouble(entryOrderTicket, ORDER_SL);
+   if(slPrice <= 0 || entryPx <= 0)
+      return 0;
+   double riskDist = MathAbs(entryPx - slPrice);
+   if(riskDist <= 0)
+      return 0;
+   double rr = MathAbs(exitPx - entryPx) / riskDist;
+   return (profit >= 0) ? rr : -rr;
+  }
+
+//+------------------------------------------------------------------+
+void SyncHistory(bool fullHistory)
+  {
+   datetime from = fullHistory ? D'2015.01.01' : TimeCurrent() - 14 * 24 * 60 * 60;
    datetime to   = TimeCurrent();
 
    if(!HistorySelect(from, to))
      {
       Print("FinhubJournal_TradeSync: HistorySelect failed.");
+      if(fullHistory)
+         Alert("FinhubJournal_TradeSync: Could not load MT5 history.");
       return;
      }
 
    int total = HistoryDealsTotal();
-   string json = "{\"trades\":[";
-   int    count = 0;
+   string batch = "";
+   int batchCount = 0;
+   int sent = 0;
+   int failed = 0;
 
    for(int i = 0; i < total; i++)
      {
@@ -53,7 +145,7 @@ void SyncHistory()
       if(dealTicket == 0) continue;
 
       long entryType = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
-      if(entryType != DEAL_ENTRY_OUT) continue;
+      if(!IsExitDeal(entryType)) continue;
 
       long   posId   = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
       string symbol  = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
@@ -66,85 +158,101 @@ void SyncHistory()
       long   dealDir = HistoryDealGetInteger(dealTicket, DEAL_TYPE);
       string direction = (dealDir == DEAL_TYPE_SELL) ? "buy" : "sell";
 
-      double entryPx = 0; datetime openTime = closeTime; ulong entryOrderTicket = 0;
-      for(int j = 0; j < total; j++)
-        {
-         ulong dt2 = HistoryDealGetTicket(j);
-         if(dt2 == 0) continue;
-         if(HistoryDealGetInteger(dt2, DEAL_POSITION_ID) == posId &&
-            HistoryDealGetInteger(dt2, DEAL_ENTRY) == DEAL_ENTRY_IN)
-           {
-            entryPx  = HistoryDealGetDouble(dt2, DEAL_PRICE);
-            openTime = (datetime)HistoryDealGetInteger(dt2, DEAL_TIME);
-            entryOrderTicket = HistoryDealGetInteger(dt2, DEAL_ORDER);
-            break;
-           }
-        }
+      double entryPx = 0;
+      datetime openTime = closeTime;
+      ulong entryOrderTicket = 0;
+      FindEntry(posId, total, entryPx, openTime, entryOrderTicket);
+      double rValue = CalcR(entryOrderTicket, entryPx, exitPx, profit);
 
-      double rValue = 0;
-      if(entryOrderTicket > 0 && HistoryOrderSelect(entryOrderTicket))
-        {
-         double slPrice = HistoryOrderGetDouble(entryOrderTicket, ORDER_SL);
-         if(slPrice > 0 && entryPx > 0)
-           {
-            double riskDist = MathAbs(entryPx - slPrice);
-            if(riskDist > 0)
-              {
-               double rr = MathAbs(exitPx - entryPx) / riskDist;
-               rValue = (profit >= 0) ? rr : -rr;
-              }
-           }
-        }
+      if(batchCount > 0) batch += ",";
+      batch += TradeJson(dealTicket, symbol, direction, entryPx, exitPx,
+                         volume, profit, rValue, openTime, closeTime);
+      batchCount++;
 
-      if(count > 0) json += ",";
-      json += "{";
-      json += "\"ticket\":" + IntegerToString(dealTicket) + ",";
-      json += "\"symbol\":\"" + symbol + "\",";
-      json += "\"direction\":\"" + direction + "\",";
-      json += "\"entry_price\":" + DoubleToString(entryPx, 5) + ",";
-      json += "\"exit_price\":" + DoubleToString(exitPx, 5) + ",";
-      json += "\"lot_size\":" + DoubleToString(volume, 2) + ",";
-      json += "\"pnl_raw\":" + DoubleToString(profit, 2) + ",";
-      json += "\"pnl_usd\":" + DoubleToString(profit, 2) + ",";
-      json += "\"r_value\":" + DoubleToString(rValue, 2) + ",";
-      json += "\"open_time\":\"" + TimeToISO(openTime) + "\",";
-      json += "\"close_time\":\"" + TimeToISO(closeTime) + "\"";
-      json += "}";
-      count++;
+      if(batchCount >= BatchSize)
+        {
+         if(SendBatch(batch, batchCount))
+            sent += batchCount;
+         else
+            failed += batchCount;
+         batch = "";
+         batchCount = 0;
+        }
      }
-   json += "]}";
 
-   if(count == 0)
+   if(batchCount > 0)
+     {
+      if(SendBatch(batch, batchCount))
+         sent += batchCount;
+      else
+         failed += batchCount;
+     }
+
+   if(sent + failed == 0)
      {
       Print("FinhubJournal_TradeSync: No closed trades found.");
       return;
      }
 
-   Print("FinhubJournal_TradeSync: Syncing ", count, " trades. PnL uses your journal account currency (USD or Cent).");
-   SendToEndpoint(json, count);
+   Print("FinhubJournal_TradeSync: sent=", sent, " failed=", failed);
+   if(fullHistory)
+     {
+      if(failed > 0 && sent == 0)
+         Alert("FinhubJournal_TradeSync: Sync failed. Allow WebRequest for https://journal.finhubkh.com and https://finhubjournal.vercel.app, then reattach the EA.");
+      else if(failed > 0)
+         Alert("FinhubJournal_TradeSync: Partial sync — sent " + IntegerToString(sent) + ", failed " + IntegerToString(failed) + ".");
+      else
+         Alert("FinhubJournal_TradeSync: Synced " + IntegerToString(sent) + " trades.");
+     }
   }
 
 //+------------------------------------------------------------------+
-void SendToEndpoint(string json, int count)
+int PostJson(string url, string json, string &response)
   {
-   char postData[];
-   StringToCharArray(json, postData, 0, StringLen(json));
+   uchar postData[];
+   int copied = StringToCharArray(json, postData, 0, WHOLE_ARRAY, CP_UTF8);
+   if(copied > 0)
+      ArrayResize(postData, copied - 1);
 
    string headers = "Content-Type: application/json\r\nx-sync-key: " + SyncKey + "\r\n";
-   char result[];
+   uchar result[];
    string resultHeaders;
+   ResetLastError();
+   int res = WebRequest("POST", url, headers, RequestTimeoutMs, postData, result, resultHeaders);
+   response = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
+   return res;
+  }
 
-   int res = WebRequest("POST", EndpointURL, headers, 5000, postData, result, resultHeaders);
+//+------------------------------------------------------------------+
+bool SendBatch(string tradesCsv, int count)
+  {
+   string json = "{\"trades\":[" + tradesCsv + "]}";
+   string response;
+   int res = PostJson(EndpointPrimary, json, response);
+
+   if(res == -1)
+     {
+      int err = GetLastError();
+      Print("FinhubJournal_TradeSync: primary WebRequest failed. Error ", err, " — trying fallback.");
+      ResetLastError();
+      res = PostJson(EndpointFallback, json, response);
+     }
 
    if(res == -1)
      {
       Print("FinhubJournal_TradeSync: WebRequest failed. Error ", GetLastError(),
-            ". Add the endpoint URL under Tools > Options > Expert Advisors > Allow WebRequest.");
-      return;
+            ". Add https://journal.finhubkh.com AND https://finhubjournal.vercel.app under Tools > Options > Expert Advisors > Allow WebRequest.");
+      return false;
      }
 
-   string response = CharArrayToString(result);
-   Print("FinhubJournal_TradeSync: Synced ", count, " trades. Response: ", response);
+   if(res < 200 || res >= 300)
+     {
+      Print("FinhubJournal_TradeSync: HTTP ", res, " Response: ", response);
+      return false;
+     }
+
+   Print("FinhubJournal_TradeSync: HTTP ", res, " batch=", count, " Response: ", response);
+   return true;
   }
 
 //+------------------------------------------------------------------+

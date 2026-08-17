@@ -1,14 +1,11 @@
 // backend/api/__tests__/investor-sync-handler.test.mjs
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { handleTriggerInvestorSync } from '../investor-sync-handler.mjs';
-import { encryptSecret } from '../crypto-helper.mjs';
 
-const KEY = 'a'.repeat(64);
 const DEPS = {
   supabaseUrl: 'https://example.supabase.co',
   anonKey: 'anon-key',
   serviceKey: 'service-key',
-  encryptionKey: KEY,
   bridgeUrl: 'https://bridge.internal',
   bridgeServiceToken: 'bridge-secret-token',
 };
@@ -37,11 +34,10 @@ describe('handleTriggerInvestorSync', () => {
     expect(result.status).toBe(404);
   });
 
-  it('decrypts credentials and forwards a job to the bridge', async () => {
-    const encrypted = encryptSecret('investor-pass', KEY);
+  it('queues a bridge sync job without sending the investor password', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ broker_server: 'Broker-Live', login: '12345', encrypted_password: encrypted }] })
+      .mockResolvedValueOnce({ ok: true, json: async () => [{ trading_account_id: 'acct-1' }] })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ job_id: 'job-1' }) });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -54,17 +50,13 @@ describe('handleTriggerInvestorSync', () => {
     expect(bridgeCall[0]).toBe('https://bridge.internal/jobs/sync');
     expect(JSON.parse(bridgeCall[1].body)).toEqual({
       trading_account_id: 'acct-1',
-      login: '12345',
-      password: 'investor-pass',
-      server: 'Broker-Live',
     });
   });
 
   it('returns 502 when the bridge is unreachable', async () => {
-    const encrypted = encryptSecret('investor-pass', KEY);
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ broker_server: 'Broker-Live', login: '12345', encrypted_password: encrypted }] })
+      .mockResolvedValueOnce({ ok: true, json: async () => [{ trading_account_id: 'acct-1' }] })
       .mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
     vi.stubGlobal('fetch', fetchMock);
 

@@ -51,21 +51,29 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
   });
 }
 
+const UPSERT_CHUNK = 200;
+
 export async function upsertSyncedTrades({ trades, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
   const rows = tradesToRows(trades, userId, matchedAccount, source);
-  const res = await fetch(
-    `${supabaseUrl}/rest/v1/trades?on_conflict=user_id,ticket`,
-    {
-      method: 'POST',
-      headers: supabaseHeaders(serviceKey, {
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      }),
-      body: JSON.stringify(rows),
-    },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || 'Failed to save trades');
+  const saved = [];
+  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+    const chunk = rows.slice(i, i + UPSERT_CHUNK);
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/trades?on_conflict=account_id,ticket`,
+      {
+        method: 'POST',
+        headers: supabaseHeaders(serviceKey, {
+          Prefer: 'resolution=merge-duplicates,return=representation',
+        }),
+        body: JSON.stringify(chunk),
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || 'Failed to save trades');
+    }
+    const body = await res.json();
+    if (Array.isArray(body)) saved.push(...body);
   }
-  return res.json();
+  return saved;
 }

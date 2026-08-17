@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { EA_SYNC_ENDPOINT, EA_WEBREQUEST_ORIGIN } from '../api/env';
+import { EA_SYNC_ENDPOINT } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
@@ -85,7 +85,7 @@ const INSTALL_STEPS = [
   {
     n: '04',
     title: 'Allow WebRequest in MT5',
-    desc: 'Tools → Options → Expert Advisors → tick “Allow WebRequest for listed URL” and add the FinhubKH Journal URL shown below.',
+    desc: 'Tools → Options → Expert Advisors → tick “Allow WebRequest for listed URL” and add https://journal.finhubkh.com and https://finhubjournal.vercel.app.',
   },
   {
     n: '05',
@@ -95,7 +95,7 @@ const INSTALL_STEPS = [
   {
     n: '06',
     title: 'Start MT5 — trades sync automatically',
-    desc: 'The EA runs once on startup and sends your closed trade history to your journal. Check the Experts tab for a success message.',
+    desc: 'The EA syncs on attach and every few minutes while it stays on a chart. Check the Experts tab for a success message.',
   },
 ];
 
@@ -487,10 +487,14 @@ export default function LandingPage() {
               <div className="h-full rounded-2xl border border-violet-200 bg-violet-50/60 p-6 dark:border-violet-900/40 dark:bg-violet-950/30">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">Allow WebRequest URL</h3>
                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  Add this exact URL in MT5 under Tools → Options → Expert Advisors:
+                  Add both URLs in MT5 under Tools → Options → Expert Advisors:
                 </p>
-                <div className="mt-4 break-all rounded-xl border border-violet-200 bg-white px-4 py-3 font-mono text-sm text-violet-900 select-all dark:border-violet-900/50 dark:bg-zinc-950 dark:text-violet-200">
-                  {EA_WEBREQUEST_ORIGIN}
+                <div className="mt-4 space-y-2">
+                  {['https://journal.finhubkh.com', 'https://finhubjournal.vercel.app'].map((url) => (
+                    <div key={url} className="break-all rounded-xl border border-violet-200 bg-white px-4 py-3 font-mono text-sm text-violet-900 select-all dark:border-violet-900/50 dark:bg-zinc-950 dark:text-violet-200">
+                      {url}
+                    </div>
+                  ))}
                 </div>
                 <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
                   Sync endpoint: <span className="font-mono text-zinc-700 dark:text-zinc-300">{EA_SYNC_ENDPOINT}</span>

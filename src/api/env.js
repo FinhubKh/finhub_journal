@@ -5,7 +5,7 @@
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 
-const DEFAULT_EA_SYNC_URL = 'https://finhubjournal.vercel.app/v1/ea/sync';
+const DEFAULT_EA_SYNC_URL = 'https://journal.finhubkh.com/v1/ea/sync';
 
 export const EA_SYNC_ENDPOINT = (
   import.meta.env.VITE_EA_API_URL || DEFAULT_EA_SYNC_URL

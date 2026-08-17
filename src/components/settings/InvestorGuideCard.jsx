@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { btnGhost, btnPrimary, card } from '../../lib/ui';
 
 const STEPS = [
@@ -10,8 +9,6 @@ const STEPS = [
     desc: 'In Finhub open Accounts. Add a trading account, or use one you already have.',
     tip: 'Choose Investor password when creating the account, or connect it later on the account card.',
     action: 'accounts',
-    image: '/image/install/investor/step-1.png',
-    imageAlt: 'Create a trading account in Finhub Accounts',
   },
   {
     n: 2,
@@ -19,8 +16,6 @@ const STEPS = [
     desc: 'In MetaTrader 5, open your account details and copy the investor (read-only) password — not the master password.',
     tip: 'Investor access can view history but cannot place trades. That is what we need for sync.',
     action: null,
-    image: '/image/install/investor/step-2.png',
-    imageAlt: 'Copy investor password from MetaTrader 5 account details',
   },
   {
     n: 3,
@@ -28,8 +23,6 @@ const STEPS = [
     desc: 'On the account card, open Investor password sync. Choose your broker, pick the MT5 server, then enter login and investor password.',
     tip: 'ST Markets and Lirunex are listed — or type the exact server from your broker portal (e.g. Exness-MT5Real36).',
     action: 'accounts',
-    image: '/image/install/investor/step-3.png',
-    imageAlt: 'Enter broker server, login, and investor password in Finhub',
   },
   {
     n: 4,
@@ -37,8 +30,6 @@ const STEPS = [
     desc: 'Save credentials, then use Sync Now. Closed trades pull into your journal — no EA install required.',
     tip: 'You’re done when trades appear in the journal. Sync again anytime for a fresh pull.',
     action: 'done',
-    image: '/image/install/investor/step-4.png',
-    imageAlt: 'Sync Now pulls closed trades into the Finhub journal',
   },
 ];
 
@@ -182,16 +173,6 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
             role="group"
             aria-labelledby={`investor-step-${step.n}-title`}
           >
-            <div className="relative aspect-[3/2] w-full overflow-hidden bg-zinc-950">
-              <img
-                src={step.image}
-                alt={step.imageAlt}
-                className="h-full w-full object-contain object-center"
-                loading="eager"
-                decoding="async"
-              />
-            </div>
-
             <div className="flex items-start gap-4 p-5 sm:p-6">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-lg font-bold text-white shadow-sm shadow-violet-600/25 dark:bg-emerald-600 dark:shadow-emerald-900/40">
                 {step.n}
@@ -240,7 +221,6 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
                     setDirection(1);
                     setIndex(0);
                     setAnimKey((k) => k + 1);
-                    toast.success('Guide restarted');
                   }}
                 >
                   Start over

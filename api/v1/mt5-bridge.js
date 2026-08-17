@@ -83,7 +83,6 @@ export default async function handler(req, res) {
         !deps.supabaseUrl
         || !deps.anonKey
         || !deps.serviceKey
-        || !deps.encryptionKey
         || !deps.bridgeUrl
         || !deps.bridgeServiceToken
       ) {

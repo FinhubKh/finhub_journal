@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { listInvestorCredentialsStatus, runInvestorSyncAndWait } from '../../api';
+import { listInvestorCredentialsStatus, listAccountSyncKeys, runInvestorSyncAndWait } from '../../api';
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { btnOutline, btnSm } from '../../lib/ui';
@@ -34,28 +34,37 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   const [busy, setBusy] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [investorStatus, setInvestorStatus] = useState(null);
+  const [eaSyncMeta, setEaSyncMeta] = useState(null);
 
   const singleAccount = viewMode === 'account' && activeAccount;
   const hasInvestor = Boolean(investorStatus);
+  const isEaAccount = activeAccount?.connection_status === 'ea' || Boolean(eaSyncMeta);
 
   const reloadStatus = useCallback(async (alive = () => true) => {
     if (viewMode !== 'account' || !activeAccount?.id) {
       if (alive()) {
         setInvestorStatus(null);
+        setEaSyncMeta(null);
         setLoadingStatus(false);
       }
       return null;
     }
     if (alive()) setLoadingStatus(true);
     try {
-      const rows = await listInvestorCredentialsStatus();
+      const [investorRows, syncKeyRows] = await Promise.all([
+        listInvestorCredentialsStatus().catch(() => []),
+        listAccountSyncKeys().catch(() => []),
+      ]);
       if (!alive()) return null;
-      const row = findStatus(rows, activeAccount.id);
+      const row = findStatus(investorRows, activeAccount.id);
+      const keyRow = findStatus(syncKeyRows, activeAccount.id);
       setInvestorStatus(row);
+      setEaSyncMeta(keyRow);
       return row;
     } catch {
       if (alive()) {
         setInvestorStatus(null);
+        setEaSyncMeta(null);
         toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
       }
       return null;
@@ -84,6 +93,26 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
       return;
     }
     if (!hasInvestor) {
+      if (isEaAccount) {
+        await refreshTrades().catch(() => {});
+        const keys = await listAccountSyncKeys().catch(() => []);
+        const keyRow = findStatus(keys, activeAccount.id);
+        setEaSyncMeta(keyRow);
+        if (keyRow?.last_synced_at) {
+          toast.success(`Last EA sync: ${formatSyncTime(keyRow.last_synced_at)}. Attach the EA on a chart to pull new trades.`);
+        } else {
+          await alert({
+            title: 'EA sync has not run yet',
+            message:
+              'The journal cannot pull trades until FinhubJournal_TradeSync is attached to a chart in MT5 with this account\'s sync key.\n\n'
+              + '1. Tools -> Options -> Expert Advisors -> Allow WebRequest\n'
+              + '2. Add https://journal.finhubkh.com and https://finhubjournal.vercel.app\n'
+              + '3. Drag the EA onto a chart, paste the sync key, click OK\n'
+              + '4. You should see a "Synced N trades" alert. Then refresh this page.',
+          });
+        }
+        return;
+      }
       toast.info(`Connect investor password for "${activeAccount.name}" in Accounts first.`);
       navigate('/dashboard/accounts');
       return;
@@ -120,6 +149,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   const btnClass = size === 'sm' ? btnSm : btnOutline;
   let title = 'Sync MT5 trades for this account';
   if (!singleAccount) title = 'Switch to a single account to sync';
+  else if (!loadingStatus && !hasInvestor && isEaAccount) title = 'EA accounts sync from MetaTrader — attach the EA on a chart';
   else if (!loadingStatus && !hasInvestor) title = 'Connect investor password in Accounts to sync';
   else if (loadingStatus) title = 'Loading sync status…';
   else if (busy) title = 'Waiting for MT5 sync to finish…';
@@ -142,6 +172,16 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
       );
     } else {
       statusLine = <span className="text-zinc-400">Not synced yet</span>;
+    }
+  } else if (singleAccount && !loadingStatus && isEaAccount) {
+    if (eaSyncMeta?.last_synced_at) {
+      statusLine = (
+        <span className="text-zinc-500 dark:text-zinc-400">
+          Last EA sync: {formatSyncTime(eaSyncMeta.last_synced_at)}
+        </span>
+      );
+    } else {
+      statusLine = <span className="text-zinc-400">EA not synced yet — attach it on a chart</span>;
     }
   } else if (singleAccount && !loadingStatus && !hasInvestor) {
     statusLine = <span className="text-zinc-400">Investor sync not connected</span>;

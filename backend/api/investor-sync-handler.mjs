@@ -1,6 +1,5 @@
 // backend/api/investor-sync-handler.mjs
 import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
-import { decryptSecret } from './crypto-helper.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 
 function bearerToken(req) {
@@ -9,7 +8,7 @@ function bearerToken(req) {
 }
 
 export async function handleTriggerInvestorSync(req, {
-  supabaseUrl, anonKey, serviceKey, encryptionKey, bridgeUrl, bridgeServiceToken,
+  supabaseUrl, anonKey, serviceKey, bridgeUrl, bridgeServiceToken,
 }) {
   const auth = await verifySupabaseUser({ supabaseUrl, anonKey, accessToken: bearerToken(req) });
   if (!auth.ok) {
@@ -29,7 +28,7 @@ export async function handleTriggerInvestorSync(req, {
   }
 
   const credRes = await fetch(
-    `${supabaseUrl}/rest/v1/investor_credentials?select=broker_server,login,encrypted_password&trading_account_id=eq.${encodeURIComponent(tradingAccountId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&limit=1`,
+    `${supabaseUrl}/rest/v1/investor_credentials?select=trading_account_id&trading_account_id=eq.${encodeURIComponent(tradingAccountId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&limit=1`,
     { headers: supabaseHeaders(serviceKey) },
   );
   if (!credRes.ok) {
@@ -39,13 +38,6 @@ export async function handleTriggerInvestorSync(req, {
   const cred = credRows[0];
   if (!cred) {
     return { status: 404, body: { error: 'No investor credentials configured for this account' } };
-  }
-
-  let password;
-  try {
-    password = decryptSecret(cred.encrypted_password, encryptionKey);
-  } catch {
-    return { status: 500, body: { error: 'Could not decrypt stored credentials' } };
   }
 
   let bridgeRes;
@@ -58,9 +50,6 @@ export async function handleTriggerInvestorSync(req, {
       },
       body: JSON.stringify({
         trading_account_id: tradingAccountId,
-        login: cred.login,
-        password,
-        server: cred.broker_server,
       }),
     });
   } catch {
@@ -88,7 +77,6 @@ export function getInvestorSyncDepsFromEnv(env = process.env) {
     supabaseUrl: env.VITE_SUPABASE_URL?.replace(/\/$/, ''),
     anonKey: env.VITE_SUPABASE_ANON_KEY,
     serviceKey: env.SUPABASE_SERVICE_ROLE_KEY,
-    encryptionKey: env.INVESTOR_CRED_ENCRYPTION_KEY,
     bridgeUrl: (env.MT5_BRIDGE_URL || '').replace(/\/$/, ''),
     bridgeServiceToken: env.BRIDGE_SERVICE_TOKEN,
   };

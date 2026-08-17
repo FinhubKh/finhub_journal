@@ -97,10 +97,8 @@ export async function handleConnectInvestorCredentials(req, {
     return { status: 500, body: { error: 'Failed to save investor credentials' } };
   }
 
-  // From here on, credentials are already saved. A bridge hiccup below is
-  // transient infra trouble, not proof the login is wrong — keep the row so
-  // the user isn't forced to retype their password; only a confirmed bad
-  // login (see handleInvestorVerifyStatus) should delete it.
+  // Credentials are saved first. Bridge workers load + decrypt from Supabase —
+  // never put the investor password on the Redis job queue.
   let bridgeRes;
   try {
     bridgeRes = await fetch(`${bridgeUrl}/jobs/verify`, {
@@ -111,9 +109,6 @@ export async function handleConnectInvestorCredentials(req, {
       },
       body: JSON.stringify({
         trading_account_id: tradingAccountId,
-        login,
-        password: investorPassword,
-        server: brokerServer,
       }),
     });
   } catch {

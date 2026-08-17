@@ -409,17 +409,17 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
             return;
           }
         }
+        const adjusted = await recalculateTradesForDenomination(
+          { id: account.id, name },
+          oldDenom,
+          newDenom,
+        );
         await updateTradingAccount(account.id, {
           name,
           slug: normalizeSlug(name),
           account_type: form.accountType,
           pnl_denomination: newDenom,
         });
-        const adjusted = await recalculateTradesForDenomination(
-          { id: account.id, name },
-          oldDenom,
-          newDenom,
-        );
         await onSaved();
         onClose();
         if (adjusted > 0) {

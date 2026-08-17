@@ -61,9 +61,28 @@ describe('upsertSyncedTrades', () => {
 
     expect(saved).toEqual([{ id: 't1' }]);
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://example.supabase.co/rest/v1/trades?on_conflict=user_id,ticket',
+      'https://example.supabase.co/rest/v1/trades?on_conflict=account_id,ticket',
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+
+  it('upserts trades in chunks of 200', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [{ id: 't' }] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const trades = Array.from({ length: 201 }, (_, i) => ({ ticket: i + 1, pnl_usd: 1 }));
+    await upsertSyncedTrades({
+      trades,
+      userId: 'user-1',
+      matchedAccount: { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      source: 'api',
+      supabaseUrl: 'https://example.supabase.co',
+      serviceKey: 'service-key',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toHaveLength(200);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toHaveLength(1);
   });
 
   it('throws when the upsert request fails', async () => {

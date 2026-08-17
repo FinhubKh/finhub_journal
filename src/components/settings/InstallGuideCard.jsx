@@ -5,6 +5,11 @@ import { EA_WEBREQUEST_ORIGIN } from '../../api/env';
 import { btnOutline, btnPrimary, btnGhost, card } from '../../lib/ui';
 
 const EA_DOWNLOAD_URL = '/FinhubJournal_TradeSync.ex5';
+const WEBREQUEST_URLS = [...new Set([
+  EA_WEBREQUEST_ORIGIN,
+  'https://journal.finhubkh.com',
+  'https://finhubjournal.vercel.app',
+])];
 
 const STEPS = [
   {
@@ -13,8 +18,6 @@ const STEPS = [
     desc: 'Get the FinhubJournal_TradeSync.ex5 file. No install wizard needed — just one file.',
     tip: 'Save it somewhere easy to find, like your Desktop.',
     action: 'download',
-    image: '/image/install/step-1.png',
-    imageAlt: 'Download FinhubJournal_TradeSync.ex5',
   },
   {
     n: 2,
@@ -22,17 +25,13 @@ const STEPS = [
     desc: 'In MT5 open File → Open Data Folder → MQL5 → Experts. Paste the .ex5 file there.',
     tip: 'Restart MT5 (or right-click Experts → Refresh) so the EA shows up in Navigator.',
     action: null,
-    image: '/image/install/step-2.png',
-    imageAlt: 'Place the EA file in MQL5 Experts folder',
   },
   {
     n: 3,
     title: 'Allow Finhub to connect',
-    desc: 'In MT5 go to Tools → Options → Expert Advisors. Enable “Allow WebRequest for listed URL”, then add this website URL.',
-    tip: 'Copy the URL below and paste it into the MT5 allow list.',
+    desc: 'In MT5 go to Tools → Options → Expert Advisors. Enable “Allow WebRequest for listed URL”, then add both website URLs below.',
+    tip: 'The EA tries journal.finhubkh.com first, then the Vercel fallback. Both must be allowed.',
     action: 'copy-url',
-    image: '/image/install/step-3.png',
-    imageAlt: 'Allow WebRequest URL in MetaTrader 5 options',
   },
   {
     n: 4,
@@ -40,8 +39,6 @@ const STEPS = [
     desc: 'In Finhub open Accounts. Create or pick a trading account, then generate a sync key and copy it.',
     tip: 'Use one sync key per MT5 account.',
     action: 'accounts',
-    image: '/image/install/step-4.png',
-    imageAlt: 'Generate sync key in Finhub account settings',
   },
   {
     n: 5,
@@ -49,8 +46,6 @@ const STEPS = [
     desc: 'Drag FinhubJournal_TradeSync onto any chart. Paste your sync key in the EA inputs, then click OK.',
     tip: 'Keep MT5 running so trades can sync. You’re done when closed trades appear in your journal.',
     action: 'done',
-    image: '/image/install/step-5.png',
-    imageAlt: 'Attach EA to a chart and paste sync key',
   },
 ];
 
@@ -111,19 +106,21 @@ function StepAction({ action, onAccounts }) {
   if (action === 'copy-url') {
     return (
       <div className="space-y-2 animate-install-fade-up">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Website URL</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <code className="min-w-0 flex-1 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 font-mono text-xs text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-            {EA_WEBREQUEST_ORIGIN}
-          </code>
-          <button
-            className={btnOutline}
-            type="button"
-            onClick={() => void copyText(EA_WEBREQUEST_ORIGIN, 'Website URL')}
-          >
-            Copy URL
-          </button>
-        </div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Website URLs</p>
+        {WEBREQUEST_URLS.map((url) => (
+          <div key={url} className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 font-mono text-xs text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+              {url}
+            </code>
+            <button
+              className={btnOutline}
+              type="button"
+              onClick={() => void copyText(url, 'Website URL')}
+            >
+              Copy URL
+            </button>
+          </div>
+        ))}
       </div>
     );
   }
@@ -223,16 +220,6 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
             role="group"
             aria-labelledby={`install-step-${step.n}-title`}
           >
-            <div className="relative aspect-[3/2] w-full overflow-hidden bg-zinc-950">
-              <img
-                src={step.image}
-                alt={step.imageAlt}
-                className="h-full w-full object-contain object-center"
-                loading="eager"
-                decoding="async"
-              />
-            </div>
-
             <div className="flex items-start gap-4 p-5 sm:p-6">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-lg font-bold text-white shadow-sm shadow-violet-600/25 dark:bg-emerald-600 dark:shadow-emerald-900/40">
                 {step.n}
@@ -281,7 +268,6 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
                     setDirection(1);
                     setIndex(0);
                     setAnimKey((k) => k + 1);
-                    toast.success('Guide restarted');
                   }}
                 >
                   Start over

@@ -57,9 +57,6 @@ describe('handleConnectInvestorCredentials', () => {
     const verifyBody = JSON.parse(fetchMock.mock.calls[3][1].body);
     expect(verifyBody).toEqual({
       trading_account_id: 'acct-1',
-      login: '12345',
-      password: 'secret',
-      server: 'Broker-Live',
     });
   });
 

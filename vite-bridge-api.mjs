@@ -109,7 +109,6 @@ export function bridgeDevApiPlugin() {
               !deps.supabaseUrl
               || !deps.anonKey
               || !deps.serviceKey
-              || !deps.encryptionKey
               || !deps.bridgeUrl
               || !deps.bridgeServiceToken
             ) {

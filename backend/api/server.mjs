@@ -145,7 +145,7 @@ const server = createServer(async (req, res) => {
     const body = await readBody(req);
     req.body = body || {};
     const result = await handleTriggerInvestorSync(req, {
-      supabaseUrl, anonKey, serviceKey, encryptionKey, bridgeUrl, bridgeServiceToken,
+      supabaseUrl, anonKey, serviceKey, bridgeUrl, bridgeServiceToken,
     });
     sendJson(res, result.status, result.body);
     return;

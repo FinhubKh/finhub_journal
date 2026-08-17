@@ -125,12 +125,6 @@ export async function deleteTradingAccount(accountOrId) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-function pnlResult(pnl) {
-  if (pnl > 0) return 'win';
-  if (pnl < 0) return 'loss';
-  return 'be';
-}
-
 async function fetchPaginated(urlStr, pageSize = TRADE_PAGE_SIZE) {
   const out = [];
   let from = 0;
@@ -155,53 +149,36 @@ async function fetchPaginated(urlStr, pageSize = TRADE_PAGE_SIZE) {
   return out;
 }
 
-async function fetchTradesForAccount(account) {
-  const uid = getUserId();
-  const byIdTrades = await fetchPaginated(
-    `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account_id=eq.${account.id}&user_id=eq.${uid}`,
-  );
-  const trades = new Map(byIdTrades.map((t) => [t.id, t]));
-
-  if (account.name?.trim()) {
-    const byNameTrades = await fetchPaginated(
-      `${SUPABASE_URL}/rest/v1/trades?select=id,pnl_usd&account=eq.${encodeURIComponent(account.name.trim())}&user_id=eq.${uid}`,
-    );
-    byNameTrades.forEach((t) => trades.set(t.id, t));
-  }
-
-  return [...trades.values()];
-}
-
-async function patchTradePnl(trades, factor) {
-  // One PATCH per trade — never fire all at once (browsers hit ERR_INSUFFICIENT_RESOURCES).
-  const CONCURRENCY = 8;
-  for (let i = 0; i < trades.length; i += CONCURRENCY) {
-    const chunk = trades.slice(i, i + CONCURRENCY);
-    await Promise.all(chunk.map(async (t) => {
-      const pnl = Math.round((Number(t.pnl_usd) || 0) * factor * 100) / 100;
-      const patchRes = await authFetch(`${SUPABASE_URL}/rest/v1/trades?id=eq.${t.id}`, {
-        method: 'PATCH',
-        headers: authHeaders(getToken()),
-        body: JSON.stringify({ pnl_usd: pnl, result: pnlResult(pnl) }),
-      });
-      if (!patchRes.ok) throw new Error(await patchRes.text());
-    }));
-  }
-}
-
 /**
  * When switching Cent ↔ USD, rescale stored trade PnL so amounts keep matching
  * what MT5 shows (cent units ↔ dollar units = ×100 / ÷100).
+ * One SQL statement so daily-stats refresh cannot race itself.
  */
 export async function recalculateTradesForDenomination(account, oldDenom, newDenom) {
   const from = oldDenom === 'cent' ? 'cent' : 'usd';
   const to = newDenom === 'cent' ? 'cent' : 'usd';
   if (from === to) return 0;
-  const trades = await fetchTradesForAccount(account);
-  if (!trades.length) return 0;
-  const factor = to === 'cent' ? 100 : 0.01;
-  await patchTradePnl(trades, factor);
-  return trades.length;
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/rpc/rescale_account_pnl`, {
+    method: 'POST',
+    headers: authHeaders(getToken()),
+    body: JSON.stringify({
+      p_account_id: account.id,
+      p_from: from,
+      p_to: to,
+    }),
+  });
+  if (!res.ok) {
+    let msg = res.statusText || 'Could not rescale trades.';
+    try {
+      const body = await res.json();
+      msg = body?.message || body?.hint || JSON.stringify(body);
+    } catch {
+      /* keep status text */
+    }
+    throw new Error(msg);
+  }
+  const count = await res.json();
+  return Number(count) || 0;
 }
 
 export async function fetchAllTrades() {
