@@ -86,6 +86,7 @@ export async function fetchTeamDetails(teamId) {
       accountName: m.account_name,
       shareToken: m.share_token,
       accountType: m.account_type,
+      pnlDenomination: m.pnl_denomination || 'usd',
       tradeCount: Number(m.trade_count) || 0,
       wins: Number(m.wins) || 0,
       losses: Number(m.losses) || 0,

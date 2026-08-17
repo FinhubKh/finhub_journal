@@ -1,4 +1,6 @@
-import { toUsdPnl } from './format';
+import { toUsdPnl, normalizePnlDenomination } from './format';
+
+export { normalizePnlDenomination };
 
 export const ACCOUNT_TYPES = [
   { value: 'live', label: 'Live' },
@@ -10,10 +12,6 @@ export const PNL_DENOMINATIONS = [
   { value: 'usd', label: 'Standard USD' },
   { value: 'cent', label: 'Cent account' },
 ];
-
-export function normalizePnlDenomination(value) {
-  return value === 'cent' ? 'cent' : 'usd';
-}
 
 /** Active view denomination: cent only when drilling into a cent account. Portfolio stays USD. */
 export function viewPnlDenomination(viewMode, activeAccount) {

@@ -1,5 +1,11 @@
+export function normalizePnlDenomination(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (v === 'cent' || v === 'cents' || v === 'usc') return 'cent';
+  return 'usd';
+}
+
 function normalizeDenom(denomination) {
-  return denomination === 'cent' ? 'cent' : 'usd';
+  return normalizePnlDenomination(denomination);
 }
 
 /** Currency symbol for the account denomination ($ or ¢). */

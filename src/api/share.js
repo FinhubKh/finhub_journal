@@ -1,4 +1,5 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, authFetch } from './auth';
+import { toUsdPnl } from '../lib/format';
 
 function shareUrlForToken(token) {
   if (!token || typeof window === 'undefined') return '';
@@ -113,15 +114,14 @@ export async function fetchPublicLeaderboard(opts = {}) {
   const data = await res.json();
   const entries = Array.isArray(data?.entries) ? data.entries : [];
 
-  return {
-    entries: entries.map((e, i) => ({
+  const mapped = entries.map((e, i) => ({
       rank: e.rank_pnl ?? i + 1,
       accountId: e.account_id,
       accountName: e.account_name,
       shareToken: e.share_token,
       shareUrl: shareUrlForToken(e.share_token),
       accountType: e.account_type,
-      pnlDenomination: e.pnl_denomination,
+      pnlDenomination: e.pnl_denomination || 'usd',
       color: e.color,
       publishedAt: e.published_at,
       displayName: e.display_name || 'Trader',
@@ -131,7 +131,14 @@ export async function fetchPublicLeaderboard(opts = {}) {
       totalPnl: Number(e.total_pnl) || 0,
       winRate: Number(e.win_rate) || 0,
       profitFactor: e.profit_factor_infinite ? Infinity : (e.profit_factor == null ? null : Number(e.profit_factor)),
-    })),
+  }));
+  mapped.sort(
+    (a, b) => toUsdPnl(b.totalPnl, b.pnlDenomination) - toUsdPnl(a.totalPnl, a.pnlDenomination)
+      || b.tradeCount - a.tradeCount,
+  );
+
+  return {
+    entries: mapped.map((e, i) => ({ ...e, rank: i + 1 })),
     minTrades: data?.min_trades ?? minTrades,
     limit: data?.limit ?? limit,
   };

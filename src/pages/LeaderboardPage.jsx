@@ -23,6 +23,7 @@ import {
   tableTd,
   tableTh,
 } from '../lib/ui';
+import { fmtPnlStrict, toUsdPnl } from '../lib/format';
 import { BrandLogo } from '../components/BrandLogo';
 
 const SORTS = [
@@ -30,12 +31,6 @@ const SORTS = [
   { id: 'wr', label: 'Win rate' },
   { id: 'pf', label: 'Profit factor' },
 ];
-
-function fmtPnl(v) {
-  if (v == null || Number.isNaN(Number(v))) return '—';
-  const n = Number(v);
-  return n >= 0 ? `+$${n.toFixed(2)}` : `-$${Math.abs(n).toFixed(2)}`;
-}
 
 function fmtPf(v) {
   if (v === Infinity) return '∞';
@@ -132,7 +127,7 @@ function GlobalLeaderboardTable({ entries, sort, embedded }) {
                       e.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}
                   >
-                    {fmtPnl(e.totalPnl)}
+                    {fmtPnlStrict(e.totalPnl, e.pnlDenomination)}
                   </td>
                   <td className={`${tableTd} text-right tabular-nums text-zinc-800 dark:text-zinc-200 font-medium`}>{e.winRate}%</td>
                   <td className={`${tableTd} text-right tabular-nums text-zinc-800 dark:text-zinc-200 font-medium`}>{fmtPf(e.profitFactor)}</td>
@@ -236,7 +231,7 @@ function TeamLeaderboardTable({ teams, onSelectTeam }) {
                       t.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}
                   >
-                    {fmtPnl(t.totalPnl)}
+                    {fmtPnlStrict(t.totalPnl)}
                   </td>
                   <td className={`${tableTd} text-right`}>
                     <button
@@ -330,12 +325,13 @@ export default function LeaderboardPage({ embedded = false }) {
   // Sorted global entries
   const sortedGlobal = useMemo(() => {
     const list = [...(globalPayload?.entries || [])];
+    const pnlUsd = (e) => toUsdPnl(e.totalPnl, e.pnlDenomination);
     if (sort === 'wr') {
-      list.sort((a, b) => b.winRate - a.winRate || b.totalPnl - a.totalPnl);
+      list.sort((a, b) => b.winRate - a.winRate || pnlUsd(b) - pnlUsd(a));
     } else if (sort === 'pf') {
-      list.sort((a, b) => pfSortValue(b.profitFactor) - pfSortValue(a.profitFactor) || b.totalPnl - a.totalPnl);
+      list.sort((a, b) => pfSortValue(b.profitFactor) - pfSortValue(a.profitFactor) || pnlUsd(b) - pnlUsd(a));
     } else {
-      list.sort((a, b) => b.totalPnl - a.totalPnl || b.tradeCount - a.tradeCount);
+      list.sort((a, b) => pnlUsd(b) - pnlUsd(a) || b.tradeCount - a.tradeCount);
     }
     return list.map((e, i) => ({ ...e, displayRank: i + 1 }));
   }, [globalPayload, sort]);

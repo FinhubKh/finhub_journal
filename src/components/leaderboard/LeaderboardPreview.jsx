@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getCachedPublicLeaderboard } from '../../lib/leaderboardCache';
+import { fmtPnlStrict } from '../../lib/format';
 import { btnPrimary, card, cardHd, cardTitle, sectionLabel } from '../../lib/ui';
-
-function fmtPnl(v) {
-  if (v == null || Number.isNaN(Number(v))) return '—';
-  const n = Number(v);
-  return n >= 0 ? `+$${n.toFixed(2)}` : `-$${Math.abs(n).toFixed(2)}`;
-}
 
 function initials(name) {
   const parts = String(name || 'T').trim().split(/\s+/).filter(Boolean);
@@ -103,7 +98,7 @@ function PodiumCard({ entry, rank }) {
           entry.totalPnl >= 0 ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'
         }`}
       >
-        {fmtPnl(entry.totalPnl)}
+        {fmtPnlStrict(entry.totalPnl, entry.pnlDenomination)}
       </div>
       <div className="mt-3 flex w-full max-w-[160px] flex-col items-center gap-2">
         <WinRateBar rate={entry.winRate} />
@@ -186,7 +181,7 @@ function LandingLeaderboardTable({ entries }) {
                             e.totalPnl >= 0 ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'
                           }`}
                         >
-                          {fmtPnl(e.totalPnl)}
+                          {fmtPnlStrict(e.totalPnl, e.pnlDenomination)}
                         </Link>
                       </td>
                     </tr>
@@ -330,7 +325,7 @@ export default function LeaderboardPreview({
                       e.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
                     }`}
                   >
-                    {fmtPnl(e.totalPnl)}
+                    {fmtPnlStrict(e.totalPnl, e.pnlDenomination)}
                   </div>
                 </Link>
               </li>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtR, fmtTradeR, tradeRValue } from './format.js';
+import { fmtR, fmtTradeR, fmtPnlStrict, tradeRValue, toUsdPnl } from './format.js';
 
 describe('tradeRValue', () => {
   it('uses stored R when it is set', () => {
@@ -27,5 +27,26 @@ describe('fmtTradeR', () => {
 describe('fmtR', () => {
   it('shows 0.00R for a true zero', () => {
     expect(fmtR(0)).toBe('0.00R');
+  });
+});
+
+describe('fmtPnlStrict', () => {
+  it('uses ¢ for cent and USC accounts', () => {
+    expect(fmtPnlStrict(1234.5, 'cent')).toBe('+¢1234.50');
+    expect(fmtPnlStrict(1234.5, 'usc')).toBe('+¢1234.50');
+    expect(fmtPnlStrict(-20, 'cent')).toBe('-¢20.00');
+  });
+
+  it('uses $ for standard USD accounts', () => {
+    expect(fmtPnlStrict(1234.5, 'usd')).toBe('+$1234.50');
+    expect(fmtPnlStrict(1234.5)).toBe('+$1234.50');
+  });
+});
+
+describe('toUsdPnl', () => {
+  it('converts cent and USC amounts to dollars', () => {
+    expect(toUsdPnl(1234, 'cent')).toBe(12.34);
+    expect(toUsdPnl(1234, 'usc')).toBe(12.34);
+    expect(toUsdPnl(1234, 'usd')).toBe(1234);
   });
 });

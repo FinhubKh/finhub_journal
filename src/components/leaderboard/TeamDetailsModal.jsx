@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react';
 import { LuX } from 'react-icons/lu';
 import { fetchTeamDetails } from '../../api/teams';
+import { fmtPnlStrict, toUsdPnl } from '../../lib/format';
 import { accountTypeLabel } from '../../lib/accounts';
 import { btnOutline, emptyState, tableTd, tableTh } from '../../lib/ui';
-
-function fmtPnl(v) {
-  if (v == null || Number.isNaN(Number(v))) return '—';
-  const n = Number(v);
-  return n >= 0 ? `+$${n.toFixed(2)}` : `-$${Math.abs(n).toFixed(2)}`;
-}
 
 function MemberRankBadge({ rank }) {
   let podium = 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-zinc-700/60';
@@ -56,7 +51,10 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
 
   const team = data?.team;
   const members = data?.members || [];
-  const totalPnl = members.reduce((sum, m) => sum + (m.totalPnl || 0), 0);
+  const totalPnlUsd = members.reduce(
+    (sum, m) => sum + toUsdPnl(m.totalPnl || 0, m.pnlDenomination),
+    0,
+  );
   const totalTrades = members.reduce((sum, m) => sum + (m.tradeCount || 0), 0);
   const totalWins = members.reduce((sum, m) => sum + (m.wins || 0), 0);
   const avgWinRate = totalTrades > 0 ? Math.round((totalWins / totalTrades) * 100) : 0;
@@ -128,8 +126,8 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
           <div className="grid grid-cols-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950/80 text-center text-xs">
             <div className="border-r border-zinc-200 dark:border-zinc-800 p-3">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total PnL</div>
-              <div className={`mt-0.5 text-sm font-black tabular-nums ${totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {fmtPnl(totalPnl)}
+              <div className={`mt-0.5 text-sm font-black tabular-nums ${totalPnlUsd >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {fmtPnlStrict(totalPnlUsd)}
               </div>
             </div>
             <div className="border-r border-zinc-200 dark:border-zinc-800 p-3">
@@ -211,7 +209,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
                           m.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                         }`}
                       >
-                        {fmtPnl(m.totalPnl)}
+                        {fmtPnlStrict(m.totalPnl, m.pnlDenomination)}
                       </td>
                     </tr>
                   ))}
