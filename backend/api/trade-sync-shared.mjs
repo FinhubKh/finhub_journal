@@ -11,6 +11,20 @@ export function accountDenomination(matchedAccount) {
   return matchedAccount?.pnl_denomination === 'cent' ? 'cent' : 'usd';
 }
 
+/**
+ * Map a UTC timestamp to the journal session buckets:
+ * Asian 21:00–07:00, London 07:00–12:00, New York 12:00–21:00.
+ */
+export function sessionFromTime(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const hour = date.getUTCHours();
+  if (hour >= 7 && hour < 12) return 'london';
+  if (hour >= 12 && hour < 21) return 'ny';
+  return 'asian';
+}
+
 export function resolvePnlUsd(trade, matchedAccount, source) {
   const isCentAccount = matchedAccount?.pnl_denomination === 'cent';
   const raw = trade.pnl_raw != null ? Number(trade.pnl_raw) : null;
@@ -30,6 +44,9 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
   const accountLabel = matchedAccount.name;
   return trades.map((t) => {
     const pnl = resolvePnlUsd(t, matchedAccount, source);
+    const session = t.session === 'asian' || t.session === 'london' || t.session === 'ny'
+      ? t.session
+      : sessionFromTime(t.open_time || t.close_time);
     return {
       user_id: userId,
       source,
@@ -42,6 +59,7 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
       pnl_usd: pnl,
       r_value: Number(t.r_value) || 0,
       result: pnl > 0 ? 'win' : pnl < 0 ? 'loss' : 'be',
+      session,
       open_time: t.open_time,
       close_time: t.close_time,
       date: (t.close_time || t.open_time || new Date().toISOString()).slice(0, 10),

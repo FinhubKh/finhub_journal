@@ -4,7 +4,7 @@
 //| Read-only: only reads history, never places/modifies trades.      |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.04"
+#property version   "1.05"
 
 input string SyncKey           = "";  // Paste sync key from Settings > Account
 input int    SyncEveryMinutes  = 5;   // Repeat sync while the EA stays on a chart
@@ -79,6 +79,7 @@ string TradeJson(ulong dealTicket, string symbol, string direction,
    json += "\"pnl_raw\":" + DoubleToString(profit, 2) + ",";
    json += "\"pnl_usd\":" + DoubleToString(profit, 2) + ",";
    json += "\"r_value\":" + DoubleToString(rValue, 2) + ",";
+   json += "\"session\":\"" + SessionFromTime(openTime) + "\",";
    json += "\"open_time\":\"" + TimeToISO(openTime) + "\",";
    json += "\"close_time\":\"" + TimeToISO(closeTime) + "\"";
    json += "}";
@@ -253,6 +254,17 @@ bool SendBatch(string tradesCsv, int count)
 
    Print("FinhubJournal_TradeSync: HTTP ", res, " batch=", count, " Response: ", response);
    return true;
+  }
+
+//+------------------------------------------------------------------+
+string SessionFromTime(datetime t)
+  {
+   MqlDateTime dt;
+   TimeToStruct(t, dt);
+   int hour = dt.hour;
+   if(hour >= 7 && hour < 12) return "london";
+   if(hour >= 12 && hour < 21) return "ny";
+   return "asian";
   }
 
 //+------------------------------------------------------------------+

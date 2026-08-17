@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { resolvePnlUsd, tradesToRows, upsertSyncedTrades } from '../trade-sync-shared.mjs';
+import { resolvePnlUsd, sessionFromTime, tradesToRows, upsertSyncedTrades } from '../trade-sync-shared.mjs';
 
 describe('resolvePnlUsd', () => {
   it('uses pnl_raw as-is for cent accounts on EA sync (source api)', () => {
@@ -23,6 +23,16 @@ describe('resolvePnlUsd', () => {
   });
 });
 
+describe('sessionFromTime', () => {
+  it('maps UTC hours to asian / london / ny', () => {
+    expect(sessionFromTime('2026-08-17T02:15:00Z')).toBe('asian');
+    expect(sessionFromTime('2026-08-17T08:00:00Z')).toBe('london');
+    expect(sessionFromTime('2026-08-17T14:30:00Z')).toBe('ny');
+    expect(sessionFromTime('2026-08-17T22:00:00Z')).toBe('asian');
+    expect(sessionFromTime(null)).toBeNull();
+  });
+});
+
 describe('tradesToRows', () => {
   it('tags each row with the given source and account', () => {
     const rows = tradesToRows(
@@ -40,6 +50,16 @@ describe('tradesToRows', () => {
         result: 'win',
       }),
     ]);
+  });
+
+  it('derives session from open_time when the payload omits it', () => {
+    const rows = tradesToRows(
+      [{ ticket: 1, pnl_usd: 5, open_time: '2026-08-17T08:30:00Z' }],
+      'user-1',
+      { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      'api',
+    );
+    expect(rows[0].session).toBe('london');
   });
 });
 
