@@ -3,7 +3,7 @@ import { useTradeModal } from '../../context/TradeModalContext';
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, updateTradeAnnotation } from '../../api';
-import { fmtR, fmtPnlStrict, fmtDateLong } from '../../lib/format';
+import { fmtPnlStrict, fmtDateLong, fmtTradeR, tradeRValue } from '../../lib/format';
 import { tradePnlDenomination } from '../../lib/accounts';
 import CustomDropdown from '../common/CustomDropdown';
 import TradeScreenshots from '../journal/TradeScreenshots';
@@ -13,7 +13,7 @@ import {
 
 export default function TradeModal() {
   const { trade, close } = useTradeModal();
-  const { refreshTrades, resolveTradeAccount } = useAppData();
+  const { refreshTrades, resolveTradeAccount, journalStats } = useAppData();
   const { alert, confirm } = useDialog();
 
   const [session, setSession] = useState('');
@@ -48,9 +48,11 @@ export default function TradeModal() {
   const isApi = t.source === 'api';
   const isManual = !isApi;
   const denomination = tradePnlDenomination(t, resolveTradeAccount);
-  const rDisplay = t.r_value ? fmtR(t.r_value) : '—';
+  const r = tradeRValue(t, journalStats?.avgLoss);
+  const rDisplay = fmtTradeR(t, journalStats?.avgLoss);
   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denomination);
   const pnlClass = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
+  const rClass = (r || 0) > 0 ? 'text-violet-600' : (r || 0) < 0 ? 'text-rose-600' : 'text-zinc-900';
 
   async function handleDelete() {
     const ok = await confirm({
@@ -112,7 +114,7 @@ export default function TradeModal() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-zinc-50 p-3">
               <div className="text-xs text-zinc-500">R Value</div>
-              <div className={`mt-1 text-lg font-bold ${t.r_value > 0 ? 'text-violet-600' : t.r_value < 0 ? 'text-rose-600' : 'text-zinc-900'}`}>{rDisplay}</div>
+              <div className={`mt-1 text-lg font-bold ${rClass}`}>{rDisplay}</div>
             </div>
             <div className="rounded-xl bg-zinc-50 p-3">
               <div className="text-xs text-zinc-500">PnL (USD)</div>

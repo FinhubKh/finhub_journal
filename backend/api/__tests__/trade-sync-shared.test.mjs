@@ -61,6 +61,26 @@ describe('tradesToRows', () => {
     );
     expect(rows[0].session).toBe('london');
   });
+
+  it('computes R from stop distance when r_value is missing', () => {
+    const rows = tradesToRows(
+      [{ ticket: 1, pnl_usd: 20, entry_price: 100, exit_price: 110, sl_price: 95 }],
+      'user-1',
+      { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      'api',
+    );
+    expect(rows[0].r_value).toBe(2);
+  });
+
+  it('omits r_value when stop loss is missing so sync cannot wipe a stored R', () => {
+    const rows = tradesToRows(
+      [{ ticket: 1, pnl_usd: 20, entry_price: 100, exit_price: 110 }],
+      'user-1',
+      { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      'api',
+    );
+    expect(rows[0].r_value).toBeUndefined();
+  });
 });
 
 describe('upsertSyncedTrades', () => {

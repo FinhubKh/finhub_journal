@@ -62,8 +62,25 @@ export function fmtPnlStrict(v, denomination = 'usd') {
 }
 
 export function fmtR(r) {
-  if (!r) return '';
-  return r > 0 ? `+${r.toFixed(2)}R` : `${r.toFixed(2)}R`;
+  const n = Number(r);
+  if (!Number.isFinite(n) || n === 0) return n === 0 ? '0.00R' : '';
+  return n > 0 ? `+${n.toFixed(2)}R` : `${n.toFixed(2)}R`;
+}
+
+/** Stored R if set; otherwise PnL / average loss (same fallback as overview stats). */
+export function tradeRValue(t, avgLoss = 0) {
+  const stored = Number(t?.r_value);
+  if (Number.isFinite(stored) && Math.abs(stored) > 0.01) return stored;
+  const pnl = Number(t?.pnl_usd);
+  const loss = Number(avgLoss);
+  if (Number.isFinite(pnl) && loss > 0) return pnl / loss;
+  return null;
+}
+
+export function fmtTradeR(t, avgLoss = 0) {
+  const r = tradeRValue(t, avgLoss);
+  if (r == null || !Number.isFinite(r)) return '—';
+  return fmtR(r) || '—';
 }
 
 /** Lot size for trade tables (2 decimals, em dash when missing). */

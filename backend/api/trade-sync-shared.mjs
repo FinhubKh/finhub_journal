@@ -40,6 +40,23 @@ export function resolvePnlUsd(trade, matchedAccount, source) {
   return val;
 }
 
+/** R-multiple from stop distance; 0 when SL is missing. */
+export function rMultiple(trade) {
+  const explicit = Number(trade?.r_value);
+  if (Number.isFinite(explicit) && Math.abs(explicit) > 0.01) {
+    return Math.round(explicit * 100) / 100;
+  }
+  const entry = Number(trade?.entry_price);
+  const exit = Number(trade?.exit_price);
+  const sl = Number(trade?.sl_price ?? trade?.sl);
+  const pnl = Number(trade?.pnl_usd ?? trade?.pnl_raw ?? 0);
+  if (!(entry > 0) || !(sl > 0)) return 0;
+  const risk = Math.abs(entry - sl);
+  if (!(risk > 0)) return 0;
+  const rr = Math.abs(exit - entry) / risk;
+  return Math.round((pnl >= 0 ? rr : -rr) * 100) / 100;
+}
+
 export function tradesToRows(trades, userId, matchedAccount, source) {
   const accountLabel = matchedAccount.name;
   return trades.map((t) => {
@@ -47,7 +64,8 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
     const session = t.session === 'asian' || t.session === 'london' || t.session === 'ny'
       ? t.session
       : sessionFromTime(t.open_time || t.close_time);
-    return {
+    const r = rMultiple({ ...t, pnl_usd: pnl });
+    const row = {
       user_id: userId,
       source,
       ticket: t.ticket,
@@ -57,7 +75,6 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
       exit_price: t.exit_price,
       lot_size: t.lot_size,
       pnl_usd: pnl,
-      r_value: Number(t.r_value) || 0,
       result: pnl > 0 ? 'win' : pnl < 0 ? 'loss' : 'be',
       session,
       open_time: t.open_time,
@@ -66,6 +83,9 @@ export function tradesToRows(trades, userId, matchedAccount, source) {
       account: accountLabel,
       account_id: matchedAccount.id,
     };
+    // Skip r_value: 0 so a later sync does not wipe a backfilled / user-set R.
+    if (Math.abs(r) > 0.01) row.r_value = r;
+    return row;
   });
 }
 

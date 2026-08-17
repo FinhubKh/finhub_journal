@@ -3,7 +3,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, TRADE_PAGE_SIZE } from '../../api';
-import { fmtR, fmtDateShort, capitalize, fmtPnlStrict, fmtLot } from '../../lib/format';
+import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue } from '../../lib/format';
 import { tradePnlDenomination } from '../../lib/accounts';
 import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
@@ -283,12 +283,13 @@ export default function TradeList() {
                 {pageTrades.map((t) => {
                   const isApi = t.source === 'api';
                   const needsReview = isApi && !t.notes;
-                  const rDisplay = fmtR(t.r_value) || '—';
+                  const r = tradeRValue(t, journalStats?.avgLoss);
+                  const rDisplay = fmtTradeR(t, journalStats?.avgLoss);
                   const denom = tradePnlDenomination(t, resolveTradeAccount);
                   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denom);
                   const accountName = resolveTradeAccount(t)?.name || t.account || '—';
                   const pnlTone = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
-                  const rTone = t.result === 'win' ? 'text-violet-600' : t.result === 'loss' ? 'text-rose-600' : 'text-amber-600';
+                  const rTone = (r || 0) > 0 ? 'text-violet-600' : (r || 0) < 0 ? 'text-rose-600' : 'text-amber-600';
 
                   return (
                     <tr

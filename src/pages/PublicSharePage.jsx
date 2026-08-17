@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { getSession, subscribeAuth } from '../api/auth';
 import { accountTypeLabel, pnlDenominationLabel, normalizePnlDenomination } from '../lib/accounts';
-import { fmtPnlStrict, fmtLot } from '../lib/format';
+import { fmtPnlStrict, fmtLot, fmtTradeR } from '../lib/format';
 import {
   btnOutline,
   btnPrimary,
@@ -156,7 +156,14 @@ function GatedCalendarSection({ children, ownerName }) {
 }
 
 /* --- Trade Log View Component -------------------------------------- */
-function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPages, pageSafe, pageStart, pageTrades, tradeCount, tradesCapped }) {
+function avgLossOf(trades) {
+  const losses = (trades || []).filter((t) => t.result === 'loss');
+  if (!losses.length) return 0;
+  return Math.abs(losses.reduce((s, t) => s + (Number(t.pnl_usd) || 0), 0)) / losses.length;
+}
+
+/* --- Trade Log View Component -------------------------------------- */
+function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPages, pageSafe, pageStart, pageTrades, tradeCount, tradesCapped, avgLoss = 0 }) {
   if (isLoggedIn) {
     return (
       <section>
@@ -189,7 +196,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                     <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
                     <td className={`${tableTd} text-right tabular-nums`}>{fmtLot(t.lot_size)}</td>
                     <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                    <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                    <td className={`${tableTd} text-right tabular-nums`}>{fmtTradeR(t, avgLoss)}</td>
                     <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {fmtPnlStrict(t.pnl_usd, denomination)}
                     </td>
@@ -246,7 +253,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                 <td className={tableTd}>{t.symbol || '—'}</td>
                 <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
                 <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                <td className={`${tableTd} text-right tabular-nums`}>{fmtTradeR(t, avgLoss)}</td>
                 <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                   {fmtPnlStrict(t.pnl_usd, denomination)}
                 </td>
@@ -329,6 +336,7 @@ export default function PublicSharePage() {
   const tradeCount  = data?.tradeCount ?? trades.length;
   const tradesCapped = Boolean(data?.tradesCapped);
   const stats       = data?.stats ?? null;
+  const avgLoss     = Number(stats?.avgLoss) || avgLossOf(trades);
 
   const totalPages  = Math.max(1, Math.ceil(trades.length / PAGE_SIZE));
   const pageSafe    = Math.min(page, totalPages);
@@ -468,7 +476,7 @@ export default function PublicSharePage() {
                                   <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
                                   <td className={`${tableTd} text-right tabular-nums`}>{fmtLot(t.lot_size)}</td>
                                   <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
-                                  <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
+                                  <td className={`${tableTd} text-right tabular-nums`}>{fmtTradeR(t, avgLoss)}</td>
                                   <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                     {fmtPnlStrict(t.pnl_usd, denomination)}
                                   </td>
@@ -540,6 +548,7 @@ export default function PublicSharePage() {
                   pageTrades={pageTrades}
                   tradeCount={tradeCount}
                   tradesCapped={tradesCapped}
+                  avgLoss={avgLoss}
                 />
               )}
             </div>

@@ -4,7 +4,7 @@
 //| Read-only: only reads history, never places/modifies trades.      |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.05"
+#property version   "1.06"
 
 input string SyncKey           = "";  // Paste sync key from Settings > Account
 input int    SyncEveryMinutes  = 5;   // Repeat sync while the EA stays on a chart
@@ -67,7 +67,7 @@ bool IsExitDeal(long entryType)
 //+------------------------------------------------------------------+
 string TradeJson(ulong dealTicket, string symbol, string direction,
                  double entryPx, double exitPx, double volume, double profit,
-                 double rValue, datetime openTime, datetime closeTime)
+                 double rValue, double slPrice, datetime openTime, datetime closeTime)
   {
    string json = "{";
    json += "\"ticket\":" + IntegerToString((long)dealTicket) + ",";
@@ -79,6 +79,7 @@ string TradeJson(ulong dealTicket, string symbol, string direction,
    json += "\"pnl_raw\":" + DoubleToString(profit, 2) + ",";
    json += "\"pnl_usd\":" + DoubleToString(profit, 2) + ",";
    json += "\"r_value\":" + DoubleToString(rValue, 2) + ",";
+   json += "\"sl_price\":" + DoubleToString(slPrice, 5) + ",";
    json += "\"session\":\"" + SessionFromTime(openTime) + "\",";
    json += "\"open_time\":\"" + TimeToISO(openTime) + "\",";
    json += "\"close_time\":\"" + TimeToISO(closeTime) + "\"";
@@ -88,7 +89,7 @@ string TradeJson(ulong dealTicket, string symbol, string direction,
 
 //+------------------------------------------------------------------+
 void FindEntry(long posId, int total,
-               double &entryPx, datetime &openTime, ulong &entryOrderTicket)
+               double &entryPx, datetime &openTime, ulong &entryOrderTicket, double &entrySl)
   {
    for(int j = 0; j < total; j++)
      {
@@ -100,17 +101,26 @@ void FindEntry(long posId, int total,
          entryPx  = HistoryDealGetDouble(dt2, DEAL_PRICE);
          openTime = (datetime)HistoryDealGetInteger(dt2, DEAL_TIME);
          entryOrderTicket = (ulong)HistoryDealGetInteger(dt2, DEAL_ORDER);
+         entrySl = HistoryDealGetDouble(dt2, DEAL_SL);
          return;
         }
      }
   }
 
 //+------------------------------------------------------------------+
-double CalcR(ulong entryOrderTicket, double entryPx, double exitPx, double profit)
+double StopLossOf(ulong outDeal, ulong entryOrderTicket, double entrySl)
   {
-   if(entryOrderTicket == 0 || !HistoryOrderSelect(entryOrderTicket))
-      return 0;
-   double slPrice = HistoryOrderGetDouble(entryOrderTicket, ORDER_SL);
+   double slPrice = HistoryDealGetDouble(outDeal, DEAL_SL);
+   if(slPrice <= 0)
+      slPrice = entrySl;
+   if(slPrice <= 0 && entryOrderTicket > 0 && HistoryOrderSelect(entryOrderTicket))
+      slPrice = HistoryOrderGetDouble(entryOrderTicket, ORDER_SL);
+   return slPrice;
+  }
+
+//+------------------------------------------------------------------+
+double CalcR(double entryPx, double exitPx, double profit, double slPrice)
+  {
    if(slPrice <= 0 || entryPx <= 0)
       return 0;
    double riskDist = MathAbs(entryPx - slPrice);
@@ -162,12 +172,14 @@ void SyncHistory(bool fullHistory)
       double entryPx = 0;
       datetime openTime = closeTime;
       ulong entryOrderTicket = 0;
-      FindEntry(posId, total, entryPx, openTime, entryOrderTicket);
-      double rValue = CalcR(entryOrderTicket, entryPx, exitPx, profit);
+      double entrySl = 0;
+      FindEntry(posId, total, entryPx, openTime, entryOrderTicket, entrySl);
+      double slPrice = StopLossOf(dealTicket, entryOrderTicket, entrySl);
+      double rValue = CalcR(entryPx, exitPx, profit, slPrice);
 
       if(batchCount > 0) batch += ",";
       batch += TradeJson(dealTicket, symbol, direction, entryPx, exitPx,
-                         volume, profit, rValue, openTime, closeTime);
+                         volume, profit, rValue, slPrice, openTime, closeTime);
       batchCount++;
 
       if(batchCount >= BatchSize)
