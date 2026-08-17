@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { getSession, subscribeAuth } from '../api/auth';
 import { accountTypeLabel, pnlDenominationLabel, normalizePnlDenomination } from '../lib/accounts';
-import { fmtPnlStrict } from '../lib/format';
+import { fmtPnlStrict, fmtLot } from '../lib/format';
 import {
   btnOutline,
   btnPrimary,
@@ -174,6 +174,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                   <th className={tableTh}>Date</th>
                   <th className={tableTh}>Symbol</th>
                   <th className={tableTh}>Side</th>
+                  <th className={`${tableTh} text-right`}>Lot</th>
                   <th className={tableTh}>Result</th>
                   <th className={`${tableTh} text-right`}>R</th>
                   <th className={`${tableTh} text-right`}>PnL</th>
@@ -186,6 +187,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                     <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
                     <td className={tableTd}>{t.symbol || '—'}</td>
                     <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                    <td className={`${tableTd} text-right tabular-nums`}>{fmtLot(t.lot_size)}</td>
                     <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
                     <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
                     <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
@@ -452,6 +454,7 @@ export default function PublicSharePage() {
                                 <th className={tableTh}>Date</th>
                                 <th className={tableTh}>Symbol</th>
                                 <th className={tableTh}>Side</th>
+                                <th className={`${tableTh} text-right`}>Lot</th>
                                 <th className={tableTh}>Result</th>
                                 <th className={`${tableTh} text-right`}>R</th>
                                 <th className={`${tableTh} text-right`}>PnL</th>
@@ -463,6 +466,7 @@ export default function PublicSharePage() {
                                   <td className={`${tableTd} tabular-nums text-zinc-600 dark:text-zinc-400`}>{t.date}</td>
                                   <td className={tableTd}>{t.symbol || '—'}</td>
                                   <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
+                                  <td className={`${tableTd} text-right tabular-nums`}>{fmtLot(t.lot_size)}</td>
                                   <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
                                   <td className={`${tableTd} text-right tabular-nums`}>{t.r_value != null ? Number(t.r_value).toFixed(2) : '—'}</td>
                                   <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>

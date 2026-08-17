@@ -3,7 +3,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, TRADE_PAGE_SIZE } from '../../api';
-import { fmtR, fmtDateShort, capitalize, fmtPnlStrict } from '../../lib/format';
+import { fmtR, fmtDateShort, capitalize, fmtPnlStrict, fmtLot } from '../../lib/format';
 import { tradePnlDenomination } from '../../lib/accounts';
 import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
@@ -269,6 +269,7 @@ export default function TradeList() {
                   <th className={th}>Date</th>
                   <th className={th}>Symbol</th>
                   <th className={th}>Side</th>
+                  <th className={`${th} text-right`}>Lot</th>
                   <th className={th}>Account</th>
                   <th className={th}>Result</th>
                   <th className={`${th} text-right`}>R</th>
@@ -302,6 +303,7 @@ export default function TradeList() {
                           <span className="uppercase text-xs font-semibold text-zinc-500">{t.direction}</span>
                         ) : '—'}
                       </td>
+                      <td className={tdNum}>{fmtLot(t.lot_size)}</td>
                       <td className={td}>
                         <span className="max-w-[140px] truncate block text-zinc-600">{accountName}</span>
                       </td>

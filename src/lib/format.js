@@ -66,6 +66,14 @@ export function fmtR(r) {
   return r > 0 ? `+${r.toFixed(2)}R` : `${r.toFixed(2)}R`;
 }
 
+/** Lot size for trade tables (2 decimals, em dash when missing). */
+export function fmtLot(v) {
+  if (v == null || v === '') return '—';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return n.toFixed(2);
+}
+
 export function fmtDateShort(dateStr) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
