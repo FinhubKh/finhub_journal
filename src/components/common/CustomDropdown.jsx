@@ -47,6 +47,7 @@ export default function CustomDropdown({
   className = '',
   menuClassName = 'w-36',
   buttonClassName = '',
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -82,7 +83,8 @@ export default function CustomDropdown({
       <button
         type="button"
         className={buttonClassName || defaultButton}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { if (!disabled) setOpen((v) => !v); }}
+        disabled={disabled}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={ariaLabel}

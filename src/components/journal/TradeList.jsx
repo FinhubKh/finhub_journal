@@ -4,6 +4,7 @@ import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, fetchCashflows, TRADE_PAGE_SIZE } from '../../api';
 import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue, fmtBalance } from '../../lib/format';
+import { mergeCashflowsIntoPage, CASHFLOW_RESULTS, TRADE_RESULTS } from '../../lib/tradeLog';
 import { tradePnlDenomination } from '../../lib/accounts';
 import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
@@ -31,40 +32,6 @@ function FilterField({ label, children }) {
       {children}
     </div>
   );
-}
-
-function cashflowToRow(c) {
-  return {
-    id: `cash-${c.id}`,
-    date: c.date,
-    symbol: null,
-    direction: null,
-    lot_size: null,
-    result: c.op_type,
-    r_value: null,
-    pnl_usd: c.amount,
-    session: null,
-    notes: c.comment,
-    account_id: c.account_id,
-    source: c.source,
-    ticket: c.ticket,
-    isCashflow: true,
-  };
-}
-
-function mergeCashflowsIntoPage(trades, cashflows, { pageSafe, totalPages, hideCash }) {
-  if (hideCash || !cashflows.length) return trades;
-  const rows = cashflows.map(cashflowToRow);
-  if (trades.length === 0) return pageSafe === 1 ? rows : [];
-  const newest = trades[0]?.date;
-  const oldest = trades[trades.length - 1]?.date;
-  const extra = rows.filter((c) => {
-    if (c.date >= oldest && c.date <= newest) return true;
-    if (pageSafe === 1 && c.date > newest) return true;
-    if (pageSafe === totalPages && c.date < oldest) return true;
-    return false;
-  });
-  return [...trades, ...extra].sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
 }
 
 export default function TradeList() {
@@ -126,23 +93,42 @@ export default function TradeList() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  const isCashFilter = CASHFLOW_RESULTS.has(filters.result);
+  const isTradeResult = TRADE_RESULTS.has(filters.result);
+
   useEffect(() => {
     let cancelled = false;
     setListLoading(true);
     (async () => {
       try {
-        const [{ trades, total: nextTotal }, nextCash] = await Promise.all([
+        if (isCashFilter) {
+          const { cashflows: nextCash, total: nextTotal } = await fetchCashflows({
+            accountId: scopedAccountId || undefined,
+            from: filters.from || undefined,
+            to: filters.to || undefined,
+            opType: filters.result,
+            page: pageSafe,
+            pageSize: PAGE_SIZE,
+          });
+          if (cancelled) return;
+          setPageTrades([]);
+          setCashflows(nextCash);
+          setTotal(nextTotal);
+          return;
+        }
+
+        const [{ trades, total: nextTotal }, cashResult] = await Promise.all([
           fetchTradesPage({
             accountId: scopedAccountId || undefined,
-            result: filters.result || undefined,
+            result: isTradeResult ? filters.result : undefined,
             session: filters.session || undefined,
             from: filters.from || undefined,
             to: filters.to || undefined,
             page: pageSafe,
             pageSize: PAGE_SIZE,
           }),
-          filters.result || filters.session
-            ? Promise.resolve([])
+          isTradeResult || filters.session
+            ? Promise.resolve({ cashflows: [] })
             : fetchCashflows({
                 accountId: scopedAccountId || undefined,
                 from: filters.from || undefined,
@@ -151,7 +137,7 @@ export default function TradeList() {
         ]);
         if (cancelled) return;
         setPageTrades(trades);
-        setCashflows(nextCash);
+        setCashflows(cashResult.cashflows || []);
         setTotal(nextTotal);
       } catch {
         if (!cancelled) {
@@ -164,7 +150,7 @@ export default function TradeList() {
       }
     })();
     return () => { cancelled = true; };
-  }, [filters, scopedAccountId, pageSafe, tradesEpoch]);
+  }, [filters, scopedAccountId, pageSafe, tradesEpoch, isCashFilter, isTradeResult]);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,10 +167,19 @@ export default function TradeList() {
 
   const hasFilters = Object.values(filters).some((v) => v !== '');
   const unfilteredTotal = journalStats?.total || 0;
-  const hideCash = Boolean(filters.result || filters.session);
+  const hideCash = Boolean(isTradeResult || filters.session);
+  const rowNoun = isCashFilter
+    ? (filters.result === 'withdrawal' ? 'withdrawal' : 'deposit')
+    : 'trade';
+  const rowNouns = `${rowNoun}s`;
   const visibleRows = useMemo(
-    () => mergeCashflowsIntoPage(pageTrades, cashflows, { pageSafe, totalPages, hideCash }),
-    [pageTrades, cashflows, pageSafe, totalPages, hideCash],
+    () => mergeCashflowsIntoPage(pageTrades, cashflows, {
+      pageSafe,
+      totalPages,
+      hideCash,
+      cashOnly: isCashFilter,
+    }),
+    [pageTrades, cashflows, pageSafe, totalPages, hideCash, isCashFilter],
   );
 
   async function confirmDelete(id, e) {
@@ -222,8 +217,8 @@ export default function TradeList() {
               : activeAccount?.name || 'Account'}
             {journalStats?.balance != null ? ` · Balance ${fmtBalance(journalStats.balance, activeAccount?.pnl_denomination)}` : ''}
             {' · '}
-            {total} trade{total === 1 ? '' : 's'}
-            {hasFilters && unfilteredTotal > 0 ? ` · filtered from ${unfilteredTotal}` : ''}
+            {total} {total === 1 ? rowNoun : rowNouns}
+            {hasFilters && !isCashFilter && unfilteredTotal > 0 ? ` · filtered from ${unfilteredTotal}` : ''}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -249,6 +244,8 @@ export default function TradeList() {
                 { value: 'win', label: 'Win' },
                 { value: 'loss', label: 'Loss' },
                 { value: 'be', label: 'BE' },
+                { value: 'deposit', label: 'Deposit' },
+                { value: 'withdrawal', label: 'Withdrawal' },
               ]}
             />
           </FilterField>
@@ -257,8 +254,9 @@ export default function TradeList() {
               className="w-full"
               menuClassName="w-full"
               buttonClassName={`${filterControl} inline-flex items-center justify-between gap-2 text-left hover:border-violet-300`}
-              value={filters.session}
+              value={isCashFilter ? '' : filters.session}
               onChange={(v) => setFilter('session', v)}
+              disabled={isCashFilter}
               options={[
                 { value: '', label: 'All sessions' },
                 { value: 'asian', label: 'Asian' },
@@ -311,7 +309,7 @@ export default function TradeList() {
           <div className={`${emptyState} min-h-0 flex-1`}>Loading trades…</div>
         ) : total === 0 && visibleRows.length === 0 ? (
           <div className={`${emptyState} min-h-0 flex-1`}>
-            {hasFilters || unfilteredTotal > 0 ? 'No trades match your filters.' : 'No trades yet. Log a manual trade or sync from MT5.'}
+            {hasFilters || unfilteredTotal > 0 ? `No ${rowNouns} match your filters.` : 'No trades yet. Log a manual trade or sync from MT5.'}
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
@@ -396,7 +394,7 @@ export default function TradeList() {
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {total > PAGE_SIZE
                 ? `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}`
-                : `${total} trade${total === 1 ? '' : 's'}`}
+                : `${total} ${total === 1 ? rowNoun : rowNouns}`}
             </span>
             {total > PAGE_SIZE && (
               <div className="flex items-center gap-2">

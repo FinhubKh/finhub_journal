@@ -66,7 +66,7 @@ export async function fetchTradesPage({
   const uid = getUserId();
   const params = new URLSearchParams({
     select: TRADE_SELECT,
-    order: 'date.desc,created_at.desc',
+    order: 'date.desc,close_time.desc.nullslast,id.desc',
   });
   if (uid) params.set('user_id', `eq.${uid}`);
   if (accountId) params.set('account_id', `eq.${accountId}`);
@@ -119,15 +119,17 @@ export async function fetchUnannotatedCount(accountId) {
   return parseContentRangeTotal(res) || 0;
 }
 
-export async function fetchCashflows({ accountId, from, to } = {}) {
+export async function fetchCashflows({ accountId, from, to, opType, page, pageSize } = {}) {
   const uid = getUserId();
+  const paginate = page != null && pageSize != null;
   const params = new URLSearchParams({
     select: 'id,account_id,ticket,op_type,amount,comment,occurred_at,date,source',
-    order: 'date.desc,occurred_at.desc',
-    limit: '500',
+    order: 'occurred_at.desc.nullslast,date.desc',
   });
+  if (!paginate) params.set('limit', '500');
   if (uid) params.set('user_id', `eq.${uid}`);
   if (accountId) params.set('account_id', `eq.${accountId}`);
+  if (opType) params.set('op_type', `eq.${opType}`);
   if (from && to) {
     params.set('and', `(date.gte.${from},date.lte.${to})`);
   } else if (from) {
@@ -136,10 +138,19 @@ export async function fetchCashflows({ accountId, from, to } = {}) {
     params.set('date', `lte.${to}`);
   }
 
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/account_cashflows?${params}`, {
-    headers: authHeaders(getToken()),
-  });
-  if (!res.ok) return [];
+  const headers = { ...authHeaders(getToken()) };
+  if (paginate) {
+    const fromIdx = Math.max(0, (page - 1) * pageSize);
+    const toIdx = fromIdx + pageSize - 1;
+    headers.Range = `${fromIdx}-${toIdx}`;
+    headers.Prefer = 'count=exact';
+  }
+
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/account_cashflows?${params}`, { headers });
+  if (res.status === 416) return { cashflows: [], total: 0 };
+  if (!res.ok) return { cashflows: [], total: 0 };
   const rows = await res.json();
-  return Array.isArray(rows) ? rows : [];
+  const cashflows = Array.isArray(rows) ? rows : [];
+  const total = parseContentRangeTotal(res) ?? cashflows.length;
+  return { cashflows, total };
 }
