@@ -152,6 +152,32 @@ describe('upsertSyncedTrades', () => {
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toHaveLength(1);
   });
 
+  it('upserts mixed R in two uniform batches so PostgREST does not reject the body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [{ id: 't' }] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await upsertSyncedTrades({
+      trades: [
+        { ticket: 1, pnl_usd: 20, entry_price: 100, exit_price: 110, sl_price: 95 },
+        { ticket: 2, pnl_usd: 5, entry_price: 100, exit_price: 101 },
+      ],
+      userId: 'user-1',
+      matchedAccount: { id: 'acct-1', name: 'Live', pnl_denomination: 'usd' },
+      source: 'api',
+      supabaseUrl: 'https://example.supabase.co',
+      serviceKey: 'service-key',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const second = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(first).toHaveLength(2);
+    expect(first.every((row) => !Object.hasOwn(row, 'r_value'))).toBe(true);
+    expect(second).toHaveLength(1);
+    expect(second[0].ticket).toBe(1);
+    expect(second[0].r_value).toBe(2);
+  });
+
   it('throws when the upsert request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, text: async () => 'db error' }));
 

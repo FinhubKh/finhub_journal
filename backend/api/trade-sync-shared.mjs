@@ -140,13 +140,13 @@ export function cashflowsToRows(cashflows, userId, matchedAccount, source) {
 
 const UPSERT_CHUNK = 200;
 
-export async function upsertSyncedTrades({ trades, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
-  const rows = tradesToRows(trades, userId, matchedAccount, source);
+async function postUpsertRows({ supabaseUrl, serviceKey, table, rows }) {
+  if (!rows.length) return [];
   const saved = [];
   for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
     const chunk = rows.slice(i, i + UPSERT_CHUNK);
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/trades?on_conflict=account_id,ticket`,
+      `${supabaseUrl}/rest/v1/${table}?on_conflict=account_id,ticket`,
       {
         method: 'POST',
         headers: supabaseHeaders(serviceKey, {
@@ -157,7 +157,7 @@ export async function upsertSyncedTrades({ trades, userId, matchedAccount, sourc
     );
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || 'Failed to save trades');
+      throw new Error(text || `Failed to save ${table}`);
     }
     const body = await res.json();
     if (Array.isArray(body)) saved.push(...body);
@@ -165,28 +165,27 @@ export async function upsertSyncedTrades({ trades, userId, matchedAccount, sourc
   return saved;
 }
 
-export async function upsertSyncedCashflows({ cashflows, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
-  const rows = cashflowsToRows(cashflows, userId, matchedAccount, source);
-  if (rows.length === 0) return [];
-  const saved = [];
-  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
-    const chunk = rows.slice(i, i + UPSERT_CHUNK);
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/account_cashflows?on_conflict=account_id,ticket`,
-      {
-        method: 'POST',
-        headers: supabaseHeaders(serviceKey, {
-          Prefer: 'resolution=merge-duplicates,return=representation',
-        }),
-        body: JSON.stringify(chunk),
-      },
-    );
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || 'Failed to save cashflows');
-    }
-    const body = await res.json();
-    if (Array.isArray(body)) saved.push(...body);
+export async function upsertSyncedTrades({ trades, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
+  const rows = tradesToRows(trades, userId, matchedAccount, source);
+  // PostgREST PGRST102: every object in a bulk upsert must have the same keys.
+  // Keep r_value off the base payload so a 0 cannot wipe a stored R, then
+  // write R in a second uniform batch for trades that actually have it.
+  const withoutR = rows.map(({ r_value: _r, ...rest }) => rest);
+  const withR = rows.filter((row) => row.r_value != null);
+  const saved = await postUpsertRows({
+    supabaseUrl, serviceKey, table: 'trades', rows: withoutR,
+  });
+  if (withR.length > 0) {
+    await postUpsertRows({
+      supabaseUrl, serviceKey, table: 'trades', rows: withR,
+    });
   }
   return saved;
+}
+
+export async function upsertSyncedCashflows({ cashflows, userId, matchedAccount, source, supabaseUrl, serviceKey }) {
+  const rows = cashflowsToRows(cashflows, userId, matchedAccount, source);
+  return postUpsertRows({
+    supabaseUrl, serviceKey, table: 'account_cashflows', rows,
+  });
 }
