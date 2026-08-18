@@ -8,6 +8,8 @@ import { appShell } from '../lib/ui';
 const OverviewPage = lazy(() => import('./OverviewPage'));
 const LogPage = lazy(() => import('./LogPage'));
 const CalendarPage = lazy(() => import('./CalendarPage'));
+const BacktestsPage = lazy(() => import('./BacktestsPage'));
+const BacktestDetailPage = lazy(() => import('./BacktestDetailPage'));
 const AccountsPage = lazy(() => import('./AccountsPage'));
 const AccountDetailPage = lazy(() => import('./AccountDetailPage'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
@@ -35,6 +37,7 @@ function DashboardTabContent({ activeTab }) {
       {activeTab === 'overview' && <OverviewPage />}
       {activeTab === 'log' && <LogPage />}
       {activeTab === 'calendar' && <CalendarPage />}
+      {activeTab === 'backtests' && <BacktestsPage />}
       {activeTab === 'checklist' && <ChecklistPage />}
       {activeTab === 'compound' && <CompoundingPage />}
       {activeTab === 'ai-advisor' && <AiAdvisorPage />}
@@ -50,6 +53,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const onAccounts = location.pathname.startsWith('/dashboard/accounts');
+  const onBacktests = location.pathname.startsWith('/dashboard/backtests');
 
   useEffect(() => {
     if (!location.state?.tab) return;
@@ -84,11 +88,16 @@ export default function DashboardPage() {
       navigate('/dashboard/accounts');
       return;
     }
-    setActiveTab(tab);
-    if (onAccounts) navigate('/dashboard');
+    if (tab === 'backtests') {
+      navigate('/dashboard/backtests', { replace: true });
+      return;
+    }
+    // Other tabs are rendered via state (not URL), so we must navigate away from
+    // any `/dashboard/backtests/...` URL to keep the correct view visible.
+    navigate('/dashboard', { state: { tab }, replace: true });
   }
 
-  const shellTab = onAccounts ? 'accounts' : activeTab;
+  const shellTab = onAccounts ? 'accounts' : (onBacktests ? 'backtests' : activeTab);
   const fillHeight =
     shellTab === 'log'
     || shellTab === 'checklist'
@@ -111,6 +120,8 @@ export default function DashboardPage() {
               <Routes>
                 <Route path="accounts" element={<AccountsPage />} />
                 <Route path="accounts/:accountId" element={<AccountDetailPage />} />
+                <Route path="backtests" element={<BacktestsPage />} />
+                <Route path="backtests/:backtestId" element={<BacktestDetailPage />} />
                 <Route path="*" element={<DashboardTabContent activeTab={activeTab} />} />
               </Routes>
             </Suspense>

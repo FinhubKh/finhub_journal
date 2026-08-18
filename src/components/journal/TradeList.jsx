@@ -338,16 +338,31 @@ export default function TradeList() {
                   const denom = tradePnlDenomination(t, resolveTradeAccount);
                   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denom);
                   const accountName = resolveTradeAccount(t)?.name || t.account || '—';
-                  const pnlTone = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
-                  const rTone = (r || 0) > 0 ? 'text-violet-600' : (r || 0) < 0 ? 'text-rose-600' : 'text-amber-600';
+                  const isWin = t.result === 'win';
+                  const isLoss = t.result === 'loss';
+                  const pnlTone = (t.pnl_usd || 0) >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-600 dark:text-rose-400';
+                  const rTone = (r || 0) > 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : (r || 0) < 0
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-amber-600 dark:text-amber-400';
                   const resultLabel = t.result === 'win' || t.result === 'loss' || t.result === 'be'
                     ? t.result
                     : capitalize(t.result);
+                  const rowClass = isCashflow
+                    ? 'bg-zinc-50/80 dark:bg-zinc-900/50'
+                    : isWin
+                      ? 'cursor-pointer bg-emerald-50/90 transition hover:bg-emerald-100/90 dark:bg-emerald-950/35 dark:hover:bg-emerald-950/55'
+                      : isLoss
+                        ? 'cursor-pointer bg-rose-50/40 transition hover:bg-rose-50/80 dark:bg-rose-950/15 dark:hover:bg-rose-950/30'
+                        : 'cursor-pointer transition hover:bg-zinc-50 dark:hover:bg-zinc-900/50';
 
                   return (
                     <tr
                       key={t.id}
-                      className={isCashflow ? 'bg-zinc-50/80' : 'cursor-pointer transition hover:bg-violet-50/40'}
+                      className={rowClass}
                       onClick={isCashflow ? undefined : () => open(t)}
                     >
                       <td className={`${td} font-medium text-zinc-900`}>{fmtDateShort(t.date)}</td>

@@ -11,6 +11,7 @@ const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', short: 'Home', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
   { id: 'log', label: 'Log', short: 'Log', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
   { id: 'calendar', label: 'Calendar', short: 'Cal', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
+  { id: 'backtests', label: 'Backtest', short: 'BT', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 10.5l2-3 2 1.5 2.5-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11.5 5.5h1.5V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'checklist', label: 'Checklist', short: 'List', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'compound', label: 'Compound', short: 'Cmp', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   {
@@ -55,15 +56,15 @@ const TRAILING_TABS = [
 ];
 
 const MOBILE_TABS = [
-  PRIMARY_TABS[0],
-  PRIMARY_TABS[1],
-  PRIMARY_TABS[2],
-  PRIMARY_TABS[3],
+  PRIMARY_TABS.find((t) => t.id === 'overview'),
+  PRIMARY_TABS.find((t) => t.id === 'log'),
+  PRIMARY_TABS.find((t) => t.id === 'calendar'),
+  PRIMARY_TABS.find((t) => t.id === 'checklist'),
   TRAILING_TABS[0],
 ];
 
 const MORE_TABS = [
-  ...PRIMARY_TABS.slice(4),
+  ...PRIMARY_TABS.filter((t) => !MOBILE_TABS.some((m) => m.id === t.id)),
   ...TRAILING_TABS.slice(1),
 ];
 

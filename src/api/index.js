@@ -365,3 +365,4 @@ export * from './compounding';
 export * from './share';
 export * from './investorSync';
 export * from './journal';
+export * from './backtests';
