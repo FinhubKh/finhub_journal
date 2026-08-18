@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const PublicSharePage = lazy(() => import('./pages/PublicSharePage'));
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
+const PublicBacktestPage = lazy(() => import('./pages/PublicBacktestPage'));
 
 function RouteFallback() {
   return (
@@ -83,6 +84,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/share/:token" element={<PublicSharePage />} />
+              <Route path="/share/backtest/:token" element={<PublicBacktestPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/login" element={<GuestRoute><AuthPage /></GuestRoute>} />
               <Route

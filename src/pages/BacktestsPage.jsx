@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { createBacktest, deleteBacktest, listBacktests } from '../api/backtests';
+import DeleteConfirmModal from '../components/modals/DeleteConfirmModal';
 import { fmtPnlStrict } from '../lib/format';
 import {
   btnDanger,
@@ -113,6 +114,7 @@ export default function BacktestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   async function loadList() {
     setLoading(true);
@@ -137,11 +139,10 @@ export default function BacktestsPage() {
   );
 
   async function remove(id) {
-    if (!window.confirm('Delete this strategy backtest?')) return;
     try {
       await deleteBacktest(id);
+      setRows((prev) => prev.filter((r) => r.id !== id));
       toast.success('Strategy deleted');
-      await loadList();
     } catch (err) {
       toast.error(err?.message || 'Could not delete strategy.');
     }
@@ -231,7 +232,7 @@ export default function BacktestsPage() {
                   <button
                     className={`${btnDanger} !py-1.5 !px-3 text-xs`}
                     type="button"
-                    onClick={() => remove(r.id)}
+                    onClick={() => setDeleteTarget(r)}
                   >
                     Delete
                   </button>
@@ -248,6 +249,18 @@ export default function BacktestsPage() {
           onCreated={(created) => {
             setShowCreate(false);
             navigate(`/dashboard/backtests/${created.id}`);
+          }}
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <DeleteConfirmModal
+          title={`Delete ${deleteTarget.name}?`}
+          message="This action cannot be undone. All imported data and charts for this backtest will be permanently removed."
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            await remove(deleteTarget.id);
+            setDeleteTarget(null);
           }}
         />
       ) : null}

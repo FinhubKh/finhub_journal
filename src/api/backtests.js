@@ -14,6 +14,9 @@ const BACKTEST_SELECT = [
   'losses',
   'be_count',
   'profit_factor',
+  'is_public',
+  'share_token',
+  'published_at',
   'source_html',
   'created_at',
 ].join(',');
@@ -240,4 +243,53 @@ export async function deleteBacktest(id) {
     { method: 'DELETE', headers: authHeaders(getToken()) },
   );
   if (!res.ok) throw await restError(res, 'Could not delete backtest.');
+}
+
+export async function setBacktestPublic(backtestId, isPublic) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/rpc/set_backtest_public`, {
+    method: 'POST',
+    headers: authHeaders(getToken()),
+    body: JSON.stringify({ p_backtest_id: backtestId, p_is_public: isPublic }),
+  });
+  if (!res.ok) throw await restError(res, 'Could not change public visibility.');
+  return res.json();
+}
+
+export async function regenerateBacktestShareToken(backtestId) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/rpc/regenerate_backtest_share_token`, {
+    method: 'POST',
+    headers: authHeaders(getToken()),
+    body: JSON.stringify({ p_backtest_id: backtestId }),
+  });
+  if (!res.ok) throw await restError(res, 'Could not regenerate share link.');
+  return res.json();
+}
+
+export async function fetchSharedBacktest(token) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_shared_backtest`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: (await import('./auth')).SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ p_token: token }),
+  });
+  if (!res.ok) {
+    let msg = 'Could not load shared strategy.';
+    try {
+      const body = await res.json();
+      msg = body?.message || msg;
+    } catch {
+      // fallback
+    }
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  if (!data || !data.backtest) throw new Error('Strategy not found or no longer public.');
+  return data;
+}
+
+export function getBacktestShareUrl(backtest) {
+  if (!backtest || !backtest.is_public || !backtest.share_token) return null;
+  return `${window.location.origin}/share/backtest/${backtest.share_token}`;
 }

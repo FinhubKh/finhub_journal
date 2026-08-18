@@ -37,7 +37,7 @@ import {
   pillToggle,
   sectionLabel,
 } from '../lib/ui';
-import { deleteBacktest, fetchBacktest, fetchBacktestDaily, saveBacktestUpload } from '../api/backtests';
+import { deleteBacktest, fetchBacktest, fetchBacktestDaily, saveBacktestUpload, getBacktestShareUrl, regenerateBacktestShareToken, setBacktestPublic } from '../api/backtests';
 
 const EMPTY_OVERRIDE = {};
 
@@ -126,6 +126,7 @@ export default function BacktestDetailPage() {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
   const [fileLabel, setFileLabel] = useState('');
+  const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState(null);
   const [sourceHtml, setSourceHtml] = useState(null);
@@ -224,30 +225,56 @@ export default function BacktestDetailPage() {
         dailyRows: preview.daily,
         sourceHtml,
       });
-      toast.success('Backtest saved');
+      const row = await fetchBacktest(backtestId);
+      setBacktestRow(row);
+      const days = await fetchBacktestDaily(backtestId);
+      setDaily(days || []);
       setPreview(null);
       setSourceHtml(null);
       setFileLabel('');
-      const days = await fetchBacktestDaily(backtestId);
-      setDaily(days || []);
-      const row = await fetchBacktest(backtestId);
-      setBacktestRow(row);
+      toast.success('Report saved successfully');
     } catch (err) {
-      toast.error(err?.message || 'Could not save backtest.');
+      toast.error(err?.message || 'Could not save report.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function remove() {
-    if (!backtestId) return;
-    if (!window.confirm('Delete this strategy and all its data?')) return;
+  async function handlePublishToggle() {
+    setBusy(true);
     try {
-      await deleteBacktest(backtestId);
-      toast.success('Strategy deleted');
-      navigate('/dashboard/backtests');
-    } catch (err) {
-      toast.error(err?.message || 'Could not delete strategy.');
+      const updated = await setBacktestPublic(backtestId, !backtestRow.is_public);
+      setBacktestRow(updated);
+      toast.success(updated.is_public ? 'Backtest published' : 'Backtest is now private');
+    } catch (e) {
+      toast.error(e.message || 'Could not change public visibility.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRegenerateLink() {
+    if (!window.confirm('This will break the old link. Are you sure?')) return;
+    setBusy(true);
+    try {
+      const updated = await regenerateBacktestShareToken(backtestId);
+      setBacktestRow(updated);
+      toast.success('Share link regenerated');
+    } catch (e) {
+      toast.error(e.message || 'Could not regenerate share link.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCopyLink() {
+    const shareUrl = getBacktestShareUrl(backtestRow);
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Share link copied');
+    } catch {
+      window.prompt('Copy this link:', shareUrl);
     }
   }
 
@@ -268,19 +295,32 @@ export default function BacktestDetailPage() {
 
   return (
     <div className={`${dashboardPageWideFull} overflow-y-auto`}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <BackButton onClick={() => navigate('/dashboard/backtests')} />
-        <div className="flex flex-wrap gap-2">
-          <label className={`${btnGhost} cursor-pointer`}>
-            <input
-              type="file"
-              accept=".html,.htm,text/html"
-              className="sr-only"
-              onChange={onFile}
-            />
-            {parsing ? 'Parsing…' : hasUpload ? 'Re-upload report' : 'Upload report'}
-          </label>
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <BackButton onClick={() => navigate('/dashboard/backtests')} />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              {overview?.name || 'Strategy Details'}
+            </h1>
+            {overview?.symbol && (
+              <p className="text-sm text-zinc-500">{overview.symbol} backtest</p>
+            )}
+          </div>
         </div>
+        
+        {hasUpload && !preview ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className={`${btnGhost} cursor-pointer`}>
+              <input
+                type="file"
+                accept=".html,.htm,text/html"
+                className="sr-only"
+                onChange={onFile}
+              />
+              {parsing ? 'Parsing…' : 'Re-upload report'}
+            </label>
+          </div>
+        ) : null}
       </div>
 
       {error ? (
@@ -347,10 +387,33 @@ export default function BacktestDetailPage() {
         </div>
       ) : null}
 
+      {!hasUpload && !preview && !error && !parseError ? (
+        <div className={`${card} ${emptyState} mt-6 flex flex-col items-center justify-center py-24`}>
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">No data uploaded yet</h3>
+          <p className="mx-auto mt-2 mb-8 max-w-sm text-sm text-zinc-500">
+            Upload your MT5 Strategy Tester HTML report to generate the performance overview, charts, and session breakdowns.
+          </p>
+          <label className={`${btnPrimary} cursor-pointer`}>
+            <input
+              type="file"
+              accept=".html,.htm,text/html"
+              className="sr-only"
+              onChange={onFile}
+            />
+            {parsing ? 'Parsing…' : 'Upload MT5 Report'}
+          </label>
+        </div>
+      ) : null}
+
       {hasUpload ? (
         <>
-          <div className="mb-4">
-            <div className={pillToggle} role="tablist" aria-label="Backtest views">
+          <nav className="mb-6 -mx-1 overflow-x-auto px-1 pb-1" aria-label="Backtest views">
+            <div className={`${pillToggle} w-max min-w-full sm:min-w-0`} role="tablist">
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'heatmap', label: 'Heatmap' },
@@ -361,14 +424,14 @@ export default function BacktestDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={view === tab.id}
-                  className={pillBtn(view === tab.id)}
+                  className={`${pillBtn(view === tab.id)} px-4 py-1.5`}
                   onClick={() => setView(tab.id)}
                 >
                   {tab.label}
                 </button>
               ))}
             </div>
-          </div>
+          </nav>
 
           {view === 'overview' && (
             <div className="space-y-6">
@@ -418,6 +481,39 @@ export default function BacktestDetailPage() {
                     <span className="text-zinc-500">Trading days</span>
                     <span className="font-semibold text-zinc-900 dark:text-zinc-100">{calendarDaily.length}</span>
                   </div>
+                </div>
+              </Panel>
+
+              <Panel
+                eyebrow="Sharing"
+                title="Public link"
+                badge={(
+                  <StatusBadge
+                    ok={Boolean(backtestRow?.is_public)}
+                    okLabel="Public"
+                    idleLabel="Private"
+                  />
+                )}
+              >
+                <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  {backtestRow?.is_public
+                    ? 'Anyone with the link can view this backtest performance and charts.'
+                    : 'Only you can see this strategy. Publish to share a read-only link.'}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handlePublishToggle()}>
+                    {backtestRow?.is_public ? 'Unpublish' : 'Publish'}
+                  </button>
+                  {backtestRow?.is_public && getBacktestShareUrl(backtestRow) ? (
+                    <>
+                      <button className={btnSm} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
+                        Copy link
+                      </button>
+                      <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
+                        Regenerate
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </Panel>
             </div>
