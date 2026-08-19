@@ -40,7 +40,7 @@ function buildSeries(points, denomination, initialDeposit = 0) {
   return { labels, dataUsd, peakUsd };
 }
 
-export default function EquityChart({ trades, daily, denomination = 'usd', initialDeposit = 0, fill = false, isModal = false, onClose = null }) {
+export default function EquityChart({ daily, trades, denomination = 'usd', initialDeposit = 0, fill = false, action = null, isModal = false, onClose = null }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
@@ -173,6 +173,7 @@ export default function EquityChart({ trades, daily, denomination = 'usd', initi
             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cumulative performance over time</p>
           </div>
           <div className="flex items-center gap-2">
+            {action}
             {!empty && lastVal != null && (
               <span className={`text-sm font-semibold sm:inline ${lastVal >= initialDeposit ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {fmtPnlStrict(lastVal, denom)}

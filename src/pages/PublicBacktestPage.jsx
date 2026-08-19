@@ -20,6 +20,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
 import RiskCard from '../components/dashboard/RiskCard';
 import HighlightsCard from '../components/dashboard/HighlightsCard';
+import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
 import { BrandLogo } from '../components/BrandLogo';
 import YearDropdown from '../components/common/YearDropdown';
 
@@ -83,7 +84,20 @@ export default function PublicBacktestPage() {
     load();
   }, [token]);
 
-  const overview = data?.backtest;
+  const overview = useMemo(() => {
+    if (!data?.backtest) return null;
+    const base = data.backtest;
+    let bd = { symbol: [], session: [] };
+    if (base.source_html) {
+      try {
+        const parsed = JSON.parse(base.source_html);
+        if (parsed.symbol || parsed.session) bd = parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return { ...base, breakdown: bd };
+  }, [data?.backtest]);
   const calendarDaily = useMemo(() => dailyRowsForCalendar(data?.daily), [data?.daily]);
   const uiCurrency = overview?.currency === 'cent' ? 'cent' : 'usd';
   const wins = Number(overview?.wins) || 0;
@@ -103,15 +117,7 @@ export default function PublicBacktestPage() {
 
   const monthDays = yearDays[month] || [];
 
-  const breakdown = useMemo(() => {
-    if (!overview?.source_html) return { symbol: [], session: [] };
-    try {
-      const parsed = JSON.parse(overview.source_html);
-      return (parsed.symbol || parsed.session) ? parsed : { symbol: [], session: [] };
-    } catch {
-      return { symbol: [], session: [] };
-    }
-  }, [overview?.source_html]);
+  const breakdown = overview?.breakdown || { symbol: [], session: [] };
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -266,7 +272,12 @@ export default function PublicBacktestPage() {
               <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
                 <div className="flex min-h-0 flex-1 flex-col gap-3 lg:min-h-0">
                   <div className="min-h-[240px] flex-1 lg:min-h-0">
-                    <EquityChart daily={calendarDaily} denomination={uiCurrency} initialDeposit={overview?.breakdown?.initialDeposit || 0} fill />
+                    <EquityChart 
+                      daily={calendarDaily} 
+                      denomination={uiCurrency} 
+                      initialDeposit={overview?.breakdown?.initialDeposit || 0} 
+                      fill 
+                    />
                   </div>
                   <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
                     <RiskCard overview={overview} daily={calendarDaily} denomination={uiCurrency} />

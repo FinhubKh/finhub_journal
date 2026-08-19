@@ -20,6 +20,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
 import RiskCard from '../components/dashboard/RiskCard';
 import HighlightsCard from '../components/dashboard/HighlightsCard';
+import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
 import {
   btnGhost,
   btnOutline,
@@ -43,6 +44,7 @@ import {
   regenerateBacktestShareToken,
   setBacktestPublic,
 } from '../api/backtests';
+import Mt5Worker from '../workers/mt5Worker?worker';
 
 const EMPTY_OVERRIDE = {};
 
@@ -198,12 +200,29 @@ export default function BacktestDetailPage() {
     try {
       const buf = await file.arrayBuffer();
       setSourceHtml(decodeMt5ReportText(buf));
-      const parsed = parseMt5StrategyTesterHtml(buf);
-      setPreview(parsed);
+      
+      const worker = new Mt5Worker();
+      worker.postMessage({ buffer: buf });
+      worker.onmessage = (msgEvent) => {
+        const data = msgEvent.data;
+        if (data.success) {
+          setPreview(data.parsed);
+        } else {
+          setPreview(null);
+          setParseError(data.error || 'Could not parse this HTML report.');
+        }
+        setParsing(false);
+        worker.terminate();
+      };
+      worker.onerror = (err) => {
+        setPreview(null);
+        setParseError('A worker error occurred during parsing.');
+        setParsing(false);
+        worker.terminate();
+      };
     } catch (err) {
       setPreview(null);
-      setParseError(err?.message || 'Could not parse this HTML report.');
-    } finally {
+      setParseError(err?.message || 'Could not read this file.');
       setParsing(false);
     }
   }
@@ -277,7 +296,6 @@ export default function BacktestDetailPage() {
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied');
     } catch {
       window.prompt('Copy this link:', shareUrl);
     }
@@ -544,7 +562,12 @@ export default function BacktestDetailPage() {
                 <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
                   <div className="flex min-h-0 flex-1 flex-col gap-3 lg:min-h-0">
                     <div className="min-h-[240px] flex-1 lg:min-h-0">
-                      <EquityChart daily={calendarDaily} denomination={uiCurrency} initialDeposit={overview?.breakdown?.initialDeposit || 0} fill />
+                      <EquityChart 
+                        daily={calendarDaily} 
+                        denomination={uiCurrency} 
+                        initialDeposit={overview?.breakdown?.initialDeposit || 0} 
+                        fill 
+                      />
                     </div>
                     <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
                       <RiskCard overview={overview} daily={calendarDaily} denomination={uiCurrency} />
