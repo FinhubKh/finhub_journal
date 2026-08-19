@@ -21,41 +21,38 @@ function pointsFromProps(daily, trades) {
   }));
 }
 
-function buildSeries(points, denomination) {
+function buildSeries(points, denomination, initialDeposit = 0) {
   const sorted = [...points].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const labels = [];
   const dataUsd = [];
-  const dataR = [];
-  let cumUsd = 0;
-  let cumR = 0;
+  const peakUsd = [];
+  let cumUsd = initialDeposit;
+  let peak = initialDeposit;
 
   sorted.forEach((t) => {
     cumUsd += toDisplayPnl(t.pnl || 0, denomination);
-    cumR += t.r_value || 0;
+    if (cumUsd > peak) peak = cumUsd;
     labels.push(new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
     dataUsd.push(parseFloat(cumUsd.toFixed(2)));
-    dataR.push(parseFloat(cumR.toFixed(2)));
+    peakUsd.push(parseFloat(peak.toFixed(2)));
   });
 
-  return { labels, dataUsd, dataR };
+  return { labels, dataUsd, peakUsd };
 }
 
-export default function EquityChart({ trades, daily, denomination = 'usd', fill = false }) {
+export default function EquityChart({ trades, daily, denomination = 'usd', initialDeposit = 0, fill = false, isModal = false, onClose = null }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
   const denom = normalizePnlDenomination(denomination);
-  const [mode, setMode] = useState('usd');
   const points = useMemo(() => pointsFromProps(daily, trades), [daily, trades]);
 
   const empty = points.length === 0;
-  const moneyModeLabel = moneySymbol(denom) === '¢' ? '¢' : 'USD';
 
   const lastVal = useMemo(() => {
     if (empty) return null;
-    return mode === 'usd'
-      ? points.reduce((s, t) => s + toDisplayPnl(t.pnl || 0, denom), 0)
-      : points.reduce((s, t) => s + (t.r_value || 0), 0);
-  }, [points, mode, empty, denom]);
+    return points.reduce((s, t) => s + toDisplayPnl(t.pnl || 0, denom), 0) + initialDeposit;
+  }, [points, empty, denom, initialDeposit]);
 
   useEffect(() => () => {
     if (chartRef.current) {
@@ -76,21 +73,30 @@ export default function EquityChart({ trades, daily, denomination = 'usd', fill 
       return;
     }
 
-    const { labels, dataUsd, dataR } = buildSeries(points, denom);
-    const values = mode === 'usd' ? dataUsd : dataR;
-    const labelFmt = mode === 'usd'
-      ? (v) => {
-          const sym = moneySymbol(denom);
-          return v >= 0 ? `+${sym}${Number(v).toFixed(2)}` : `-${sym}${Math.abs(Number(v)).toFixed(2)}`;
-        }
-      : (v) => (v >= 0 ? `+${Number(v).toFixed(2)}R` : `${Number(v).toFixed(2)}R`);
+    const { labels, dataUsd, peakUsd } = buildSeries(points, denom, initialDeposit);
+    const labelFmt = (v) => {
+      const sym = moneySymbol(denom);
+      return v >= 0 ? `+${sym}${Number(v).toFixed(2)}` : `-${sym}${Math.abs(Number(v)).toFixed(2)}`;
+    };
 
     if (chartRef.current) {
       const chart = chartRef.current;
       chart.data.labels = labels;
-      chart.data.datasets[0].data = values;
+      chart.data.datasets[0].data = dataUsd;
       chart.options.scales.y.ticks.callback = labelFmt;
       chart.options.plugins.tooltip.callbacks.label = (ctx) => labelFmt(ctx.raw);
+      
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const redColor = isDark ? '#fb7185' : '#e11d48';
+      chart.data.datasets[0].segment = {
+        borderColor: (ctx) => {
+          if (!ctx.p1DataIndex) return undefined;
+          const val = dataUsd[ctx.p1DataIndex];
+          const peak = peakUsd[ctx.p1DataIndex];
+          return val < peak ? redColor : undefined;
+        }
+      };
+
       chart.update('none');
       return;
     }
@@ -98,13 +104,14 @@ export default function EquityChart({ trades, daily, denomination = 'usd', fill 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const accentColor = isDark ? '#4ade80' : '#7c3aed';
     const fillColor = isDark ? 'rgba(74, 222, 128, 0.10)' : 'rgba(124, 58, 237, 0.06)';
+    const redColor = isDark ? '#fb7185' : '#e11d48';
 
     chartRef.current = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          data: values,
+          data: dataUsd,
           borderColor: accentColor,
           borderWidth: 2,
           pointRadius: 0,
@@ -115,6 +122,14 @@ export default function EquityChart({ trades, daily, denomination = 'usd', fill 
           fill: true,
           backgroundColor: fillColor,
           tension: 0.35,
+          segment: {
+            borderColor: (ctx) => {
+              if (!ctx.p1DataIndex) return undefined;
+              const val = dataUsd[ctx.p1DataIndex];
+              const peak = peakUsd[ctx.p1DataIndex];
+              return val < peak ? redColor : undefined;
+            }
+          }
         }],
       },
       options: {
@@ -147,39 +162,69 @@ export default function EquityChart({ trades, daily, denomination = 'usd', fill 
         },
       },
     });
-  }, [points, mode, empty, denom]);
+  }, [points, empty, denom]);
 
   return (
-    <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
-      <div className={`${cardHd} shrink-0`}>
-        <div>
-          <h3 className={cardTitle}>Equity curve</h3>
-          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cumulative performance over time</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!empty && lastVal != null && (
-            <span className={`hidden text-sm font-semibold sm:inline ${lastVal >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
-              {mode === 'usd'
-                ? fmtPnlStrict(
-                    points.reduce((s, t) => s + (t.pnl || 0), 0),
-                    denom,
-                  )
-                : `${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R`}
-            </span>
-          )}
-          <div className={pillToggle}>
-            <button className={pillBtn(mode === 'usd')} onClick={() => setMode('usd')} type="button">{moneyModeLabel}</button>
-            <button className={pillBtn(mode === 'r')} onClick={() => setMode('r')} type="button">R</button>
+    <>
+      <div className={`${isModal ? 'flex h-full min-h-0 flex-col bg-white dark:bg-zinc-900' : card} overflow-hidden ${fill && !isModal ? 'flex h-full min-h-0 flex-col' : ''}`}>
+        <div className={`${cardHd} shrink-0`}>
+          <div>
+            <h3 className={cardTitle}>Equity curve</h3>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cumulative performance over time</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {!empty && lastVal != null && (
+              <span className={`text-sm font-semibold sm:inline ${lastVal >= initialDeposit ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {fmtPnlStrict(lastVal, denom)}
+              </span>
+            )}
+            {!isModal ? (
+              <button
+                onClick={() => setExpanded(true)}
+                className="ml-2 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                title="Expand chart"
+              >
+                <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={onClose}
+                className="ml-2 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                title="Close"
+              >
+                <svg className="size-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
+        <div className={`${cardBody} relative ${fill ? 'min-h-0 flex-1' : 'h-72 sm:h-80'}`}>
+          {empty ? (
+            <div className={emptyState}>No trades to chart yet.</div>
+          ) : (
+            <canvas ref={canvasRef} className="h-full w-full" />
+          )}
+        </div>
       </div>
-      <div className={`${cardBody} relative ${fill ? 'min-h-0 flex-1' : 'h-72 sm:h-80'}`}>
-        {empty ? (
-          <div className={emptyState}>No trades to chart yet.</div>
-        ) : (
-          <canvas ref={canvasRef} className="h-full w-full" />
-        )}
-      </div>
-    </div>
+
+      {expanded && !isModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm sm:p-8">
+          <div className="h-full w-full max-w-7xl overflow-hidden rounded-xl shadow-2xl ring-1 ring-zinc-200 dark:ring-zinc-800">
+            <EquityChart 
+              trades={trades} 
+              daily={daily} 
+              denomination={denomination}
+              initialDeposit={initialDeposit} 
+              fill 
+              isModal 
+              onClose={() => setExpanded(false)} 
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

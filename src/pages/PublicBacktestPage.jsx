@@ -18,6 +18,8 @@ import BreakdownCard from '../components/dashboard/BreakdownCard';
 import HeatmapView from '../components/calendar/HeatmapView';
 import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
+import RiskCard from '../components/dashboard/RiskCard';
+import HighlightsCard from '../components/dashboard/HighlightsCard';
 import { BrandLogo } from '../components/BrandLogo';
 import YearDropdown from '../components/common/YearDropdown';
 
@@ -105,7 +107,7 @@ export default function PublicBacktestPage() {
     if (!overview?.source_html) return { symbol: [], session: [] };
     try {
       const parsed = JSON.parse(overview.source_html);
-      return parsed.breakdown || { symbol: [], session: [] };
+      return (parsed.symbol || parsed.session) ? parsed : { symbol: [], session: [] };
     } catch {
       return { symbol: [], session: [] };
     }
@@ -220,7 +222,17 @@ export default function PublicBacktestPage() {
               role="tabpanel"
               className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
             >
-              <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
+              <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+                <StatTile
+                  label="Starting balance"
+                  value={fmtPnlStrict(overview?.breakdown?.initialDeposit || 0, uiCurrency)}
+                  hint="Initial deposit"
+                />
+                <StatTile
+                  label="Ending balance"
+                  value={fmtPnlStrict((overview?.breakdown?.initialDeposit || 0) + (Number(totalPnl) || 0), uiCurrency)}
+                  hint="Final account balance"
+                />
                 <StatTile
                   label="Total PnL"
                   value={fmtPnlStrict(totalPnl, uiCurrency)}
@@ -245,21 +257,27 @@ export default function PublicBacktestPage() {
                   hint={`${calendarDaily.length} trading days`}
                 />
                 <StatTile
-                  label="Published"
-                  value={overview.published_at ? fmtDateShort(overview.published_at) : '—'}
-                  hint={uiCurrency.toUpperCase()}
+                  label="Currency"
+                  value={uiCurrency.toUpperCase()}
+                  hint={overview?.symbol || 'Strategy tester'}
                 />
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
-                <div className="min-h-[280px] flex-1 lg:min-h-0">
-                  <EquityChart daily={calendarDaily} denomination={uiCurrency} fill />
+                <div className="flex min-h-0 flex-1 flex-col gap-3 lg:min-h-0">
+                  <div className="min-h-[240px] flex-1 lg:min-h-0">
+                    <EquityChart daily={calendarDaily} denomination={uiCurrency} initialDeposit={overview?.breakdown?.initialDeposit || 0} fill />
+                  </div>
+                  <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
+                    <RiskCard overview={overview} daily={calendarDaily} denomination={uiCurrency} />
+                    <HighlightsCard overview={overview} daily={calendarDaily} denomination={uiCurrency} />
+                  </div>
                 </div>
-                <div className="grid min-h-[480px] shrink-0 grid-rows-2 gap-3 lg:h-full lg:min-h-0 lg:w-[min(22rem,38%)]">
-                  <div className="min-h-0">
+                <div className="flex shrink-0 flex-col gap-3 lg:h-full lg:w-[min(22rem,38%)]">
+                  <div className="shrink-0">
                     <WinRateGauge wins={wins} losses={losses} fill />
                   </div>
-                  <div className="min-h-0">
+                  <div className="min-h-0 flex-1">
                     <BreakdownCard breakdown={breakdown} denomination={uiCurrency} fill />
                   </div>
                 </div>

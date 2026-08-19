@@ -8,6 +8,8 @@ const DARK_PIE_COLORS = ['#4ade80', '#22d3ee', '#60a5fa', '#a78bfa', '#fbbf24', 
 const KINDS = [
   { id: 'symbol', label: 'Pair' },
   { id: 'session', label: 'Session' },
+  { id: 'direction', label: 'Direction' },
+  { id: 'outcome', label: 'Outcome' },
 ];
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
@@ -72,32 +74,32 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
-      <div className={`${cardHd} shrink-0`}>
-        <div>
-          <h3 className={cardTitle}>Breakdown</h3>
-          <p className="mt-0.5 text-xs text-zinc-500">Performance by dimension</p>
-        </div>
-        <div className={pillToggle}>
-          {KINDS.map((k) => (
-            <button key={k.id} className={pillBtn(kind === k.id)} onClick={() => setKind(k.id)} type="button">
-              {k.label}
-            </button>
-          ))}
+      <div className={`${cardHd} shrink-0 block overflow-x-auto hide-scrollbar py-3`}>
+        <div className={`flex w-full min-w-max justify-center`}>
+          <div className={pillToggle}>
+            {KINDS.map((k) => (
+              <button key={k.id} className={pillBtn(kind === k.id)} onClick={() => setKind(k.id)} type="button">
+                {k.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className={`${cardBody} relative ${fill ? 'min-h-[200px] flex-[1.1]' : 'h-[180px]'}`}>
+      <div className={`relative flex items-center justify-center ${fill ? 'min-h-0 flex-[0.8] p-4' : 'h-[180px] p-4 md:p-5'}`}>
         {groups.length === 0 ? (
           <div className={emptyState}>No breakdown data yet.</div>
         ) : (
-          <canvas ref={canvasRef} className="h-full w-full" />
+          <div className="relative h-full w-full max-h-[160px] max-w-[160px]">
+            <canvas ref={canvasRef} />
+          </div>
         )}
       </div>
 
       {entries.length > 0 && (
         <div
           className={`border-t border-zinc-100 dark:border-zinc-800 ${
-            fill ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-[220px] overflow-y-auto'
+            fill ? 'min-h-0 flex-[1.2] overflow-y-auto' : 'max-h-[220px] overflow-y-auto'
           }`}
         >
           {entries.map((d) => {
@@ -112,12 +114,14 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
                 <div className="min-w-0 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{capitalize(d.name)}</div>
                 <div className="flex shrink-0 items-center gap-3 text-xs">
                   <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                    {wr}% WR
+                    {kind === 'outcome' ? `${count} Trades` : `${wr}% WR`}
                   </span>
                   <span className={`font-semibold tabular-nums ${pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {fmtPnlStrict(pnl, denomination)}
                   </span>
-                  <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{count}t</span>
+                  {kind !== 'outcome' && (
+                    <span className="tabular-nums text-zinc-400 dark:text-zinc-500">{count}t</span>
+                  )}
                 </div>
               </div>
             );

@@ -11,10 +11,13 @@ import {
   adminDeleteTradingAccount,
   adminFetchSyncKeys,
   adminRevokeSyncKey,
+  adminFetchTeams,
+  adminDeleteTeam,
 } from '../api/admin';
 import {
   btnDanger, btnOutline, btnSm, card, cardBody, cardHd, cardTitle,
   dashboardPageWide, emptyState, input, msgError, tableTd, tableTh,
+  pillToggle, pillBtn, pageShell,
 } from '../lib/ui';
 
 const TABS = [
@@ -22,35 +25,36 @@ const TABS = [
   { id: 'users', label: 'Users' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'sync', label: 'Sync keys' },
+  { id: 'teams', label: 'Teams' },
 ];
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-zinc-900">{value}</div>
+    <div className={`${card} flex h-full flex-col justify-between p-4`}>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{label}</div>
+      <div className="mt-2 text-xl font-bold tracking-tight tabular-nums sm:text-2xl text-zinc-900 dark:text-zinc-100">{value}</div>
     </div>
   );
 }
 
 function AdminTabBar({ activeTab, onChange }) {
   return (
-    <div className="flex flex-wrap gap-2 border-b border-zinc-200 pb-3">
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-            activeTab === tab.id
-              ? 'bg-violet-100 text-violet-700'
-              : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800'
-          }`}
-          onClick={() => onChange(tab.id)}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
+    <nav className="shrink-0 -mx-1 overflow-x-auto px-1 pb-1" aria-label="Admin sections">
+      <div className={`${pillToggle} w-max min-w-full sm:min-w-0`} role="tablist">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`${pillBtn(activeTab === tab.id)} whitespace-nowrap px-3.5 py-1.5`}
+            onClick={() => onChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -66,6 +70,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [syncKeys, setSyncKeys] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
 
@@ -85,16 +90,18 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, usersData, accountsData, keysData] = await Promise.all([
+      const [statsData, usersData, accountsData, keysData, teamsData] = await Promise.all([
         adminPlatformStats(),
         adminListUsers(),
         adminFetchTradingAccounts(),
         adminFetchSyncKeys(),
+        adminFetchTeams().catch(() => []),
       ]);
       setStats(statsData);
       setUsers(usersData || []);
       setAccounts(accountsData || []);
       setSyncKeys(keysData || []);
+      setTeams(teamsData || []);
     } catch (e) {
       setError(e.message || 'Could not load admin data. Run backend/schema_profiles_admin.sql in Supabase.');
     } finally {
@@ -189,13 +196,32 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteTeam(team) {
+    const ok = await confirm({
+      title: `Delete team "${team.name}"?`,
+      message: 'Permanently removes the team. Members will be detached.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusyId(team.id);
+    try {
+      await adminDeleteTeam(team.id);
+      await loadAll();
+    } catch (e) {
+      await alert({ title: 'Error', message: e.message || 'Could not delete team.' });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
-    <div className="min-h-dvh bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white">
+    <div className={pageShell}>
+      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className={`${dashboardPageWide} flex flex-wrap items-center justify-between gap-3 py-4`}>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-violet-600">Admin</div>
-            <h1 className="text-lg font-bold text-zinc-900">Platform control</h1>
+            <div className="text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">Admin</div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Platform control</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button className={btnOutline} type="button" onClick={() => navigate('/dashboard')}>
@@ -230,7 +256,7 @@ export default function AdminPage() {
                 <StatCard label="Users" value={stats.total_users} />
                 <StatCard label="Trading accounts" value={stats.total_accounts} />
                 <StatCard label="Active sync keys" value={stats.active_sync_keys} />
-                <StatCard label="Admins" value={stats.admin_users} />
+                <StatCard label="Teams" value={teams.length} />
               </div>
             )}
 
@@ -250,16 +276,16 @@ export default function AdminPage() {
                         <th className={`${tableTh} text-right`}>Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {filteredUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-zinc-50/80">
+                        <tr key={user.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50">
                           <td className={tableTd}>
-                            <div className="font-semibold text-zinc-900">{user.display_name || '—'}</div>
-                            <div className="text-xs text-zinc-500">{user.email}</div>
+                            <div className="font-semibold text-zinc-900 dark:text-zinc-100">{user.display_name || '—'}</div>
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400">{user.email}</div>
                           </td>
                           <td className={tableTd}>
                             <span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                              user.role === 'admin' ? 'bg-violet-100 text-violet-700' : 'bg-zinc-100 text-zinc-600'
+                              user.role === 'admin' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
                             }`}
                             >
                               {user.role}
@@ -311,12 +337,12 @@ export default function AdminPage() {
                         <th className={`${tableTh} text-right`}>Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {accounts.map((account) => (
-                        <tr key={account.id} className="hover:bg-zinc-50/80">
+                        <tr key={account.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50">
                           <td className={tableTd}>
-                            <div className="font-semibold text-zinc-900">{account.name}</div>
-                            {account.broker && <div className="text-xs text-zinc-500">{account.broker}</div>}
+                            <div className="font-semibold text-zinc-900 dark:text-zinc-100">{account.name}</div>
+                            {account.broker && <div className="text-xs text-zinc-500 dark:text-zinc-400">{account.broker}</div>}
                           </td>
                           <td className={tableTd}>{userById[account.user_id]?.email || account.user_id?.slice(0, 8)}</td>
                           <td className={tableTd}>{account.account_type}</td>
@@ -355,9 +381,9 @@ export default function AdminPage() {
                         <th className={`${tableTh} text-right`}>Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {syncKeys.map((key) => (
-                        <tr key={key.id} className="hover:bg-zinc-50/80">
+                        <tr key={key.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50">
                           <td className={tableTd}>{userById[key.user_id]?.email || key.user_id?.slice(0, 8)}</td>
                           <td className={tableTd}>{accountById[key.trading_account_id]?.name || key.trading_account_id?.slice(0, 8)}</td>
                           <td className={tableTd}>{key.created_at ? new Date(key.created_at).toLocaleString() : '—'}</td>
@@ -377,6 +403,49 @@ export default function AdminPage() {
                     </tbody>
                   </table>
                   {syncKeys.length === 0 && <p className={emptyState}>No active sync keys.</p>}
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'teams' && (
+              <section className={card}>
+                <div className={cardHd}>
+                  <h2 className={cardTitle}>Teams ({teams.length})</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-zinc-200">
+                        <th className={tableTh}>Team</th>
+                        <th className={tableTh}>Creator</th>
+                        <th className={tableTh}>Created</th>
+                        <th className={`${tableTh} text-right`}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {teams.map((team) => (
+                        <tr key={team.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50">
+                          <td className={tableTd}>
+                            <div className="font-semibold text-zinc-900 dark:text-zinc-100">{team.name}</div>
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400">[{team.tag}]</div>
+                          </td>
+                          <td className={tableTd}>{userById[team.created_by]?.email || team.created_by?.slice(0, 8)}</td>
+                          <td className={tableTd}>{team.created_at ? new Date(team.created_at).toLocaleString() : '—'}</td>
+                          <td className={`${tableTd} text-right`}>
+                            <button
+                              className={btnDanger}
+                              type="button"
+                              disabled={busyId === team.id}
+                              onClick={() => handleDeleteTeam(team)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {teams.length === 0 && <p className={emptyState}>No teams exist yet.</p>}
                 </div>
               </section>
             )}

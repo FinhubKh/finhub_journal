@@ -18,6 +18,8 @@ import BreakdownCard from '../components/dashboard/BreakdownCard';
 import HeatmapView from '../components/calendar/HeatmapView';
 import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
+import RiskCard from '../components/dashboard/RiskCard';
+import HighlightsCard from '../components/dashboard/HighlightsCard';
 import {
   btnGhost,
   btnOutline,
@@ -346,14 +348,32 @@ export default function BacktestDetailPage() {
               {backtestRow?.is_public ? 'Unpublish' : 'Publish'}
             </button>
             {backtestRow?.is_public && getBacktestShareUrl(backtestRow) ? (
-              <>
-                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
-                  Copy link
+              <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50/50 p-1 dark:border-zinc-800 dark:bg-zinc-900/50">
+                <input
+                  type="text"
+                  readOnly
+                  value={getBacktestShareUrl(backtestRow)}
+                  className="w-48 bg-transparent px-2 py-1 text-xs text-zinc-600 outline-none dark:text-zinc-400 sm:w-64"
+                  onClick={(e) => e.target.select()}
+                />
+                <button
+                  type="button"
+                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  onClick={() => void handleCopyLink()}
+                >
+                  Copy
                 </button>
-                <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
-                  Reset link
+                <button
+                  type="button"
+                  className="flex items-center justify-center rounded-lg px-2 py-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                  onClick={() => void handleRegenerateLink()}
+                  title="Reset Link"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
                 </button>
-              </>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -480,7 +500,17 @@ export default function BacktestDetailPage() {
                 role="tabpanel"
                 className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
               >
-                <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
+                <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+                  <StatTile
+                    label="Starting balance"
+                    value={fmtPnlStrict(overview?.breakdown?.initialDeposit || 0, uiCurrency)}
+                    hint="Initial deposit"
+                  />
+                  <StatTile
+                    label="Ending balance"
+                    value={fmtPnlStrict((overview?.breakdown?.initialDeposit || 0) + (Number(overview.totalPnl) || 0), uiCurrency)}
+                    hint="Final account balance"
+                  />
                   <StatTile
                     label="Total PnL"
                     value={fmtPnlStrict(overview.totalPnl, uiCurrency)}
@@ -512,14 +542,20 @@ export default function BacktestDetailPage() {
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
-                  <div className="min-h-[280px] flex-1 lg:min-h-0">
-                    <EquityChart daily={calendarDaily} denomination={uiCurrency} fill />
+                  <div className="flex min-h-0 flex-1 flex-col gap-3 lg:min-h-0">
+                    <div className="min-h-[240px] flex-1 lg:min-h-0">
+                      <EquityChart daily={calendarDaily} denomination={uiCurrency} initialDeposit={overview?.breakdown?.initialDeposit || 0} fill />
+                    </div>
+                    <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
+                      <RiskCard overview={overview} daily={calendarDaily} denomination={uiCurrency} />
+                      <HighlightsCard overview={overview} daily={calendarDaily} denomination={uiCurrency} />
+                    </div>
                   </div>
-                  <div className="grid min-h-[480px] shrink-0 grid-rows-2 gap-3 lg:h-full lg:min-h-0 lg:w-[min(22rem,38%)]">
-                    <div className="min-h-0">
+                  <div className="flex shrink-0 flex-col gap-3 lg:h-full lg:w-[min(22rem,38%)]">
+                    <div className="shrink-0">
                       <WinRateGauge wins={overview.wins} losses={overview.losses} fill />
                     </div>
-                    <div className="min-h-0">
+                    <div className="min-h-0 flex-1">
                       <BreakdownCard
                         breakdown={overview.breakdown || { symbol: [], session: [] }}
                         denomination={uiCurrency}

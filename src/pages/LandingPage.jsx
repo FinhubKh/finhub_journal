@@ -264,7 +264,7 @@ function FaqItem({ q, a }) {
 }
 
 export default function LandingPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const [headerScrolled, setHeaderScrolled] = useState(false);
 
   useEffect(() => {
@@ -288,7 +288,7 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
-              <Link to="/dashboard" className={btnPrimary}>Open Journal</Link>
+              <Link to={isAdmin ? '/admin' : '/dashboard'} className={btnPrimary}>{isAdmin ? 'Open Admin' : 'Open Journal'}</Link>
             ) : (
               <>
                 <Link to="/login" className={`${btnOutline} hidden sm:inline-flex`}>Sign in</Link>
@@ -314,7 +314,7 @@ export default function LandingPage() {
             </p>
             <div className="landing-hero-in landing-hero-in-d2 mt-8 flex flex-wrap gap-3">
               {isAuthenticated ? (
-                <Link to="/dashboard" className={btnPrimaryLg}>Go to Journal</Link>
+                <Link to={isAdmin ? '/admin' : '/dashboard'} className={btnPrimaryLg}>{isAdmin ? 'Open Admin' : 'Go to Journal'}</Link>
               ) : (
                 <>
                   <Link to="/login?mode=signup" className={btnPrimaryLg}>Start for free</Link>
@@ -589,8 +589,8 @@ export default function LandingPage() {
             </Link>
           )}
           {isAuthenticated && (
-            <Link to="/dashboard" className="mt-8 inline-flex rounded-xl bg-white px-8 py-3.5 text-[15px] font-semibold text-violet-700 transition hover:bg-violet-50">
-              Open your journal
+            <Link to={isAdmin ? '/admin' : '/dashboard'} className="mt-8 inline-flex rounded-xl bg-white px-8 py-3.5 text-[15px] font-semibold text-violet-700 transition hover:bg-violet-50">
+              {isAdmin ? 'Open Admin Panel' : 'Open your journal'}
             </Link>
           )}
           </div>

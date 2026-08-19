@@ -132,6 +132,10 @@ drop policy if exists "Admins can delete all sync keys" on sync_keys;
 create policy "Admins can delete all sync keys"
   on sync_keys for delete using (public.is_admin());
 
+drop policy if exists "Admins can delete teams" on teams;
+create policy "Admins can delete teams"
+  on teams for delete using (public.is_admin());
+
 -- Admin RPCs
 create or replace function public.admin_platform_stats()
 returns json
@@ -157,6 +161,7 @@ begin
 end;
 $$;
 
+drop function if exists public.admin_list_users();
 create or replace function public.admin_list_users()
 returns table (
   id uuid,

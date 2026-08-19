@@ -53,7 +53,7 @@ export default function YearDropdown({ value, onChange, minYear, maxYear }) {
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-900 transition hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98]"
+        className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-900 transition hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-violet-500/50 dark:hover:bg-violet-900/20"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -64,7 +64,7 @@ export default function YearDropdown({ value, onChange, minYear, maxYear }) {
 
       {open && (
         <div
-          className="absolute left-0 top-[calc(100%+8px)] z-30 max-h-56 w-40 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg"
+          className="absolute right-0 top-[calc(100%+8px)] z-30 max-h-56 w-40 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
           role="listbox"
           aria-label="Select year"
         >
@@ -79,13 +79,13 @@ export default function YearDropdown({ value, onChange, minYear, maxYear }) {
                 aria-selected={selected}
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
                   selected
-                    ? 'bg-violet-100 text-violet-700'
-                    : 'bg-white text-zinc-700 hover:bg-zinc-100'
+                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400'
+                    : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
                 }`}
                 onClick={() => pick(y)}
               >
                 <span>{y}</span>
-                {isThisYear && <span className="text-xs text-violet-600">This year</span>}
+                {isThisYear && <span className="text-xs text-violet-600 dark:text-violet-400">This year</span>}
               </button>
             );
           })}

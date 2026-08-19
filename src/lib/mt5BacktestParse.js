@@ -114,6 +114,31 @@ export function parseMt5StrategyTesterHtml(html) {
   const reportProfitFactor = parseMt5Number(settingValue(text, 'Profit Factor'));
   const reportTotalTrades = parseMt5Number(settingValue(text, 'Total Trades'));
   const initialDeposit = parseMt5Number(settingValue(text, 'Initial Deposit'));
+  
+  // New Advanced Metrics
+  const sharpeRatio = parseMt5Number(settingValue(text, 'Sharpe Ratio'));
+  const recoveryFactor = parseMt5Number(settingValue(text, 'Recovery Factor'));
+  
+  const rawMaxDd = settingValue(text, 'Equity Drawdown Maximal');
+  const maxDdMatch = rawMaxDd.match(/([\d\s\.,]+)\s*\(([\d\.]+)\%\)/);
+  const maxDdAmount = maxDdMatch ? parseMt5Number(maxDdMatch[1]) : parseMt5Number(rawMaxDd);
+  const maxDdPercent = maxDdMatch ? Number(maxDdMatch[2]) : 0;
+
+  const largestLoss = parseMt5Number(settingValue(text, 'Largest loss trade'));
+  const maxConsWinsRaw = settingValue(text, 'Maximum consecutive wins \\(\\$?\\)');
+  const maxConsWins = maxConsWinsRaw ? parseInt(maxConsWinsRaw.split(' ')[0], 10) : 0;
+  const maxConsLossesRaw = settingValue(text, 'Maximum consecutive losses \\(\\$?\\)');
+  const maxConsLosses = maxConsLossesRaw ? parseInt(maxConsLossesRaw.split(' ')[0], 10) : 0;
+
+  const longTradesRaw = settingValue(text, 'Long Trades \\(won %\\)');
+  const longMatch = longTradesRaw.match(/(\d+)\s*\(([\d\.]+)\%\)/);
+  const longCount = longMatch ? parseInt(longMatch[1], 10) : 0;
+  const longWr = longMatch ? Number(longMatch[2]) : 0;
+
+  const shortTradesRaw = settingValue(text, 'Short Trades \\(won %\\)');
+  const shortMatch = shortTradesRaw.match(/(\d+)\s*\(([\d\.]+)\%\)/);
+  const shortCount = shortMatch ? parseInt(shortMatch[1], 10) : 0;
+  const shortWr = shortMatch ? Number(shortMatch[2]) : 0;
 
   const dealsHtml = dealsSection(text);
   const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -125,9 +150,11 @@ export function parseMt5StrategyTesterHtml(html) {
   let grossWin = 0;
   let grossLoss = 0;
   let parsedOutDeals = 0;
+  let maxTradeProfit = 0;
 
   const sessionBreakdownMap = new Map();
   const symbolBreakdownMap = new Map();
+  const directionBreakdownMap = new Map();
 
   let row;
   while ((row = rowRe.exec(dealsHtml))) {
@@ -146,6 +173,10 @@ export function parseMt5StrategyTesterHtml(html) {
     const profit = parseMt5Number(cells[10]) + commission + swap;
     parsedOutDeals += 1;
     tradeCount += 1;
+
+    if (profit > maxTradeProfit) {
+      maxTradeProfit = profit;
+    }
 
     const tradeSymbol = symbol || 'Unknown';
     if (!symbolBreakdownMap.has(tradeSymbol)) {
@@ -169,6 +200,15 @@ export function parseMt5StrategyTesterHtml(html) {
     sessObj.count += 1;
     sessObj.pnl += profit;
     if (profit > 0) sessObj.wins += 1;
+
+    const tradeDir = (type === 'buy' || type === 'long') ? 'Long (Buy)' : (type === 'sell' || type === 'short') ? 'Short (Sell)' : 'Unknown';
+    if (!directionBreakdownMap.has(tradeDir)) {
+      directionBreakdownMap.set(tradeDir, { count: 0, wins: 0, pnl: 0 });
+    }
+    const dirObj = directionBreakdownMap.get(tradeDir);
+    dirObj.count += 1;
+    dirObj.pnl += profit;
+    if (profit > 0) dirObj.wins += 1;
 
     if (profit > 0) {
       wins += 1;
@@ -248,6 +288,29 @@ export function parseMt5StrategyTesterHtml(html) {
         pnl: Math.round(obj.pnl * 100) / 100,
         wr: obj.count > 0 ? Math.round((obj.wins / obj.count) * 100) : 0,
       })),
+      direction: Array.from(directionBreakdownMap.entries()).map(([name, obj]) => ({
+        name,
+        count: obj.count,
+        pnl: Math.round(obj.pnl * 100) / 100,
+        wr: obj.count > 0 ? Math.round((obj.wins / obj.count) * 100) : 0,
+      })),
+      outcome: [
+        { name: 'Winning trades', count: wins, pnl: Math.round(grossWin * 100) / 100, wr: 100 },
+        { name: 'Losing trades', count: losses, pnl: -Math.round(grossLoss * 100) / 100, wr: 0 },
+      ],
+      maxTradeProfit: Math.round(maxTradeProfit * 100) / 100,
+      sharpeRatio,
+      recoveryFactor,
+      maxDdAmount,
+      maxDdPercent,
+      largestLoss,
+      maxConsWins,
+      maxConsLosses,
+      longCount,
+      longWr,
+      shortCount,
+      shortWr,
+      initialDeposit: initialDeposit || 0,
     },
     daily,
   };

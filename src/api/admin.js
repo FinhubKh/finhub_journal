@@ -60,3 +60,24 @@ export async function adminRevokeSyncKey(id) {
   });
   if (!res.ok) throw new Error(await res.text());
 }
+
+export async function adminFetchTeams() {
+  const res = await authFetch(
+    `${SUPABASE_URL}/rest/v1/teams?select=id,name,tag,created_by,created_at&order=created_at.desc`,
+    { headers: authHeaders(getToken()) },
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function adminDeleteTeam(id) {
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/teams?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  if (data.length === 0) {
+    throw new Error('Team could not be deleted (RLS blocked it). Please run the updated SQL policies in Supabase.');
+  }
+}
