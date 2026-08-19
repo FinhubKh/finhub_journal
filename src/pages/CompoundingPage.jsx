@@ -412,8 +412,35 @@ export default function CompoundingPage() {
           loading ? (
             <p className="text-sm text-zinc-400">Loading…</p>
           ) : accounts.length === 0 ? (
-            <div className={`${card} ${emptyState}`}>
-              No compounding plans yet. Create one or model a plan in the Growth Schedule Simulator.
+            <div className={`${card} ${emptyState} flex flex-col items-center justify-center py-16 text-center`}>
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">No compounding plans yet</h3>
+              <p className="mx-auto mt-2 mb-8 max-w-sm text-sm text-zinc-500 text-center">
+                Create a new compounding plan or model a strategy in the Growth Schedule Simulator.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className={btnPrimary}
+                  onClick={() => {
+                    setCreateInitialData(null);
+                    setShowCreate(true);
+                  }}
+                >
+                  + New Plan
+                </button>
+                <button
+                  type="button"
+                  className={btnSecondary}
+                  onClick={() => setActiveMainTab('simulator')}
+                >
+                  Open Simulator
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

@@ -47,7 +47,7 @@ export function CalendarLegend({ showManual = true }) {
   );
 }
 
-function MonthPickerCard({ year, month, days, overrideMap, useOverrides, denomination = 'usd', onSelect }) {
+function MonthPickerCard({ year, month, days, overrideMap, useOverrides, denomination = 'usd', onSelect, fill = false }) {
   const dayMap = rowsToMap(days);
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -81,10 +81,12 @@ function MonthPickerCard({ year, month, days, overrideMap, useOverrides, denomin
   return (
     <button
       type="button"
-      className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-left transition hover:border-violet-300 hover:bg-violet-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-600 dark:hover:bg-violet-950/40"
+      className={`rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-left transition hover:border-violet-300 hover:bg-violet-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-violet-600 dark:hover:bg-violet-950/40 ${
+        fill ? 'flex h-full min-h-0 flex-col' : ''
+      }`}
       onClick={() => onSelect(month)}
     >
-      <div className="mb-1 flex items-start justify-between gap-2">
+      <div className="mb-1 flex shrink-0 items-start justify-between gap-2">
         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{MONTHS_SHORT[month - 1]}</div>
         {hasActivity && (
           <div className="text-right text-[10px] leading-tight">
@@ -93,7 +95,7 @@ function MonthPickerCard({ year, month, days, overrideMap, useOverrides, denomin
           </div>
         )}
       </div>
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className={`grid grid-cols-7 gap-0.5 ${fill ? 'min-h-0 flex-1 content-start' : ''}`}>
         {DAYS.map((d) => <div className="flex h-5 w-5 items-center justify-center text-[8px] font-medium text-zinc-400" key={d}>{d[0]}</div>)}
         {cells}
       </div>
@@ -114,34 +116,34 @@ export function YearView({
   showManualLegend = true,
   minYear,
   maxYear,
+  fill = false,
+  hideHeader = false,
 }) {
-  const allDays = useMemo(() => Object.values(yearDays).flat(), [yearDays]);
-  const totals = periodTotals(allDays, overrideMap, useOverrides, `${year}-`);
-  const totalPnl = totals.pnl;
-  const totalTrades = totals.trades;
-  const wr = totals.actualTrades > 0 ? Math.round((totals.wins / totals.actualTrades) * 100) : 0;
   const currentYear = new Date().getFullYear();
-  const hasActivity = totalTrades > 0 || (useOverrides && Object.keys(overrideMap).some((d) => d.startsWith(`${year}-`)));
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <YearDropdown value={year} onChange={onYearChange} minYear={minYear} maxYear={maxYear} />
-          {year !== currentYear && (
-            <button className={btnGhost} type="button" onClick={() => onYearChange(currentYear)}>
-              Go to {currentYear}
-            </button>
-          )}
+    <div className={fill ? 'flex h-full min-h-0 flex-col gap-3' : 'space-y-4'}>
+      {!hideHeader && (
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <YearDropdown value={year} onChange={onYearChange} minYear={minYear} maxYear={maxYear} />
+            {year !== currentYear && (
+              <button className={btnGhost} type="button" onClick={() => onYearChange(currentYear)}>
+                Go to {currentYear}
+              </button>
+            )}
+          </div>
+          {hint ? <p className="hidden text-xs text-zinc-400 lg:block">{hint}</p> : null}
         </div>
-      </div>
-
-
+      )}
 
       {loading ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400`}>Loading...</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={fill
+          ? 'grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-2 overflow-auto sm:grid-cols-3 xl:grid-cols-4'
+          : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}
+        >
           {MONTHS.map((_, i) => (
             <MonthPickerCard
               key={i}
@@ -152,12 +154,15 @@ export function YearView({
               useOverrides={useOverrides}
               denomination={denomination}
               onSelect={onSelectMonth}
+              fill={fill}
             />
           ))}
         </div>
       )}
 
-      <CalendarLegend showManual={showManualLegend} />
+      <div className="shrink-0">
+        <CalendarLegend showManual={showManualLegend} />
+      </div>
     </div>
   );
 }
@@ -175,6 +180,7 @@ export function MonthDetailView({
   onNextMonth,
   onEditDay,
   showManualLegend = true,
+  fill = false,
 }) {
   const totals = periodTotals(monthDays, overrideMap, useOverrides, monthPrefix(year, month));
   const totalPnl = totals.pnl;
@@ -195,8 +201,8 @@ export function MonthDetailView({
   const bestWeek = bestWeekPnl === -Infinity ? null : weeks.find((w) => w.weekPnl === bestWeekPnl);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={fill ? 'flex h-full min-h-0 flex-col gap-3' : 'space-y-4'}>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <BackButton onClick={onBack} />
         <div className="flex items-center gap-2">
           <button className={btnGhost} type="button" onClick={onPrevMonth}>Prev</button>
@@ -207,7 +213,7 @@ export function MonthDetailView({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <CalendarStatCard
           value={hasActivity ? fmtPnlStrict(totalPnl, denomination) : '—'}
           label="Monthly PnL"
@@ -229,7 +235,7 @@ export function MonthDetailView({
       {loading ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400`}>Loading...</div>
       ) : (
-        <div className={card}>
+        <div className={`${card} ${fill ? 'min-h-0 flex-1 overflow-auto' : ''}`}>
           <div className={cardBody}>
             <div className="mb-2 grid grid-cols-8 gap-2">
               {WEEK_DAYS.map((d) => (
@@ -323,7 +329,9 @@ export function MonthDetailView({
         </div>
       )}
 
-      <CalendarLegend showManual={showManualLegend} />
+      <div className="shrink-0">
+        <CalendarLegend showManual={showManualLegend} />
+      </div>
     </div>
   );
 }

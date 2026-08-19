@@ -3,35 +3,62 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchSharedBacktest } from '../api/backtests';
 import { fmtPnlStrict, fmtDateShort } from '../lib/format';
 import { bucketDailyByMonth, EMPTY_YEAR_BUCKETS, yearsFromDates } from '../lib/calendarCells';
+import { dailyRowsForCalendar } from '../lib/mt5BacktestParse';
 import {
+  btnSm,
   card,
-  pageShell,
   pillBtn,
   pillToggle,
-  btnSm,
 } from '../lib/ui';
 import {
   YearView,
   MonthDetailView,
-  CalendarStatCard,
 } from '../components/calendar/CalendarViews';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import HeatmapView from '../components/calendar/HeatmapView';
 import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
+import { BrandLogo } from '../components/BrandLogo';
+import YearDropdown from '../components/common/YearDropdown';
 
 const EMPTY_OVERRIDE = {};
+
+function StatTile({ label, value, hint, tone = 'neutral' }) {
+  const valueCls =
+    tone === 'positive' ? 'text-emerald-600 dark:text-emerald-400'
+      : tone === 'negative' ? 'text-rose-600 dark:text-rose-400'
+        : 'text-zinc-900 dark:text-zinc-100';
+
+  return (
+    <div className={`${card} flex h-full min-h-0 flex-col justify-between p-3.5`}>
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+        {label}
+      </span>
+      <div className={`mt-1.5 truncate text-lg font-bold tracking-tight tabular-nums sm:text-xl ${valueCls}`}>
+        {value}
+      </div>
+      {hint ? <span className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
+    </div>
+  );
+}
+
+function formatPf(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  if (n > 999) return '∞';
+  return n.toFixed(2);
+}
 
 export default function PublicBacktestPage() {
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  const [view, setView] = useState('overview'); // overview, heatmap, calendar
+
+  const [view, setView] = useState('overview');
   const [year, setYear] = useState(new Date().getFullYear());
-  const [screen, setScreen] = useState('year'); // year, detail
-  const [month, setMonth] = useState(1);
+  const [screen, setScreen] = useState('year');
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
 
   useEffect(() => {
     async function load() {
@@ -55,25 +82,25 @@ export default function PublicBacktestPage() {
   }, [token]);
 
   const overview = data?.backtest;
-  const calendarDaily = data?.daily || [];
-
+  const calendarDaily = useMemo(() => dailyRowsForCalendar(data?.daily), [data?.daily]);
   const uiCurrency = overview?.currency === 'cent' ? 'cent' : 'usd';
+  const wins = Number(overview?.wins) || 0;
+  const losses = Number(overview?.losses) || 0;
+  const tradeCount = Number(overview?.trade_count) || 0;
+  const totalPnl = Number(overview?.total_pnl) || 0;
+  const wr = tradeCount > 0 ? Math.round((wins / tradeCount) * 100) : 0;
 
-  // Compute years
   const availableYears = useMemo(() => yearsFromDates(calendarDaily), [calendarDaily]);
   const minYear = availableYears.length ? availableYears[0] : year;
   const maxYear = availableYears.length ? availableYears[availableYears.length - 1] : year;
 
   const yearDays = useMemo(() => {
     if (loading || !calendarDaily.length) return EMPTY_YEAR_BUCKETS;
-    const byMo = bucketDailyByMonth(calendarDaily, year);
-    if (!byMo) return EMPTY_YEAR_BUCKETS;
-    return byMo.map((moDays) => ({ days: moDays, manual: 0 }));
+    return bucketDailyByMonth(calendarDaily, year);
   }, [calendarDaily, year, loading]);
 
-  const monthDays = useMemo(() => yearDays[month - 1]?.days || [], [yearDays, month]);
+  const monthDays = yearDays[month] || [];
 
-  // Breakdown Data
   const breakdown = useMemo(() => {
     if (!overview?.source_html) return { symbol: [], session: [] };
     try {
@@ -84,11 +111,21 @@ export default function PublicBacktestPage() {
     }
   }, [overview?.source_html]);
 
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'heatmap', label: 'Heatmap' },
+    { id: 'calendar', label: 'Calendar' },
+  ];
+
   if (loading) {
     return (
-      <div className={pageShell}>
-        <div className="flex h-[60vh] items-center justify-center">
-          <p className="text-zinc-500">Loading strategy data…</p>
+      <div className="flex h-dvh items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <div className="flex flex-col items-center gap-3">
+          <span
+            className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600 dark:border-zinc-700 dark:border-t-emerald-400"
+            aria-hidden
+          />
+          <p className="text-sm font-medium text-zinc-500">Loading strategy…</p>
         </div>
       </div>
     );
@@ -96,185 +133,195 @@ export default function PublicBacktestPage() {
 
   if (error || !data) {
     return (
-      <div className={pageShell}>
-        <div className="flex h-[60vh] flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-            <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Link Unavailable</h1>
-          <p className="mt-2 max-w-sm text-sm text-zinc-500">{error || 'Strategy not found or no longer public.'}</p>
-          <Link to="/" className={`${btnSm} mt-6`}>Go to FinhubKH</Link>
+      <div className="flex h-dvh flex-col items-center justify-center bg-zinc-50 px-4 text-center dark:bg-zinc-950">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
         </div>
+        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Link Unavailable</h1>
+        <p className="mt-2 max-w-sm text-sm text-zinc-500">{error || 'Strategy not found or no longer public.'}</p>
+        <Link to="/" className={`${btnSm} mt-6`}>Go to FinhubKH</Link>
       </div>
     );
   }
 
   return (
-    <div className={pageShell}>
-      {/* Read-Only Header */}
-      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 md:px-6">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>
-            </div>
-            <div>
+    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <header className="shrink-0 border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 md:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandLogo size="sm" showWordmark={false} />
+            <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-                Shared Strategy
+                Shared strategy
               </div>
-              <h1 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
+              <h1 className="truncate text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                 {overview.name}
               </h1>
             </div>
           </div>
-          <Link to="/" className="text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition">
+          <Link
+            to="/"
+            className="shrink-0 text-xs font-semibold text-zinc-500 transition hover:text-zinc-800 dark:hover:text-zinc-200"
+          >
             Create your own
           </Link>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="mx-auto max-w-6xl p-4 md:p-6 lg:py-8 flex flex-col gap-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            {overview.name}
-          </h2>
-          {overview.symbol && (
-            <p className="text-sm text-zinc-500">{overview.symbol} backtest</p>
-          )}
-        </div>
-
-        <nav className="-mx-1 overflow-x-auto px-1 pb-1 shrink-0" aria-label="Backtest views">
-          <div className={`${pillToggle} !flex w-max min-w-full sm:min-w-0`} role="tablist">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'heatmap', label: 'Heatmap' },
-              { id: 'calendar', label: 'Calendar' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={view === tab.id}
-                className={`${pillBtn(view === tab.id)} whitespace-nowrap px-4 py-1.5`}
-                onClick={() => setView(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 md:px-6">
+        <div className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              {overview.name}
+            </h2>
+            <p className="mt-0.5 truncate text-sm text-zinc-500">
+              {overview.report_symbol || overview.symbol ? `${overview.report_symbol || overview.symbol} · ` : ''}
+              {overview.range_from && overview.range_to
+                ? `${fmtDateShort(overview.range_from)} → ${fmtDateShort(overview.range_to)}`
+                : 'Read-only backtest'}
+            </p>
           </div>
-        </nav>
-
-        {view === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <CalendarStatCard
-                value={fmtPnlStrict(overview.total_pnl, uiCurrency)}
-                label="Total PnL"
-                trend={Number(overview.total_pnl) >= 0 ? 'up' : 'down'}
-              />
-              <CalendarStatCard
-                value={Number(overview.profit_factor) > 999 ? '∞' : Number(overview.profit_factor).toFixed(2)}
-                label="Profit factor"
-                trend={Number(overview.profit_factor) >= 1.5 ? 'up' : Number(overview.profit_factor) >= 1 ? 'neutral' : 'down'}
-              />
-              <CalendarStatCard
-                value={overview.trade_count}
-                label="Trades"
-                trend="neutral"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <EquityChart daily={calendarDaily} denomination={uiCurrency} />
+          <div className="flex flex-wrap items-center gap-3">
+            <nav className="overflow-x-auto" aria-label="Backtest views">
+              <div className={`${pillToggle} !flex w-max`} role="tablist">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === tab.id}
+                    className={`${pillBtn(view === tab.id)} whitespace-nowrap px-4 py-1.5`}
+                    onClick={() => setView(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-              <div className="flex flex-col gap-4">
-                <WinRateGauge wins={Number(overview.wins) || 0} losses={Number(overview.losses) || 0} be={Number(overview.be_count) || 0} />
-                <BreakdownCard items={breakdown.session} title="Session Breakdown" />
-                <BreakdownCard items={breakdown.symbol} title="Symbol Breakdown" />
+            </nav>
+            {view === 'calendar' && screen === 'year' && (
+              <div className="flex items-center gap-2">
+                <YearDropdown value={year} onChange={setYear} minYear={minYear} maxYear={maxYear} />
+                {year !== new Date().getFullYear() && (
+                  <button className={btnSm} type="button" onClick={() => setYear(new Date().getFullYear())}>
+                    Go to {new Date().getFullYear()}
+                  </button>
+                )}
               </div>
-            </div>
-
-            <div className={`${card} p-5`}>
-              <h3 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Backtest Info</h3>
-              <div className="grid grid-cols-2 gap-y-4 sm:grid-cols-4">
-                <div className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wider text-zinc-500">Period</span>
-                  <span className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {fmtDateShort(overview.range_from)} → {fmtDateShort(overview.range_to)}
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wider text-zinc-500">Currency</span>
-                  <span className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100 uppercase">
-                    {uiCurrency}
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wider text-zinc-500">Published</span>
-                  <span className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {fmtDateShort(overview.published_at)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view === 'heatmap' && (
-          <HeatmapView daily={calendarDaily} denomination={uiCurrency} />
-        )}
-
-        {view === 'calendar' && (
-          <div className="mt-2">
-            {screen === 'year' ? (
-              <YearView
-                year={year}
-                yearDays={loading ? EMPTY_YEAR_BUCKETS : yearDays}
-                overrideMap={EMPTY_OVERRIDE}
-                useOverrides={false}
-                denomination={uiCurrency}
-                loading={loading}
-                onYearChange={setYear}
-                onSelectMonth={(m) => { setMonth(m); setScreen('detail'); }}
-                hint="Select a month to view daily backtest PnL"
-                showManualLegend={false}
-                minYear={minYear}
-                maxYear={maxYear}
-              />
-            ) : (
-              <MonthDetailView
-                year={year}
-                month={month}
-                monthDays={monthDays}
-                overrideMap={EMPTY_OVERRIDE}
-                useOverrides={false}
-                denomination={uiCurrency}
-                loading={loading}
-                onBack={() => setScreen('year')}
-                onPrevMonth={() => {
-                  setMonth((m) => {
-                    if (m === 1) { setYear((y) => y - 1); return 12; }
-                    return m - 1;
-                  });
-                }}
-                onNextMonth={() => {
-                  setMonth((m) => {
-                    if (m === 12) { setYear((y) => y + 1); return 1; }
-                    return m + 1;
-                  });
-                }}
-                showManualLegend={false}
-              />
             )}
           </div>
-        )}
-      </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {view === 'overview' && (
+            <section
+              aria-label="Overview"
+              role="tabpanel"
+              className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
+            >
+              <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
+                <StatTile
+                  label="Total PnL"
+                  value={fmtPnlStrict(totalPnl, uiCurrency)}
+                  hint={`${wins}W · ${losses}L`}
+                  tone={totalPnl >= 0 ? 'positive' : 'negative'}
+                />
+                <StatTile
+                  label="Profit factor"
+                  value={formatPf(overview.profit_factor)}
+                  hint="Gross wins ÷ gross losses"
+                  tone={Number(overview.profit_factor) >= 1 ? 'positive' : 'negative'}
+                />
+                <StatTile
+                  label="Win rate"
+                  value={`${wr}%`}
+                  hint={`${tradeCount} closed`}
+                  tone={wr >= 50 ? 'positive' : 'negative'}
+                />
+                <StatTile
+                  label="Trades"
+                  value={tradeCount || '—'}
+                  hint={`${calendarDaily.length} trading days`}
+                />
+                <StatTile
+                  label="Published"
+                  value={overview.published_at ? fmtDateShort(overview.published_at) : '—'}
+                  hint={uiCurrency.toUpperCase()}
+                />
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
+                <div className="min-h-[280px] flex-1 lg:min-h-0">
+                  <EquityChart daily={calendarDaily} denomination={uiCurrency} fill />
+                </div>
+                <div className="grid min-h-[480px] shrink-0 grid-rows-2 gap-3 lg:h-full lg:min-h-0 lg:w-[min(22rem,38%)]">
+                  <div className="min-h-0">
+                    <WinRateGauge wins={wins} losses={losses} fill />
+                  </div>
+                  <div className="min-h-0">
+                    <BreakdownCard breakdown={breakdown} denomination={uiCurrency} fill />
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {view === 'heatmap' && (
+            <section aria-label="Heatmap" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+              <HeatmapView daily={calendarDaily} denomination={uiCurrency} fill />
+            </section>
+          )}
+
+          {view === 'calendar' && (
+            <section aria-label="Calendar" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+              {screen === 'year' ? (
+                <YearView
+                  year={year}
+                  yearDays={yearDays}
+                  overrideMap={EMPTY_OVERRIDE}
+                  useOverrides={false}
+                  denomination={uiCurrency}
+                  loading={loading}
+                  onYearChange={setYear}
+                  onSelectMonth={(m) => { setMonth(m); setScreen('detail'); }}
+                  hint="Select a month to view daily backtest PnL"
+                  showManualLegend={false}
+                  minYear={minYear}
+                  maxYear={maxYear}
+                  fill
+                  hideHeader
+                />
+              ) : (
+                <MonthDetailView
+                  year={year}
+                  month={month}
+                  monthDays={monthDays}
+                  overrideMap={EMPTY_OVERRIDE}
+                  useOverrides={false}
+                  denomination={uiCurrency}
+                  loading={loading}
+                  onBack={() => setScreen('year')}
+                  onPrevMonth={() => {
+                    setMonth((m) => {
+                      if (m === 1) { setYear((y) => y - 1); return 12; }
+                      return m - 1;
+                    });
+                  }}
+                  onNextMonth={() => {
+                    setMonth((m) => {
+                      if (m === 12) { setYear((y) => y + 1); return 1; }
+                      return m + 1;
+                    });
+                  }}
+                  showManualLegend={false}
+                  fill
+                />
+              )}
+            </section>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

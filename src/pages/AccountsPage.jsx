@@ -157,31 +157,39 @@ export default function AccountsPage() {
 
   return (
     <div className={`${dashboardPageWideFull} overflow-y-auto`}>
-      <header className="mb-6 flex shrink-0 flex-wrap items-end justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200/60 pb-6 dark:border-zinc-800">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
-            Trading desk
-          </p>
-          <h1 className="mt-1.5 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Accounts
-          </h1>
-          <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Edit or delete accounts here, or open one to manage EA sync and investor password.
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Trading Accounts
+            </h1>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Manage your accounts, connect to MT5 with an EA sync key, and set up your trading journal.
           </p>
         </div>
         <button className={btnPrimary} type="button" onClick={() => setModal({ mode: 'add' })}>
-          Add account
+          + Add Account
         </button>
       </header>
 
       {tradingAccounts.length === 0 ? (
-        <div className={`${card} ${emptyState} py-16`}>
-          <p className="text-base font-semibold text-zinc-800 dark:text-zinc-200">No trading accounts yet</p>
-          <p className="mt-2 max-w-sm text-sm text-zinc-500">
-            Create an account, then connect MT5 with an EA sync key or an investor password.
+        <div className={`${card} ${emptyState} flex flex-col items-center justify-center py-16 text-center`}>
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">No trading accounts yet</h3>
+          <p className="mx-auto mt-2 mb-8 max-w-sm text-sm text-zinc-500 text-center">
+            Create an account, then connect MT5 with an EA sync key or an investor password to start journaling.
           </p>
-          <button className={`${btnOutline} mt-5`} type="button" onClick={() => setModal({ mode: 'add' })}>
-            Add your first account
+          <button
+            type="button"
+            className={btnPrimary}
+            onClick={() => setModal({ mode: 'add' })}
+          >
+            + Add First Account
           </button>
         </div>
       ) : (

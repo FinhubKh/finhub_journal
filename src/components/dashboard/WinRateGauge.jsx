@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import { card, cardBody, cardHd, cardTitle } from '../../lib/ui';
 
-export default function WinRateGauge({ wins, losses }) {
+export default function WinRateGauge({ wins, losses, fill = false }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
@@ -33,7 +33,8 @@ export default function WinRateGauge({ wins, losses }) {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
         cutout: '80%',
         circumference: 180,
         rotation: -90,
@@ -53,23 +54,21 @@ export default function WinRateGauge({ wins, losses }) {
   }, [winRate, total]);
 
   return (
-    <div className={`${card} flex h-full flex-col`}>
-      <div className={cardHd}>
-        <div className="flex w-full items-center justify-between">
-          <h2 className={cardTitle}>Win rate (all time)</h2>
-          <button className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" aria-label="Help">?</button>
+    <div className={`${card} flex h-full min-h-0 flex-col`}>
+      <div className={`${cardHd} shrink-0`}>
+        <div>
+          <h2 className={cardTitle}>Win rate</h2>
+          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Closed trades only</p>
         </div>
+        <span className="text-sm font-semibold tabular-nums text-zinc-500 dark:text-zinc-400">
+          {wins || 0}W · {losses || 0}L
+        </span>
       </div>
-      <div className={`${cardBody} flex min-h-0 flex-1 flex-col items-center justify-center py-8`}>
-        <div className="relative flex w-full max-w-[260px] flex-col items-center justify-center">
-          <div className="relative w-full aspect-[2/1]">
-             <canvas ref={canvasRef} />
-             <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center pb-1">
-               <span className="text-4xl font-bold text-zinc-900 dark:text-white">{winRate}%</span>
-             </div>
-          </div>
-          <div className="mt-4 text-sm text-zinc-500">
-            {wins || 0} win{wins !== 1 ? 's' : ''} &middot; {losses || 0} loss{losses !== 1 ? 'es' : ''}
+      <div className={`${cardBody} flex min-h-0 flex-1 flex-col items-center justify-center ${fill ? 'py-3' : 'py-8'}`}>
+        <div className="relative flex w-full max-w-[240px] flex-col items-center justify-center">
+          <canvas ref={canvasRef} />
+          <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-1 sm:pb-2">
+            <span className="text-3xl font-bold tabular-nums text-zinc-900 dark:text-white sm:text-4xl">{winRate}%</span>
           </div>
         </div>
       </div>

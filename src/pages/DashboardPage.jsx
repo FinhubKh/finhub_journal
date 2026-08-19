@@ -104,7 +104,8 @@ export default function DashboardPage() {
     || shellTab === 'compound'
     || shellTab === 'overview'
     || shellTab === 'setup'
-    || onAccounts;
+    || onAccounts
+    || onBacktests;
 
   return (
     <TradeModalProvider>

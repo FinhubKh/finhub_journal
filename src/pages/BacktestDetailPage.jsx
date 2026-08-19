@@ -9,17 +9,16 @@ import {
 import { bucketDailyByMonth, EMPTY_YEAR_BUCKETS, yearsFromDates } from '../lib/calendarCells';
 import { fmtDateShort, fmtPnlStrict } from '../lib/format';
 import BackButton from '../components/common/BackButton';
+import YearDropdown from '../components/common/YearDropdown';
 import {
   YearView,
   MonthDetailView,
-  CalendarStatCard,
 } from '../components/calendar/CalendarViews';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import HeatmapView from '../components/calendar/HeatmapView';
 import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
 import {
-  btnDanger,
   btnGhost,
   btnOutline,
   btnPrimary,
@@ -30,14 +29,18 @@ import {
   cardTitle,
   dashboardPageWideFull,
   emptyState,
-  input,
-  label,
   msgError,
   pillBtn,
   pillToggle,
-  sectionLabel,
 } from '../lib/ui';
-import { deleteBacktest, fetchBacktest, fetchBacktestDaily, saveBacktestUpload, getBacktestShareUrl, regenerateBacktestShareToken, setBacktestPublic } from '../api/backtests';
+import {
+  fetchBacktest,
+  fetchBacktestDaily,
+  saveBacktestUpload,
+  getBacktestShareUrl,
+  regenerateBacktestShareToken,
+  setBacktestPublic,
+} from '../api/backtests';
 
 const EMPTY_OVERRIDE = {};
 
@@ -55,22 +58,22 @@ function StatusBadge({ ok, okLabel, idleLabel }) {
   );
 }
 
-function Panel({ eyebrow, title, badge, children, danger = false }) {
+function StatTile({ label, value, hint, tone = 'neutral' }) {
+  const valueCls =
+    tone === 'positive' ? 'text-emerald-600 dark:text-emerald-400'
+      : tone === 'negative' ? 'text-rose-600 dark:text-rose-400'
+        : 'text-zinc-900 dark:text-zinc-100';
+
   return (
-    <section
-      className={`${card} overflow-hidden ${
-        danger ? 'border-rose-200 dark:border-rose-900/50' : ''
-      }`}
-    >
-      <div className={cardHd}>
-        <div className="min-w-0">
-          <p className={`${sectionLabel} mb-1`}>{eyebrow}</p>
-          <h2 className={cardTitle}>{title}</h2>
-        </div>
-        {badge}
+    <div className={`${card} flex h-full min-h-0 flex-col justify-between p-3.5`}>
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+        {label}
+      </span>
+      <div className={`mt-1.5 truncate text-lg font-bold tracking-tight tabular-nums sm:text-xl ${valueCls}`}>
+        {value}
       </div>
-      <div className={cardBody}>{children}</div>
-    </section>
+      {hint ? <span className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
+    </div>
   );
 }
 
@@ -106,7 +109,7 @@ function metaFromBacktest(row) {
         if (row.source_html && row.source_html.startsWith('{')) {
           return JSON.parse(row.source_html);
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
       return { symbol: [], session: [] };
@@ -278,11 +281,19 @@ export default function BacktestDetailPage() {
     }
   }
 
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'heatmap', label: 'Heatmap' },
+    { id: 'calendar', label: 'Calendar' },
+  ];
+
   if (!loading && !backtestRow && !error) {
     return (
-      <div className={`${dashboardPageWideFull} overflow-y-auto`}>
-        <BackButton onClick={() => navigate('/dashboard/backtests')} />
-        <div className={`${card} ${emptyState} mt-6 py-14`}>
+      <div className={dashboardPageWideFull}>
+        <div className="mb-4 shrink-0">
+          <BackButton onClick={() => navigate('/dashboard/backtests')} />
+        </div>
+        <div className={`${card} ${emptyState} flex min-h-0 flex-1 flex-col items-center justify-center py-14`}>
           <p className="font-semibold text-zinc-800 dark:text-zinc-200">Strategy not found</p>
           <p className="mt-2 text-sm text-zinc-500">It may have been deleted.</p>
           <button className={`${btnOutline} mt-5`} type="button" onClick={() => navigate('/dashboard/backtests')}>
@@ -294,20 +305,32 @@ export default function BacktestDetailPage() {
   }
 
   return (
-    <div className={`${dashboardPageWideFull} overflow-y-auto`}>
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
+    <div className={dashboardPageWideFull}>
+      <header className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <BackButton onClick={() => navigate('/dashboard/backtests')} />
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {overview?.name || 'Strategy Details'}
-            </h1>
-            {overview?.symbol && (
-              <p className="text-sm text-zinc-500">{overview.symbol} backtest</p>
-            )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                {overview?.name || 'Strategy'}
+              </h1>
+              {hasUpload ? (
+                <StatusBadge
+                  ok={Boolean(backtestRow?.is_public)}
+                  okLabel="Public"
+                  idleLabel="Private"
+                />
+              ) : null}
+            </div>
+            <p className="mt-0.5 truncate text-sm text-zinc-500">
+              {overview?.symbol ? `${overview.symbol} · ` : ''}
+              {overview?.rangeFrom && overview?.rangeTo
+                ? `${fmtDateShort(overview.rangeFrom)} → ${fmtDateShort(overview.rangeTo)}`
+                : 'Upload an MT5 report to populate this backtest'}
+            </p>
           </div>
         </div>
-        
+
         {hasUpload && !preview ? (
           <div className="flex flex-wrap items-center gap-2">
             <label className={`${btnGhost} cursor-pointer`}>
@@ -317,59 +340,73 @@ export default function BacktestDetailPage() {
                 className="sr-only"
                 onChange={onFile}
               />
-              {parsing ? 'Parsing…' : 'Re-upload report'}
+              {parsing ? 'Parsing…' : 'Re-upload'}
             </label>
+            <button className={btnSm} type="button" disabled={busy} onClick={() => void handlePublishToggle()}>
+              {backtestRow?.is_public ? 'Unpublish' : 'Publish'}
+            </button>
+            {backtestRow?.is_public && getBacktestShareUrl(backtestRow) ? (
+              <>
+                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
+                  Copy link
+                </button>
+                <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
+                  Reset link
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
-      </div>
+      </header>
 
       {error ? (
-        <div className={`${card} ${cardBody} mb-6`}>
+        <div className={`${card} ${cardBody} mb-4 shrink-0`}>
           <p className={msgError}>{error}</p>
         </div>
       ) : null}
 
+      {parseError ? (
+        <div className={`${card} ${cardBody} mb-4 shrink-0`}>
+          <p className={msgError}>{parseError}</p>
+        </div>
+      ) : null}
 
-
-      {preview ? (
-        <div className={`${card} mb-6`}>
-          <div className={cardHd}>
-            <h2 className={cardTitle}>Upload preview</h2>
+      {loading ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3">
+          <span
+            className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600 dark:border-zinc-700 dark:border-t-emerald-400"
+            aria-hidden
+          />
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Loading strategy…</p>
+        </div>
+      ) : preview ? (
+        <section className={`${card} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+          <div className={`${cardHd} shrink-0`}>
+            <div>
+              <h2 className={cardTitle}>Upload preview</h2>
+              <p className="mt-0.5 truncate text-xs text-zinc-500">
+                {fileLabel ? `File: ${fileLabel}` : 'Ready to save'}
+              </p>
+            </div>
             <StatusBadge ok okLabel="Ready to save" idleLabel="" />
           </div>
-          <div className={`${cardBody} space-y-4`}>
-            {fileLabel ? (
-              <p className="text-xs text-zinc-500">File: <span className="font-medium text-zinc-700 dark:text-zinc-300">{fileLabel}</span></p>
-            ) : null}
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/60">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Currency</div>
-                <div className="mt-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">{(preview.currencyRaw || preview.currency).toUpperCase()}</div>
-              </div>
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/60">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Range</div>
-                <div className="mt-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">{preview.rangeFrom} → {preview.rangeTo}</div>
-              </div>
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/60">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Net profit</div>
-                <div className={`mt-1 text-sm font-bold ${preview.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
-                  {fmtPnlStrict(preview.totalPnl, preview.currency)}
-                </div>
-              </div>
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/60">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Closed deals</div>
-                <div className="mt-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">{preview.tradeCount}</div>
-              </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 md:p-5">
+            <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+              <StatTile label="Currency" value={(preview.currencyRaw || preview.currency).toUpperCase()} />
+              <StatTile label="Range" value={`${preview.rangeFrom} → ${preview.rangeTo}`} />
+              <StatTile
+                label="Net profit"
+                value={fmtPnlStrict(preview.totalPnl, preview.currency)}
+                tone={preview.totalPnl >= 0 ? 'positive' : 'negative'}
+              />
+              <StatTile label="Closed deals" value={preview.tradeCount} hint={`${preview.wins || 0}W · ${preview.losses || 0}L`} />
             </div>
-
             {preview.currencyWarning ? (
-              <p className="text-sm text-amber-600 dark:text-amber-400">
+              <p className="shrink-0 text-sm text-amber-600 dark:text-amber-400">
                 Could not recognize report currency "{preview.currencyRaw || 'unknown'}". Treating values as USD.
               </p>
             ) : null}
-
-            <div className="flex gap-2">
+            <div className="mt-auto flex shrink-0 gap-2">
               <button className={btnPrimary} type="button" disabled={saving} onClick={save}>
                 {saving ? 'Saving…' : 'Save report'}
               </button>
@@ -378,17 +415,9 @@ export default function BacktestDetailPage() {
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
-
-      {parseError ? (
-        <div className={`${card} ${cardBody} mb-6`}>
-          <p className={msgError}>{parseError}</p>
-        </div>
-      ) : null}
-
-      {!hasUpload && !preview && !error && !parseError ? (
-        <div className={`${card} ${emptyState} mt-6 flex flex-col items-center justify-center py-24`}>
+        </section>
+      ) : !hasUpload && !error ? (
+        <div className={`${card} ${emptyState} flex min-h-0 flex-1 flex-col items-center justify-center py-16`}>
           <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
             <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -408,168 +437,156 @@ export default function BacktestDetailPage() {
             {parsing ? 'Parsing…' : 'Upload MT5 Report'}
           </label>
         </div>
-      ) : null}
-
-      {hasUpload ? (
-        <div className="flex flex-col gap-6">
-          <nav className="-mx-1 overflow-x-auto px-1 pb-1 shrink-0" aria-label="Backtest views">
-            <div className={`${pillToggle} !flex w-max min-w-full sm:min-w-0`} role="tablist">
-              {[
-                { id: 'overview', label: 'Overview' },
-                { id: 'heatmap', label: 'Heatmap' },
-                { id: 'calendar', label: 'Calendar' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === tab.id}
-                  className={`${pillBtn(view === tab.id)} whitespace-nowrap px-4 py-1.5`}
-                  onClick={() => setView(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </nav>
-
-          {view === 'overview' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-                <CalendarStatCard
-                  value={fmtPnlStrict(overview.totalPnl, uiCurrency)}
-                  label="Total PnL"
-                  valueClass={overview.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
-                />
-                <CalendarStatCard
-                  value={formatPf(overview.profitFactor, overview.profitFactorInfinite)}
-                  label="Profit factor"
-                />
-                <CalendarStatCard value={overview.tradeCount || '—'} label="Trades" />
-              </div>
-
-              <EquityChart daily={calendarDaily} denom={uiCurrency} />
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <WinRateGauge 
-                  wins={overview.wins} 
-                  losses={overview.losses} 
-                />
-                
-                <BreakdownCard 
-                  breakdown={overview.breakdown || { symbol: [], session: [] }} 
-                  denomination={uiCurrency} 
-                  fill 
-                />
-              </div>
-
-              <Panel eyebrow="Performance" title="Strategy metrics">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Win rate</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">{overview.wr}%</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Profit factor</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatPf(overview.profitFactor, overview.profitFactorInfinite)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Total trades</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">{overview.tradeCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Trading days</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">{calendarDaily.length}</span>
-                  </div>
+      ) : hasUpload ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <nav className="overflow-x-auto" aria-label="Backtest views">
+                <div className={`${pillToggle} !flex w-max min-w-full sm:min-w-0`} role="tablist">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={view === tab.id}
+                      className={`${pillBtn(view === tab.id)} whitespace-nowrap px-4 py-1.5`}
+                      onClick={() => setView(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-              </Panel>
-
-              <Panel
-                eyebrow="Sharing"
-                title="Public link"
-                badge={(
-                  <StatusBadge
-                    ok={Boolean(backtestRow?.is_public)}
-                    okLabel="Public"
-                    idleLabel="Private"
-                  />
-                )}
-              >
-                <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  {backtestRow?.is_public
-                    ? 'Anyone with the link can view this backtest performance and charts.'
-                    : 'Only you can see this strategy. Publish to share a read-only link.'}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handlePublishToggle()}>
-                    {backtestRow?.is_public ? 'Unpublish' : 'Publish'}
-                  </button>
-                  {backtestRow?.is_public && getBacktestShareUrl(backtestRow) ? (
-                    <>
-                      <button className={btnSm} type="button" disabled={busy} onClick={() => void handleCopyLink()}>
-                        Copy link
-                      </button>
-                      <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleRegenerateLink()}>
-                        Regenerate
-                      </button>
-                    </>
-                  ) : null}
+              </nav>
+              {view === 'calendar' && screen === 'year' && (
+                <div className="flex items-center gap-2">
+                  <YearDropdown value={year} onChange={setYear} minYear={minYear} maxYear={maxYear} />
+                  {year !== new Date().getFullYear() && (
+                    <button className={btnGhost} type="button" onClick={() => setYear(new Date().getFullYear())}>
+                      Go to {new Date().getFullYear()}
+                    </button>
+                  )}
                 </div>
-              </Panel>
-            </div>
-          )}
-
-          {view === 'heatmap' && (
-            <HeatmapView daily={calendarDaily} denomination={uiCurrency} />
-          )}
-
-          {view === 'calendar' && (
-            <div className="mt-2">
-              {screen === 'year' ? (
-                <YearView
-                  year={year}
-                  yearDays={loading ? EMPTY_YEAR_BUCKETS : yearDays}
-                  overrideMap={EMPTY_OVERRIDE}
-                  useOverrides={false}
-                  denomination={uiCurrency}
-                  loading={loading}
-                  onYearChange={setYear}
-                  onSelectMonth={(m) => { setMonth(m); setScreen('detail'); }}
-                  hint="Select a month to view daily backtest PnL"
-                  showManualLegend={false}
-                  minYear={minYear}
-                  maxYear={maxYear}
-                />
-              ) : (
-                <MonthDetailView
-                  year={year}
-                  month={month}
-                  monthDays={monthDays}
-                  overrideMap={EMPTY_OVERRIDE}
-                  useOverrides={false}
-                  denomination={uiCurrency}
-                  loading={loading}
-                  onBack={() => setScreen('year')}
-                  onPrevMonth={() => {
-                    setMonth((m) => {
-                      if (m === 1) { setYear((y) => y - 1); return 12; }
-                      return m - 1;
-                    });
-                  }}
-                  onNextMonth={() => {
-                    setMonth((m) => {
-                      if (m === 12) { setYear((y) => y + 1); return 1; }
-                      return m + 1;
-                    });
-                  }}
-                  showManualLegend={false}
-                />
               )}
             </div>
-          )}
+            {view === 'calendar' && screen === 'year' && (
+              <p className="hidden text-xs text-zinc-400 xl:block">Select a month to view daily backtest PnL</p>
+            )}
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {view === 'overview' && (
+              <section
+                aria-label="Overview"
+                role="tabpanel"
+                className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
+              >
+                <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
+                  <StatTile
+                    label="Total PnL"
+                    value={fmtPnlStrict(overview.totalPnl, uiCurrency)}
+                    hint={`${overview.wins}W · ${overview.losses}L`}
+                    tone={overview.totalPnl >= 0 ? 'positive' : 'negative'}
+                  />
+                  <StatTile
+                    label="Profit factor"
+                    value={formatPf(overview.profitFactor, overview.profitFactorInfinite)}
+                    hint="Gross wins ÷ gross losses"
+                    tone={overview.profitFactorInfinite || Number(overview.profitFactor) >= 1 ? 'positive' : 'negative'}
+                  />
+                  <StatTile
+                    label="Win rate"
+                    value={`${overview.wr}%`}
+                    hint={`${overview.tradeCount} closed`}
+                    tone={overview.wr >= 50 ? 'positive' : 'negative'}
+                  />
+                  <StatTile
+                    label="Trades"
+                    value={overview.tradeCount || '—'}
+                    hint={`${calendarDaily.length} trading days`}
+                  />
+                  <StatTile
+                    label="Currency"
+                    value={uiCurrency.toUpperCase()}
+                    hint={overview.symbol || 'Strategy tester'}
+                  />
+                </div>
+
+                <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
+                  <div className="min-h-[280px] flex-1 lg:min-h-0">
+                    <EquityChart daily={calendarDaily} denomination={uiCurrency} fill />
+                  </div>
+                  <div className="grid min-h-[480px] shrink-0 grid-rows-2 gap-3 lg:h-full lg:min-h-0 lg:w-[min(22rem,38%)]">
+                    <div className="min-h-0">
+                      <WinRateGauge wins={overview.wins} losses={overview.losses} fill />
+                    </div>
+                    <div className="min-h-0">
+                      <BreakdownCard
+                        breakdown={overview.breakdown || { symbol: [], session: [] }}
+                        denomination={uiCurrency}
+                        fill
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {view === 'heatmap' && (
+              <section aria-label="Heatmap" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+                <HeatmapView daily={calendarDaily} denomination={uiCurrency} fill />
+              </section>
+            )}
+
+            {view === 'calendar' && (
+              <section aria-label="Calendar" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+                {screen === 'year' ? (
+                  <YearView
+                    year={year}
+                    yearDays={loading ? EMPTY_YEAR_BUCKETS : yearDays}
+                    overrideMap={EMPTY_OVERRIDE}
+                    useOverrides={false}
+                    denomination={uiCurrency}
+                    loading={loading}
+                    onYearChange={setYear}
+                    onSelectMonth={(m) => { setMonth(m); setScreen('detail'); }}
+                    hint="Select a month to view daily backtest PnL"
+                    showManualLegend={false}
+                    minYear={minYear}
+                    maxYear={maxYear}
+                    fill
+                    hideHeader
+                  />
+                ) : (
+                  <MonthDetailView
+                    year={year}
+                    month={month}
+                    monthDays={monthDays}
+                    overrideMap={EMPTY_OVERRIDE}
+                    useOverrides={false}
+                    denomination={uiCurrency}
+                    loading={loading}
+                    onBack={() => setScreen('year')}
+                    onPrevMonth={() => {
+                      setMonth((m) => {
+                        if (m === 1) { setYear((y) => y - 1); return 12; }
+                        return m - 1;
+                      });
+                    }}
+                    onNextMonth={() => {
+                      setMonth((m) => {
+                        if (m === 12) { setYear((y) => y + 1); return 1; }
+                        return m + 1;
+                      });
+                    }}
+                    showManualLegend={false}
+                    fill
+                  />
+                )}
+              </section>
+            )}
+          </div>
         </div>
       ) : null}
-
     </div>
   );
 }

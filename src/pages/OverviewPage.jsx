@@ -10,7 +10,6 @@ import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
-import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
 import SyncNowButton from '../components/common/SyncNowButton';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
@@ -259,7 +258,6 @@ export default function OverviewPage() {
       { id: 'summary', label: 'Summary' },
       { id: 'risk', label: showAccounts ? 'Risk & Accounts' : 'Risk' },
       { id: 'breakdown', label: 'Breakdown' },
-      { id: 'leaderboard', label: 'Leaderboard' },
     ],
     [showAccounts],
   );
@@ -316,28 +314,8 @@ export default function OverviewPage() {
                     <BreakdownCard breakdown={journalBreakdown} denomination={denomination} fill />
                   </section>
                 )}
-
-                {activeSection === 'leaderboard' && (
-                  <section aria-label="Leaderboard" role="tabpanel" className="flex h-full min-h-0 w-full flex-col">
-                    <LeaderboardPreview
-                      limit={12}
-                      seeAllState={{ tab: 'leaderboard' }}
-                      fill
-                    />
-                  </section>
-                )}
               </div>
             </>
-          )}
-
-          {!hasTrades && (
-            <div className="mt-2 min-h-0 flex-1">
-              <LeaderboardPreview
-                limit={5}
-                seeAllState={{ tab: 'leaderboard' }}
-                fill
-              />
-            </div>
           )}
         </>
       )}
