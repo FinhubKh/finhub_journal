@@ -9,8 +9,8 @@ function getInitialTheme() {
   if (typeof window === 'undefined') return 'dark';
   const saved = localStorage.getItem(THEME_KEY);
   if (saved === 'light' || saved === 'dark') return saved;
-  // Default to dark mode for trading experience if system prefers or unspecified
-  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  // System defaults to dark mode unless user explicitly selects light
+  return 'dark';
 }
 
 function applyThemeToDocument(theme) {
@@ -28,8 +28,8 @@ export function ThemeProvider({ children }) {
   const auth = useAuth();
   const isAuthenticated = Boolean(auth?.isAuthenticated);
 
-  // Unauthenticated users always see light theme. Authenticated users see their chosen theme.
-  const effectiveTheme = isAuthenticated ? theme : 'light';
+  // Apply the chosen or default theme for all users, regardless of auth status
+  const effectiveTheme = theme;
 
   useEffect(() => {
     applyThemeToDocument(effectiveTheme);

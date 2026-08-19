@@ -518,7 +518,7 @@ export default function BacktestDetailPage() {
                 role="tabpanel"
                 className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
               >
-                <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+                <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
                   <StatTile
                     label="Starting balance"
                     value={fmtPnlStrict(overview?.breakdown?.initialDeposit || 0, uiCurrency)}
