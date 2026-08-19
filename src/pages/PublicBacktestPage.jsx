@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchSharedBacktest } from '../api/backtests';
-import { fmtPnlStrict } from '../lib/format';
+import { fmtPnlStrict, fmtDateShort } from '../lib/format';
 import { bucketDailyByMonth, EMPTY_YEAR_BUCKETS, yearsFromDates } from '../lib/calendarCells';
 import {
   card,
@@ -138,8 +138,8 @@ export default function PublicBacktestPage() {
       </header>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-6xl p-4 md:p-6 lg:py-8">
-        <div className="mb-6">
+      <div className="mx-auto max-w-6xl p-4 md:p-6 lg:py-8 flex flex-col gap-6">
+        <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             {overview.name}
           </h2>
@@ -148,8 +148,8 @@ export default function PublicBacktestPage() {
           )}
         </div>
 
-        <nav className="mb-6 -mx-1 overflow-x-auto px-1 pb-1" aria-label="Backtest views">
-          <div className={`${pillToggle} w-max min-w-full sm:min-w-0`} role="tablist">
+        <nav className="-mx-1 overflow-x-auto px-1 pb-1 shrink-0" aria-label="Backtest views">
+          <div className={`${pillToggle} !flex w-max min-w-full sm:min-w-0`} role="tablist">
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'heatmap', label: 'Heatmap' },
@@ -160,7 +160,7 @@ export default function PublicBacktestPage() {
                 type="button"
                 role="tab"
                 aria-selected={view === tab.id}
-                className={`${pillBtn(view === tab.id)} px-4 py-1.5`}
+                className={`${pillBtn(view === tab.id)} whitespace-nowrap px-4 py-1.5`}
                 onClick={() => setView(tab.id)}
               >
                 {tab.label}

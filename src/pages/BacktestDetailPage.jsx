@@ -411,9 +411,9 @@ export default function BacktestDetailPage() {
       ) : null}
 
       {hasUpload ? (
-        <>
-          <nav className="mb-6 -mx-1 overflow-x-auto px-1 pb-1" aria-label="Backtest views">
-            <div className={`${pillToggle} w-max min-w-full sm:min-w-0`} role="tablist">
+        <div className="flex flex-col gap-6">
+          <nav className="-mx-1 overflow-x-auto px-1 pb-1 shrink-0" aria-label="Backtest views">
+            <div className={`${pillToggle} !flex w-max min-w-full sm:min-w-0`} role="tablist">
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'heatmap', label: 'Heatmap' },
@@ -424,7 +424,7 @@ export default function BacktestDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={view === tab.id}
-                  className={`${pillBtn(view === tab.id)} px-4 py-1.5`}
+                  className={`${pillBtn(view === tab.id)} whitespace-nowrap px-4 py-1.5`}
                   onClick={() => setView(tab.id)}
                 >
                   {tab.label}
@@ -567,9 +567,7 @@ export default function BacktestDetailPage() {
               )}
             </div>
           )}
-
-
-        </>
+        </div>
       ) : null}
 
     </div>
