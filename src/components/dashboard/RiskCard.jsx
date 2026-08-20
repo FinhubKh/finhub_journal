@@ -44,9 +44,9 @@ export default function RiskCard({ overview, daily, denomination = 'usd', fill =
           <div>
             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Max drawdown</p>
             <p className="mt-1 text-lg font-bold text-rose-600 dark:text-rose-400">
-              {trueMaxDd > 0 ? fmtPnlStrict(-trueMaxDd, denomination) : (maxDD > 0 ? fmtPnlStrict(-maxDD, denomination) : '—')}
+              {trueMaxDdPercent > 0 ? `${trueMaxDdPercent}%` : '—'}
             </p>
-            {trueMaxDdPercent > 0 && <p className="mt-0.5 text-[10px] font-medium text-zinc-400">{trueMaxDdPercent}% peak</p>}
+            {trueMaxDd > 0 && <p className="mt-0.5 text-[10px] font-medium text-zinc-400">{fmtPnlStrict(-trueMaxDd, denomination)}</p>}
           </div>
           <div>
             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Sharpe ratio</p>
