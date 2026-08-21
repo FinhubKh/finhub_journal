@@ -100,6 +100,20 @@ export async function analyzeAiPerformance({ accountId, from, to, language }) {
   };
 }
 
+/** Stats only, no LLM call — for the instant metrics strip. */
+export async function fetchAiPerformanceStats({ accountId, from, to, language }) {
+  const res = await authFetch(`${AI_API_BASE}/v1/ai/performance/stats`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify(performancePayload({ accountId, from, to, language })),
+  });
+  const body = await parseAiResponse(res);
+  return body?.summary || null;
+}
+
 export async function chatAiPerformance({ accountId, from, to, language, message, history = [] }) {
   const res = await authFetch(`${AI_API_BASE}/v1/ai/performance/chat`, {
     method: 'POST',
@@ -133,6 +147,29 @@ export async function listAiPerformanceReports(accountId) {
 export async function deleteAiPerformanceReport(id) {
   const res = await authFetch(
     `${AI_API_BASE}/v1/ai/performance/reports?id=${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    },
+  );
+  return parseAiResponse(res);
+}
+
+export async function fetchAiChatHistory(accountId) {
+  const res = await authFetch(`${AI_API_BASE}/v1/ai/performance/chat/history?account_id=${encodeURIComponent(accountId)}`, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  });
+  const body = await parseAiResponse(res);
+  return Array.isArray(body?.messages) ? body.messages : [];
+}
+
+export async function clearAiChatHistory(accountId) {
+  const res = await authFetch(
+    `${AI_API_BASE}/v1/ai/performance/chat/history?account_id=${encodeURIComponent(accountId)}`,
     {
       method: 'DELETE',
       headers: {
