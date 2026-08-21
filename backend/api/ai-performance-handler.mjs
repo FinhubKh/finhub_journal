@@ -549,7 +549,7 @@ export async function handlePerformanceInsights(req, deps) {
 export async function handlePerformanceStats(req, deps) {
   const ctx = await prepareContext(req, deps);
   if (ctx.error) return ctx.error;
-  if (!checkRateLimit(ctx.user.id, 'stats', 60)) {
+  if (!checkRateLimit(ctx.user.id, 'stats', 200)) {
     return { status: 429, body: { error: 'Too many stats requests. Try again later.' } };
   }
   return { status: 200, body: { summary: ctx.summary } };
