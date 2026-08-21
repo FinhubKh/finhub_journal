@@ -15,6 +15,7 @@ import {
   chatAiPerformance,
   deleteAiPerformanceReport,
   fetchAiPerformanceInsights,
+  fetchAiPerformanceStats,
   generateAiPerformanceReport,
   listAiPerformanceReports,
 } from '../api/ai';
@@ -138,6 +139,46 @@ function SectionNav({ activeSection, onChange }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+const METRIC_TILES = [
+  { key: 'sharpe', label: 'Sharpe (R)', format: (s) => (s.sharpe == null ? '—' : s.sharpe.toFixed(2)) },
+  { key: 'sortino', label: 'Sortino (R)', format: (s) => (s.sortino == null ? '—' : s.sortino.toFixed(2)) },
+  { key: 'max_drawdown', label: 'Max Drawdown', format: (s) => (s.max_drawdown ? `-${s.max_drawdown.pct.toFixed(1)}%` : '—') },
+  { key: 'profit_factor', label: 'Profit Factor', format: (s) => (s.profit_factor == null ? '—' : s.profit_factor.toFixed(2)) },
+  { key: 'expectancy', label: 'Expectancy', format: (s) => (s.expectancy == null ? '—' : `${s.expectancy >= 0 ? '+' : ''}${s.expectancy.toFixed(2)}R`) },
+  { key: 'kelly_half_pct', label: 'Half-Kelly Size', format: (s) => (s.kelly_half_pct == null ? '—' : `${s.kelly_half_pct.toFixed(1)}%`) },
+];
+
+function MetricsStrip({ summary, busy }) {
+  if (busy) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        {METRIC_TILES.map((tile) => (
+          <div key={tile.key} className="h-16 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+        ))}
+      </div>
+    );
+  }
+  if (!summary || summary.trade_count === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+      {METRIC_TILES.map((tile) => (
+        <div
+          key={tile.key}
+          className="rounded-xl border border-zinc-200/80 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500">
+            {tile.label}
+          </p>
+          <p className="mt-1 font-mono text-base font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+            {tile.format(summary)}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -374,6 +415,9 @@ export default function AiAdvisorPage() {
   const [insightsBusy, setInsightsBusy] = useState(false);
   const [insightsError, setInsightsError] = useState('');
 
+  const [statsSummary, setStatsSummary] = useState(null);
+  const [statsBusy, setStatsBusy] = useState(false);
+
   const [report, setReport] = useState(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [reportError, setReportError] = useState('');
@@ -434,6 +478,28 @@ export default function AiAdvisorPage() {
     setReport(null);
     setSelectedHistoryId(null);
   }, [accountId]);
+
+  useEffect(() => {
+    if (!accountId || !from || !to) {
+      setStatsSummary(null);
+      return;
+    }
+    let cancelled = false;
+    setStatsBusy(true);
+    fetchAiPerformanceStats({ accountId, from, to, language })
+      .then((summary) => {
+        if (!cancelled) setStatsSummary(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setStatsSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setStatsBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, from, to, language]);
 
   function onAccountChange(id) {
     setAccountId(id);
@@ -712,6 +778,10 @@ export default function AiAdvisorPage() {
 
         <SectionNav activeSection={activeSection} onChange={setActiveSection} />
       </section>
+
+      <div className="mb-5">
+        <MetricsStrip summary={statsSummary} busy={statsBusy} />
+      </div>
 
       {activeSection === 'insights' && (
         <section className={card} role="tabpanel" aria-label="Insights">
