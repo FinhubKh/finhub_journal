@@ -66,6 +66,9 @@ export function calcMaxDrawdown(trades) {
       peakAtMaxDrawdown = peak;
     }
   }
+  // pct is intentionally 0 when no positive peak was ever reached (e.g. an
+  // all-losing series) — usd still reflects the real dollar decline from the
+  // zero baseline, but a percentage of a zero peak has no meaningful value.
   const pct = peakAtMaxDrawdown > 0 ? (maxDrawdownUsd / peakAtMaxDrawdown) * 100 : 0;
   return { usd: round(maxDrawdownUsd), pct: round(pct, 1) };
 }

@@ -52,6 +52,26 @@ describe('calcMaxDrawdown', () => {
     expect(calcMaxDrawdown([])).toEqual({ usd: 0, pct: 0 });
     expect(calcMaxDrawdown([{ date: '2026-01-01', pnl_usd: 50 }])).toEqual({ usd: 0, pct: 0 });
   });
+
+  it('returns zero drawdown for a monotonically increasing equity curve', () => {
+    const trades = [
+      { date: '2026-01-01', pnl_usd: 50 },
+      { date: '2026-01-02', pnl_usd: 30 },
+      { date: '2026-01-03', pnl_usd: 40 },
+    ];
+    // equity: 50, 80, 120 -> never dips below a prior peak
+    expect(calcMaxDrawdown(trades)).toEqual({ usd: 0, pct: 0 });
+  });
+
+  it('returns 0% (not NaN) when every trade is a loss and peak never leaves zero', () => {
+    const trades = [
+      { date: '2026-01-01', pnl_usd: -50 },
+      { date: '2026-01-02', pnl_usd: -30 },
+    ];
+    // equity: -50, -80 -> peak stays 0 (never a positive high), so pct has no
+    // meaningful denominator; usd still reflects the $80 decline from the 0 baseline
+    expect(calcMaxDrawdown(trades)).toEqual({ usd: 80, pct: 0 });
+  });
 });
 
 describe('calcKellyHalf', () => {
