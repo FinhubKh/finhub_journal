@@ -905,20 +905,29 @@ export async function handleGetChatHistory(req, deps) {
   const accountId = String(url.searchParams.get('account_id') || '').trim();
   if (!accountId) return { status: 400, body: { error: 'account_id is required' } };
 
-  const res = await fetch(
-    `${deps.supabaseUrl}/rest/v1/ai_chat_messages`
-      + `?select=id,role,content,created_at`
-      + `&user_id=eq.${encodeURIComponent(auth.user.id)}`
-      + `&account_id=eq.${encodeURIComponent(accountId)}`
-      + `&order=created_at.asc&limit=200`,
-    { headers: { apikey: deps.anonKey, Authorization: `Bearer ${token}` } },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    return { status: 500, body: { error: text || 'Failed to load chat history' } };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `${deps.supabaseUrl}/rest/v1/ai_chat_messages`
+        + `?select=id,role,content,created_at`
+        + `&user_id=eq.${encodeURIComponent(auth.user.id)}`
+        + `&account_id=eq.${encodeURIComponent(accountId)}`
+        + `&order=created_at.desc&limit=200`,
+      { signal: controller.signal, headers: { apikey: deps.anonKey, Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      return { status: 500, body: { error: text || 'Failed to load chat history' } };
+    }
+    const messages = await res.json();
+    const ordered = Array.isArray(messages) ? messages.reverse() : [];
+    return { status: 200, body: { messages: ordered } };
+  } catch (err) {
+    return { status: 500, body: { error: err?.message || 'Failed to load chat history' } };
+  } finally {
+    clearTimeout(timer);
   }
-  const messages = await res.json();
-  return { status: 200, body: { messages: Array.isArray(messages) ? messages : [] } };
 }
 
 export async function handleClearChatHistory(req, deps) {
@@ -930,15 +939,23 @@ export async function handleClearChatHistory(req, deps) {
   const accountId = String(url.searchParams.get('account_id') || '').trim();
   if (!accountId) return { status: 400, body: { error: 'account_id is required' } };
 
-  const res = await fetch(
-    `${deps.supabaseUrl}/rest/v1/ai_chat_messages?user_id=eq.${encodeURIComponent(auth.user.id)}&account_id=eq.${encodeURIComponent(accountId)}`,
-    { method: 'DELETE', headers: { apikey: deps.anonKey, Authorization: `Bearer ${token}` } },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    return { status: 500, body: { error: text || 'Failed to clear chat history' } };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `${deps.supabaseUrl}/rest/v1/ai_chat_messages?user_id=eq.${encodeURIComponent(auth.user.id)}&account_id=eq.${encodeURIComponent(accountId)}`,
+      { method: 'DELETE', signal: controller.signal, headers: { apikey: deps.anonKey, Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      return { status: 500, body: { error: text || 'Failed to clear chat history' } };
+    }
+    return { status: 200, body: { ok: true } };
+  } catch (err) {
+    return { status: 500, body: { error: err?.message || 'Failed to clear chat history' } };
+  } finally {
+    clearTimeout(timer);
   }
-  return { status: 200, body: { ok: true } };
 }
 
 export function getPerformanceDepsFromEnv(env = process.env) {

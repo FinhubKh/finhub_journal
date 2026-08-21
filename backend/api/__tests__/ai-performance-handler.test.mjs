@@ -256,6 +256,32 @@ describe('handleGetChatHistory / handleClearChatHistory', () => {
     expect(result.body.messages).toHaveLength(1);
   });
 
+  it('returns the most recent messages (not the oldest) when history exceeds the cap', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        // Server returns newest-first (desc) — simulates PostgREST's order=created_at.desc
+        json: async () => ([
+          { id: 'm3', role: 'assistant', content: 'third', created_at: '2026-07-03T00:00:00Z' },
+          { id: 'm2', role: 'user', content: 'second', created_at: '2026-07-02T00:00:00Z' },
+          { id: 'm1', role: 'user', content: 'first', created_at: '2026-07-01T00:00:00Z' },
+        ]),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = { headers: { authorization: 'Bearer good-token' }, url: '/v1/ai/performance/chat/history?account_id=acct-1' };
+    const result = await handleGetChatHistory(req, DEPS);
+
+    expect(result.status).toBe(200);
+    // Response must be oldest-first for chat rendering, and must be the actual
+    // most-recent window (not silently truncated to the oldest messages).
+    expect(result.body.messages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+
+    const listCall = fetchMock.mock.calls[1];
+    expect(listCall[0]).toContain('order=created_at.desc');
+  });
+
   it('requires account_id', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) });
     vi.stubGlobal('fetch', fetchMock);
