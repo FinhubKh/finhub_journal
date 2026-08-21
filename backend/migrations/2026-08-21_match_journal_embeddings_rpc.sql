@@ -1,5 +1,11 @@
 -- Vector similarity search over journal_embeddings, scoped to the caller.
 -- daily_note rows have account_id = null and match every account for that user.
+-- p_account_id is required in practice (callers must always pass a real account
+-- id) — passing p_account_id = null does NOT mean "search all accounts" (unlike
+-- get_my_journal_bundle's null-means-everything convention); it degrades to
+-- matching only daily_note rows, since a null-vs-null equality is never true in
+-- SQL. There is no "all accounts" mode in this function by design (this project
+-- has no cross-account portfolio view yet).
 -- Run in Supabase SQL Editor.
 
 create or replace function public.match_journal_embeddings(
@@ -50,3 +56,5 @@ $$;
 
 revoke all on function public.match_journal_embeddings from public, anon;
 grant execute on function public.match_journal_embeddings to authenticated;
+
+notify pgrst, 'reload schema';
