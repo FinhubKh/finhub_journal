@@ -1,6 +1,6 @@
 // backend/api/__tests__/ai-performance-handler.test.mjs
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat, handleGetChatHistory, handleClearChatHistory, handlePerformanceAnalyze } from '../ai-performance-handler.mjs';
+import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat, handleGetChatHistory, handleClearChatHistory, handlePerformanceAnalyze, handlePerformanceReport } from '../ai-performance-handler.mjs';
 
 const DEPS = {
   supabaseUrl: 'https://example.supabase.co',
@@ -345,6 +345,56 @@ describe('handlePerformanceAnalyze retrieval + snapshot', () => {
     expect(result.status).toBe(200);
     expect(result.body.summary.trade_count).toBe(2);
 
+    const saveCall = fetchMock.mock.calls[5];
+    const savedBody = JSON.parse(saveCall[1].body);
+    expect(savedBody.stats_snapshot.by_symbol).toBeDefined();
+    expect(savedBody.stats_snapshot.sharpe).not.toBeUndefined();
+  });
+});
+
+describe('handlePerformanceReport retrieval + snapshot', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('seeds retrieval from best/worst trades and saves a full stats_snapshot', async () => {
+    const token = makeAccessToken('user-1');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'acct-1', name: 'Main' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([
+        { date: '2026-07-14', result: 'loss', r_value: -1, pnl_usd: -100, symbol: 'XAUUSD' },
+        { date: '2026-07-15', result: 'win', r_value: 2, pnl_usd: 200, symbol: 'EURUSD' },
+      ]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ embedding: [0.1] }) }) // embed seed query
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ source_type: 'trade', content: 'chased entry', metadata: { date: '2026-07-14' }, similarity: 0.8 }]) }) // match RPC
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({
+            title: 'Q3 review',
+            summary: 'Net positive period.',
+            working: ['w'], hurting: ['h'], habits: ['hb'], action_plan: ['ap'], focus_next: 'focus',
+          }) } }],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'report-1' }]) }); // save
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      body: { account_id: 'acct-1', from: '2026-07-01', to: '2026-07-31' },
+    };
+    const result = await handlePerformanceReport(req, { ...DEPS, sealionApiKey: 'sk-1' });
+
+    expect(result.status).toBe(200);
+    expect(result.body.summary.trade_count).toBe(2);
+
+    // Confirms retrieval was actually wired in (not just present in analyze)
+    const rpcCall = fetchMock.mock.calls[3];
+    expect(rpcCall[0]).toBe('https://example.supabase.co/rest/v1/rpc/match_journal_embeddings');
+    const sealionCall = fetchMock.mock.calls[4];
+    const sealionPayload = JSON.parse(sealionCall[1].body);
+    expect(sealionPayload.messages[1].content).toContain('chased entry');
+
+    // Confirms the full-snapshot change applies to this handler too, not just analyze
     const saveCall = fetchMock.mock.calls[5];
     const savedBody = JSON.parse(saveCall[1].body);
     expect(savedBody.stats_snapshot.by_symbol).toBeDefined();
