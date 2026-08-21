@@ -1,6 +1,6 @@
 // backend/api/__tests__/ai-performance-handler.test.mjs
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat } from '../ai-performance-handler.mjs';
+import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat, handleGetChatHistory, handleClearChatHistory } from '../ai-performance-handler.mjs';
 
 const DEPS = {
   supabaseUrl: 'https://example.supabase.co',
@@ -237,5 +237,46 @@ describe('handlePerformanceChat with retrieval + persistence', () => {
 
     expect(result.status).toBe(200);
     expect(result.body.reply).toBe('Reply despite save failure.');
+  });
+});
+
+describe('handleGetChatHistory / handleClearChatHistory', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('lists messages for the account, newest last', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) }) // verifySupabaseUser
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'm1', role: 'user', content: 'hi', created_at: '2026-07-01T00:00:00Z' }]) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = { headers: { authorization: 'Bearer good-token' }, url: '/v1/ai/performance/chat/history?account_id=acct-1' };
+    const result = await handleGetChatHistory(req, DEPS);
+
+    expect(result.status).toBe(200);
+    expect(result.body.messages).toHaveLength(1);
+  });
+
+  it('requires account_id', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const req = { headers: { authorization: 'Bearer good-token' }, url: '/v1/ai/performance/chat/history' };
+    const result = await handleGetChatHistory(req, DEPS);
+    expect(result.status).toBe(400);
+  });
+
+  it('deletes all messages for the account', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = { headers: { authorization: 'Bearer good-token' }, url: '/v1/ai/performance/chat/history?account_id=acct-1' };
+    const result = await handleClearChatHistory(req, DEPS);
+
+    expect(result.status).toBe(200);
+    const deleteCall = fetchMock.mock.calls[1];
+    expect(deleteCall[0]).toContain('/rest/v1/ai_chat_messages?');
+    expect(deleteCall[0]).toContain('account_id=eq.acct-1');
+    expect(deleteCall[1].method).toBe('DELETE');
   });
 });
