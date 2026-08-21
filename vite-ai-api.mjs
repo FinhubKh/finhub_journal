@@ -5,8 +5,11 @@ import {
   handlePerformanceReport,
   handlePerformanceAnalyze,
   handlePerformanceChat,
+  handlePerformanceStats,
   handleListPerformanceReports,
   handleDeletePerformanceReport,
+  handleGetChatHistory,
+  handleClearChatHistory,
 } from './backend/api/ai-performance-handler.mjs';
 
 function sendJson(res, status, body) {
@@ -21,6 +24,7 @@ function performanceDeps(env) {
     anonKey: env.VITE_SUPABASE_ANON_KEY,
     sealionApiKey: (env.SEALION_API_KEY || '').trim(),
     model: (env.SEALION_MODEL || '').trim() || undefined,
+    embedFunctionSecret: (env.EMBED_FUNCTION_SECRET || '').trim(),
   };
 }
 
@@ -67,6 +71,12 @@ export function aiDevApiPlugin() {
             result = await handlePerformanceAnalyze(req, deps);
           } else if (pathname === '/v1/ai/performance/chat' && req.method === 'POST') {
             result = await handlePerformanceChat(req, deps);
+          } else if (pathname === '/v1/ai/performance/stats' && req.method === 'POST') {
+            result = await handlePerformanceStats(req, deps);
+          } else if (pathname === '/v1/ai/performance/chat/history' && req.method === 'GET') {
+            result = await handleGetChatHistory(req, deps);
+          } else if (pathname === '/v1/ai/performance/chat/history' && req.method === 'DELETE') {
+            result = await handleClearChatHistory(req, deps);
           } else if (pathname === '/v1/ai/performance/reports' && req.method === 'GET') {
             result = await handleListPerformanceReports(req, deps);
           } else if (pathname === '/v1/ai/performance/reports' && req.method === 'DELETE') {

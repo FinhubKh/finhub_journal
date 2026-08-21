@@ -15,8 +15,11 @@ import {
   handlePerformanceReport,
   handlePerformanceAnalyze,
   handlePerformanceChat,
+  handlePerformanceStats,
   handleListPerformanceReports,
   handleDeletePerformanceReport,
+  handleGetChatHistory,
+  handleClearChatHistory,
 } from './ai-performance-handler.mjs';
 import { handleSaveInvestorCredentials } from './investor-credentials-handler.mjs';
 import { handleTriggerInvestorSync } from './investor-sync-handler.mjs';
@@ -179,8 +182,9 @@ const server = createServer(async (req, res) => {
       anonKey,
       sealionApiKey,
       model: sealionModel,
+      embedFunctionSecret: (env.EMBED_FUNCTION_SECRET || '').trim(),
     };
-    if (['POST'].includes(req.method) && url.pathname !== '/v1/ai/performance/reports') {
+    if (['POST'].includes(req.method) && !['/v1/ai/performance/reports', '/v1/ai/performance/chat/history'].includes(url.pathname)) {
       const body = await readBody(req);
       req.body = body || {};
     }
@@ -194,12 +198,18 @@ const server = createServer(async (req, res) => {
       result = await handlePerformanceAnalyze(req, deps);
     } else if (url.pathname === '/v1/ai/performance/chat' && req.method === 'POST') {
       result = await handlePerformanceChat(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/stats' && req.method === 'POST') {
+      result = await handlePerformanceStats(req, deps);
     } else if (url.pathname === '/v1/ai/performance/reports' && req.method === 'GET') {
       result = await handleListPerformanceReports(req, deps);
     } else if (url.pathname === '/v1/ai/performance/reports' && req.method === 'DELETE') {
       const body = await readBody(req);
       req.body = body || {};
       result = await handleDeletePerformanceReport(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/chat/history' && req.method === 'GET') {
+      result = await handleGetChatHistory(req, deps);
+    } else if (url.pathname === '/v1/ai/performance/chat/history' && req.method === 'DELETE') {
+      result = await handleClearChatHistory(req, deps);
     } else {
       sendJson(res, 405, { error: 'Method not allowed' });
       return;
