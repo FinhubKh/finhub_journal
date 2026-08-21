@@ -45,8 +45,12 @@ begin
     return new;
   end if;
 
-  select decrypted_secret into fn_url from vault.decrypted_secrets where name = 'embed_function_url';
-  select decrypted_secret into fn_secret from vault.decrypted_secrets where name = 'embed_function_secret';
+  begin
+    select decrypted_secret into fn_url from vault.decrypted_secrets where name = 'embed_function_url';
+    select decrypted_secret into fn_secret from vault.decrypted_secrets where name = 'embed_function_secret';
+  exception when others then
+    return new;
+  end;
 
   if fn_url is null or fn_secret is null then
     return new;
@@ -122,8 +126,12 @@ begin
     return new;
   end if;
 
-  select decrypted_secret into fn_url from vault.decrypted_secrets where name = 'embed_function_url';
-  select decrypted_secret into fn_secret from vault.decrypted_secrets where name = 'embed_function_secret';
+  begin
+    select decrypted_secret into fn_url from vault.decrypted_secrets where name = 'embed_function_url';
+    select decrypted_secret into fn_secret from vault.decrypted_secrets where name = 'embed_function_secret';
+  exception when others then
+    return new;
+  end;
 
   if fn_url is null or fn_secret is null then
     return new;
