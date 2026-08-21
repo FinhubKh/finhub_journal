@@ -23,15 +23,24 @@ async function fetchRows(table, columns) {
   );
   if (!res.ok) throw new Error(`Failed to load ${table}: ${await res.text()}`);
   const rows = await res.json();
+  if (rows.length === 5000) {
+    console.warn(`  WARNING: ${table} returned exactly 5000 rows (the query limit) — there may be more unembedded notes than this run covers. This script does not paginate; if this warning appears, some notes were not backfilled.`);
+  }
   return rows.filter((r) => String(r.notes || '').trim().length > 0);
 }
 
 async function embedAndSave(payload) {
-  const res = await fetch(`${supabaseUrl}/functions/v1/embed`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-embed-secret': embedSecret },
-    body: JSON.stringify(payload),
-  });
+  let res;
+  try {
+    res = await fetch(`${supabaseUrl}/functions/v1/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-embed-secret': embedSecret },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.error(`  FAILED ${payload.source_type} ${payload.source_id}: ${err?.message || err}`);
+    return false;
+  }
   if (!res.ok) {
     console.error(`  FAILED ${payload.source_type} ${payload.source_id}: ${await res.text()}`);
     return false;
@@ -43,7 +52,7 @@ async function main() {
   const trades = await fetchRows('trades', 'id,user_id,account_id,date,symbol,direction,session,result,r_value,pnl_usd,notes');
   console.log(`Backfilling ${trades.length} trades with notes...`);
   let ok = 0;
-  for (const t of trades) {
+  for (const [i, t] of trades.entries()) {
     const done = await embedAndSave({
       source_type: 'trade',
       source_id: t.id,
@@ -53,13 +62,14 @@ async function main() {
       metadata: { date: t.date, symbol: t.symbol, direction: t.direction, session: t.session, result: t.result, r_value: t.r_value, pnl_usd: t.pnl_usd },
     });
     if (done) ok += 1;
+    if ((i + 1) % 50 === 0) console.log(`  ...${i + 1}/${trades.length} trades processed`);
   }
   console.log(`  trades: ${ok}/${trades.length} embedded`);
 
   const dailyNotes = await fetchRows('daily_pnl', 'id,user_id,date,pnl_usd,trade_count,notes');
   console.log(`Backfilling ${dailyNotes.length} daily notes...`);
   let okDaily = 0;
-  for (const d of dailyNotes) {
+  for (const [i, d] of dailyNotes.entries()) {
     const done = await embedAndSave({
       source_type: 'daily_note',
       source_id: d.id,
@@ -69,8 +79,13 @@ async function main() {
       metadata: { date: d.date, pnl_usd: d.pnl_usd, trade_count: d.trade_count },
     });
     if (done) okDaily += 1;
+    if ((i + 1) % 50 === 0) console.log(`  ...${i + 1}/${dailyNotes.length} daily notes processed`);
   }
   console.log(`  daily_pnl: ${okDaily}/${dailyNotes.length} embedded`);
+
+  if (ok < trades.length || okDaily < dailyNotes.length) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((err) => {
