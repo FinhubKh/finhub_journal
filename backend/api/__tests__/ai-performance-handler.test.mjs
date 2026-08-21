@@ -1,12 +1,18 @@
 // backend/api/__tests__/ai-performance-handler.test.mjs
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { embedText, retrieveJournalContext } from '../ai-performance-handler.mjs';
+import { embedText, retrieveJournalContext, handlePerformanceStats } from '../ai-performance-handler.mjs';
 
 const DEPS = {
   supabaseUrl: 'https://example.supabase.co',
   anonKey: 'anon-key',
   embedFunctionSecret: 'embed-secret',
 };
+
+function makeAccessToken(userId) {
+  const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub: userId, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
+  return `${header}.${payload}.sig`;
+}
 
 describe('embedText', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -112,5 +118,27 @@ describe('retrieveJournalContext', () => {
     vi.stubGlobal('fetch', fetchMock);
     const rows = await retrieveJournalContext({ ...DEPS, accessToken: 't', accountId: 'a', queryText: 'q' });
     expect(rows).toEqual([]);
+  });
+});
+
+describe('handlePerformanceStats', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('returns a zeroed summary (not an error) when there are no trades in range', async () => {
+    const token = makeAccessToken('user-1');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'acct-1', name: 'Main' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      body: { account_id: 'acct-1', from: '2026-07-01', to: '2026-07-31' },
+    };
+    const result = await handlePerformanceStats(req, DEPS);
+
+    expect(result.status).toBe(200);
+    expect(result.body.summary.trade_count).toBe(0);
+    expect(result.body.summary.sharpe).toBeNull();
   });
 });

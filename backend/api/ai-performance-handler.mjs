@@ -545,6 +545,16 @@ export async function handlePerformanceInsights(req, deps) {
   }
 }
 
+/** Stats only, no LLM call — powers the instant metrics strip. Never errors on zero trades. */
+export async function handlePerformanceStats(req, deps) {
+  const ctx = await prepareContext(req, deps);
+  if (ctx.error) return ctx.error;
+  if (!checkRateLimit(ctx.user.id, 'stats', 60)) {
+    return { status: 429, body: { error: 'Too many stats requests. Try again later.' } };
+  }
+  return { status: 200, body: { summary: ctx.summary } };
+}
+
 async function savePerformanceReport(deps, ctx, report) {
   const insertRes = await fetch(`${deps.supabaseUrl}/rest/v1/ai_performance_reports`, {
     method: 'POST',
@@ -832,5 +842,6 @@ export function getPerformanceDepsFromEnv(env = process.env) {
     anonKey: env.VITE_SUPABASE_ANON_KEY,
     sealionApiKey: (env.SEALION_API_KEY || '').trim(),
     model: (env.SEALION_MODEL || '').trim() || undefined,
+    embedFunctionSecret: (env.EMBED_FUNCTION_SECRET || '').trim(),
   };
 }
