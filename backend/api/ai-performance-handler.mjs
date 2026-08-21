@@ -260,6 +260,62 @@ async function sealionChat({
   return { status: 200, content };
 }
 
+export async function embedText({ supabaseUrl, embedSecret, text }) {
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-embed-secret': embedSecret },
+      body: JSON.stringify({ mode: 'query', content: text }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data?.embedding) ? data.embedding : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Semantic search over the trader's own journal notes. Empty array on any failure — chat/report always fall back to stats-only grounding. */
+export async function retrieveJournalContext({
+  supabaseUrl,
+  anonKey,
+  embedFunctionSecret,
+  accessToken,
+  accountId,
+  queryText,
+  fromDate = null,
+  toDate = null,
+  matchCount = 8,
+}) {
+  if (!embedFunctionSecret || !String(queryText || '').trim()) return [];
+
+  const embedding = await embedText({ supabaseUrl, embedSecret: embedFunctionSecret, text: queryText });
+  if (!embedding) return [];
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/match_journal_embeddings`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        p_account_id: accountId,
+        p_query_embedding: embedding,
+        p_from: fromDate,
+        p_to: toDate,
+        p_match_count: matchCount,
+      }),
+    });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
 async function fetchAccountAndTrades({
   supabaseUrl,
   anonKey,
