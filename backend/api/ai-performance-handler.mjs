@@ -591,6 +591,23 @@ async function savePerformanceReport(deps, ctx, report) {
   return { saved: rows?.[0] || null };
 }
 
+async function saveChatMessage(deps, ctx, role, content) {
+  await fetch(`${deps.supabaseUrl}/rest/v1/ai_chat_messages`, {
+    method: 'POST',
+    headers: {
+      apikey: deps.anonKey,
+      Authorization: `Bearer ${ctx.token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      user_id: ctx.user.id,
+      account_id: ctx.accountId,
+      role,
+      content,
+    }),
+  }).catch(() => {});
+}
+
 function unsavedReportRow(ctx, report) {
   return {
     id: null,
@@ -734,6 +751,22 @@ export async function handlePerformanceChat(req, deps) {
     .join('\n');
 
   const brief = buildAdvisorBrief(ctx.summary);
+  const journalMatches = await retrieveJournalContext({
+    supabaseUrl: deps.supabaseUrl,
+    anonKey: deps.anonKey,
+    embedFunctionSecret: deps.embedFunctionSecret,
+    accessToken: ctx.token,
+    accountId: ctx.accountId,
+    queryText: message,
+    fromDate: ctx.fromDate,
+    toDate: ctx.toDate,
+  });
+  const journalText = journalMatches.length
+    ? `\n\nRelevant journal notes (only cite these, never invent others):\n${journalMatches
+        .map((m) => `- [${m.metadata?.date || '?'} ${m.metadata?.symbol || ''}] ${m.content}`)
+        .join('\n')}`
+    : '';
+
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
     model: deps.model || FAST_MODEL,
@@ -742,21 +775,26 @@ export async function handlePerformanceChat(req, deps) {
       `Language: ${ctx.language}`,
       `Stats:\n${JSON.stringify(brief)}`,
       historyText ? `Recent chat:\n${historyText}` : '',
-      `User: ${message}`,
+      `User: ${message}${journalText}`,
     ].filter(Boolean).join('\n\n'),
     temperature: 0.35,
     maxTokens: 600,
   });
   if (ai.status !== 200) return ai;
 
+  let reply;
   try {
     const parsed = extractJsonObject(ai.content);
-    const reply = String(parsed?.reply || '').trim().slice(0, 3500);
+    reply = String(parsed?.reply || '').trim().slice(0, 3500);
     if (!reply) throw new Error('Empty chat reply');
-    return { status: 200, body: { reply } };
   } catch (err) {
     return { status: 502, body: { error: err.message || 'Could not parse chat reply' } };
   }
+
+  await saveChatMessage(deps, ctx, 'user', message);
+  await saveChatMessage(deps, ctx, 'assistant', reply);
+
+  return { status: 200, body: { reply } };
 }
 
 export async function handleListPerformanceReports(req, deps) {

@@ -1,6 +1,6 @@
 // backend/api/__tests__/ai-performance-handler.test.mjs
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { embedText, retrieveJournalContext, handlePerformanceStats } from '../ai-performance-handler.mjs';
+import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat } from '../ai-performance-handler.mjs';
 
 const DEPS = {
   supabaseUrl: 'https://example.supabase.co',
@@ -140,5 +140,77 @@ describe('handlePerformanceStats', () => {
     expect(result.status).toBe(200);
     expect(result.body.summary.trade_count).toBe(0);
     expect(result.body.summary.sharpe).toBeNull();
+  });
+});
+
+describe('handlePerformanceChat with retrieval + persistence', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('retrieves journal context, sends it to SEA-LION, and persists both messages', async () => {
+    const token = makeAccessToken('user-1');
+    const fetchMock = vi.fn()
+      // fetchAccountAndTrades: account, trades
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'acct-1', name: 'Main' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ date: '2026-07-14', result: 'loss', r_value: -1, pnl_usd: -100, session: 'london', symbol: 'XAUUSD', direction: 'buy', model: 'A' }]) })
+      // embedText (query mode)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ embedding: [0.1] }) })
+      // match_journal_embeddings RPC
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ source_type: 'trade', content: 'chased entry after news spike', metadata: { date: '2026-07-14', symbol: 'XAUUSD' }, similarity: 0.9 }]) })
+      // SEA-LION chat completion
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: JSON.stringify({ reply: 'Your 07/14 XAUUSD loss notes cite chasing entry after a news spike.' }) } }] }) })
+      // persist user message
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'm1' }]) })
+      // persist assistant message
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'm2' }]) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        account_id: 'acct-1',
+        from: '2026-07-01',
+        to: '2026-07-31',
+        message: 'why did I lose on gold in london',
+      },
+    };
+    const result = await handlePerformanceChat(req, { ...DEPS, sealionApiKey: 'sk-1' });
+
+    expect(result.status).toBe(200);
+    expect(result.body.reply).toContain('chasing entry');
+
+    const rpcCall = fetchMock.mock.calls[3];
+    expect(rpcCall[0]).toBe('https://example.supabase.co/rest/v1/rpc/match_journal_embeddings');
+
+    const sealionCall = fetchMock.mock.calls[4];
+    const sealionPayload = JSON.parse(sealionCall[1].body);
+    expect(sealionPayload.messages[1].content).toContain('chased entry after news spike');
+
+    const persistUserCall = fetchMock.mock.calls[5];
+    expect(persistUserCall[0]).toBe('https://example.supabase.co/rest/v1/ai_chat_messages');
+    expect(JSON.parse(persistUserCall[1].body)).toMatchObject({ role: 'user', content: 'why did I lose on gold in london', account_id: 'acct-1' });
+
+    const persistAssistantCall = fetchMock.mock.calls[6];
+    expect(JSON.parse(persistAssistantCall[1].body)).toMatchObject({ role: 'assistant', account_id: 'acct-1' });
+  });
+
+  it('still replies from stats alone when retrieval finds nothing', async () => {
+    const token = makeAccessToken('user-1');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'acct-1', name: 'Main' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ date: '2026-07-14', result: 'loss', r_value: -1, pnl_usd: -100 }]) })
+      .mockResolvedValueOnce({ ok: false }) // embed fails
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: JSON.stringify({ reply: 'Stats-only answer.' }) } }] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'm1' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'm2' }]) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      body: { account_id: 'acct-1', from: '2026-07-01', to: '2026-07-31', message: 'how is my win rate' },
+    };
+    const result = await handlePerformanceChat(req, { ...DEPS, sealionApiKey: 'sk-1' });
+
+    expect(result.status).toBe(200);
+    expect(result.body.reply).toBe('Stats-only answer.');
   });
 });
