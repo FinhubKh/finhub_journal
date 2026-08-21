@@ -81,8 +81,11 @@ describe('buildPerformanceSummary quant metrics', () => {
     const summary = buildPerformanceSummary(trades, { account_id: 'a1' });
     expect(summary.sharpe).toBe(0.29);
     expect(summary.sortino).toBe(0.5);
-    // equity curve (date order): 200, 100, 300, 200 -> peak 200 to trough 100 = $100 (33.3%) drawdown
-    expect(summary.max_drawdown).toEqual({ usd: 100, pct: 33.3 });
+    // equity curve (date order): 200 -> 100 -> 300 -> 200. The drawdown runs from peak 200
+    // down to trough 100 ($100 / 50%). A later peak of 300 forms after that trough, but
+    // standard Max Drawdown is measured against the peak that preceded the trough, not any
+    // peak that forms afterward -- so the later 300 peak does not change this drawdown's pct.
+    expect(summary.max_drawdown).toEqual({ usd: 100, pct: 50 });
     expect(summary.kelly_half_pct).not.toBeNull();
   });
 });

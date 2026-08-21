@@ -56,13 +56,17 @@ export function calcMaxDrawdown(trades) {
   let cumulative = 0;
   let peak = 0;
   let maxDrawdownUsd = 0;
+  let peakAtMaxDrawdown = 0;
   for (const t of sorted) {
     cumulative += Number(t.pnl_usd) || 0;
     if (cumulative > peak) peak = cumulative;
     const drawdown = peak - cumulative;
-    if (drawdown > maxDrawdownUsd) maxDrawdownUsd = drawdown;
+    if (drawdown > maxDrawdownUsd) {
+      maxDrawdownUsd = drawdown;
+      peakAtMaxDrawdown = peak;
+    }
   }
-  const pct = peak > 0 ? (maxDrawdownUsd / peak) * 100 : 0;
+  const pct = peakAtMaxDrawdown > 0 ? (maxDrawdownUsd / peakAtMaxDrawdown) * 100 : 0;
   return { usd: round(maxDrawdownUsd), pct: round(pct, 1) };
 }
 
