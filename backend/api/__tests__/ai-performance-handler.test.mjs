@@ -34,6 +34,21 @@ describe('embedText', () => {
     const result = await embedText({ supabaseUrl: DEPS.supabaseUrl, embedSecret: DEPS.embedFunctionSecret, text: 'x' });
     expect(result).toBeNull();
   });
+
+  it('returns null when the response body is not valid JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => { throw new SyntaxError('Unexpected token'); },
+    }));
+    const result = await embedText({ supabaseUrl: DEPS.supabaseUrl, embedSecret: DEPS.embedFunctionSecret, text: 'x' });
+    expect(result).toBeNull();
+  });
+
+  it('returns null when the response has no embedding array', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ notEmbedding: true }) }));
+    const result = await embedText({ supabaseUrl: DEPS.supabaseUrl, embedSecret: DEPS.embedFunctionSecret, text: 'x' });
+    expect(result).toBeNull();
+  });
 });
 
 describe('retrieveJournalContext', () => {
@@ -86,6 +101,15 @@ describe('retrieveJournalContext', () => {
 
   it('returns an empty array when embedding the query itself fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const rows = await retrieveJournalContext({ ...DEPS, accessToken: 't', accountId: 'a', queryText: 'q' });
+    expect(rows).toEqual([]);
+  });
+
+  it('returns an empty array when the RPC responds with a non-array body', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ embedding: [0.1] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ unexpected: 'shape' }) });
+    vi.stubGlobal('fetch', fetchMock);
     const rows = await retrieveJournalContext({ ...DEPS, accessToken: 't', accountId: 'a', queryText: 'q' });
     expect(rows).toEqual([]);
   });
