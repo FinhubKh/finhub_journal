@@ -261,9 +261,12 @@ async function sealionChat({
 }
 
 export async function embedText({ supabaseUrl, embedSecret, text }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/embed`, {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json', 'x-embed-secret': embedSecret },
       body: JSON.stringify({ mode: 'query', content: text }),
     });
@@ -272,6 +275,8 @@ export async function embedText({ supabaseUrl, embedSecret, text }) {
     return Array.isArray(data?.embedding) ? data.embedding : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -292,9 +297,12 @@ export async function retrieveJournalContext({
   const embedding = await embedText({ supabaseUrl, embedSecret: embedFunctionSecret, text: queryText });
   if (!embedding) return [];
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch(`${supabaseUrl}/rest/v1/rpc/match_journal_embeddings`, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         apikey: anonKey,
         Authorization: `Bearer ${accessToken}`,
@@ -313,6 +321,8 @@ export async function retrieveJournalContext({
     return Array.isArray(rows) ? rows : [];
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -592,20 +602,32 @@ async function savePerformanceReport(deps, ctx, report) {
 }
 
 async function saveChatMessage(deps, ctx, role, content) {
-  await fetch(`${deps.supabaseUrl}/rest/v1/ai_chat_messages`, {
-    method: 'POST',
-    headers: {
-      apikey: deps.anonKey,
-      Authorization: `Bearer ${ctx.token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      user_id: ctx.user.id,
-      account_id: ctx.accountId,
-      role,
-      content,
-    }),
-  }).catch(() => {});
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${deps.supabaseUrl}/rest/v1/ai_chat_messages`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        apikey: deps.anonKey,
+        Authorization: `Bearer ${ctx.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: ctx.user.id,
+        account_id: ctx.accountId,
+        role,
+        content,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`saveChatMessage failed (${res.status}) for user ${ctx.user.id}, account ${ctx.accountId}`);
+    }
+  } catch (err) {
+    console.error(`saveChatMessage error for user ${ctx.user.id}, account ${ctx.accountId}:`, err?.message || err);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function unsavedReportRow(ctx, report) {
@@ -763,7 +785,7 @@ export async function handlePerformanceChat(req, deps) {
   });
   const journalText = journalMatches.length
     ? `\n\nRelevant journal notes (only cite these, never invent others):\n${journalMatches
-        .map((m) => `- [${m.metadata?.date || '?'} ${m.metadata?.symbol || ''}] ${m.content}`)
+        .map((m) => `- [${m.metadata?.date || '?'} ${m.metadata?.symbol || ''}] ${String(m.content || '').slice(0, 500)}`)
         .join('\n')}`
     : '';
 

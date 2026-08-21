@@ -190,7 +190,11 @@ describe('handlePerformanceChat with retrieval + persistence', () => {
     expect(JSON.parse(persistUserCall[1].body)).toMatchObject({ role: 'user', content: 'why did I lose on gold in london', account_id: 'acct-1' });
 
     const persistAssistantCall = fetchMock.mock.calls[6];
-    expect(JSON.parse(persistAssistantCall[1].body)).toMatchObject({ role: 'assistant', account_id: 'acct-1' });
+    expect(JSON.parse(persistAssistantCall[1].body)).toMatchObject({
+      role: 'assistant',
+      account_id: 'acct-1',
+      content: 'Your 07/14 XAUUSD loss notes cite chasing entry after a news spike.',
+    });
   });
 
   it('still replies from stats alone when retrieval finds nothing', async () => {
@@ -212,5 +216,26 @@ describe('handlePerformanceChat with retrieval + persistence', () => {
 
     expect(result.status).toBe(200);
     expect(result.body.reply).toBe('Stats-only answer.');
+  });
+
+  it('still returns the reply even when persisting chat history fails', async () => {
+    const token = makeAccessToken('user-1');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'acct-1', name: 'Main' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ date: '2026-07-14', result: 'loss', r_value: -1, pnl_usd: -100 }]) })
+      .mockResolvedValueOnce({ ok: false }) // embed fails, retrieval short-circuits
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: JSON.stringify({ reply: 'Reply despite save failure.' }) } }] }) })
+      .mockRejectedValueOnce(new Error('network down')) // persist user message fails
+      .mockRejectedValueOnce(new Error('network down')); // persist assistant message fails
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      body: { account_id: 'acct-1', from: '2026-07-01', to: '2026-07-31', message: 'how is my win rate' },
+    };
+    const result = await handlePerformanceChat(req, { ...DEPS, sealionApiKey: 'sk-1' });
+
+    expect(result.status).toBe(200);
+    expect(result.body.reply).toBe('Reply despite save failure.');
   });
 });
