@@ -468,6 +468,14 @@ function asReportList(v, max = 6) {
     .slice(0, max);
 }
 
+/** No user-typed question in report/analyze flows — seed retrieval from the period's extremes. */
+function journalSeedQuery(summary) {
+  const parts = ['biggest losses and trading mistakes', 'recurring errors and lessons learned'];
+  if (summary.worst_trade?.symbol) parts.push(`${summary.worst_trade.symbol} loss`);
+  if (summary.best_trade?.symbol) parts.push(`${summary.best_trade.symbol} win`);
+  return parts.join(', ');
+}
+
 /** Prefer nested report only when it actually has a summary. */
 function pickReportPayload(parsed) {
   const nested = parsed?.report;
@@ -582,13 +590,7 @@ async function savePerformanceReport(deps, ctx, report) {
       language: ctx.language,
       title: report.title,
       content: report.content,
-      stats_snapshot: {
-        trade_count: ctx.summary.trade_count,
-        win_rate: ctx.summary.win_rate,
-        net_pnl: ctx.summary.net_pnl,
-        avg_r: ctx.summary.avg_r,
-        expectancy: ctx.summary.expectancy,
-      },
+      stats_snapshot: ctx.summary,
     }),
   });
 
@@ -654,11 +656,28 @@ export async function handlePerformanceReport(req, deps) {
   }
 
   const brief = buildAdvisorBrief(ctx.summary);
+  const journalMatches = await retrieveJournalContext({
+    supabaseUrl: deps.supabaseUrl,
+    anonKey: deps.anonKey,
+    embedFunctionSecret: deps.embedFunctionSecret,
+    accessToken: ctx.token,
+    accountId: ctx.accountId,
+    queryText: journalSeedQuery(ctx.summary),
+    fromDate: ctx.fromDate,
+    toDate: ctx.toDate,
+    matchCount: 6,
+  });
+  const journalText = journalMatches.length
+    ? `\n\nJournal note excerpts (only cite these, never invent others):\n${journalMatches
+        .map((m) => `- [${m.metadata?.date || '?'}] ${String(m.content || '').slice(0, 500)}`)
+        .join('\n')}`
+    : '';
+
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
     model: deps.model || FAST_MODEL,
     system: REPORT_SYSTEM,
-    user: `Language: ${ctx.language}\nStats:\n${JSON.stringify(brief)}`,
+    user: `Language: ${ctx.language}\nStats:\n${JSON.stringify(brief)}${journalText}`,
     temperature: 0.3,
     maxTokens: 1000,
   });
@@ -700,6 +719,22 @@ export async function handlePerformanceAnalyze(req, deps) {
   }
 
   const brief = buildAdvisorBrief(ctx.summary);
+  const journalMatches = await retrieveJournalContext({
+    supabaseUrl: deps.supabaseUrl,
+    anonKey: deps.anonKey,
+    embedFunctionSecret: deps.embedFunctionSecret,
+    accessToken: ctx.token,
+    accountId: ctx.accountId,
+    queryText: journalSeedQuery(ctx.summary),
+    fromDate: ctx.fromDate,
+    toDate: ctx.toDate,
+    matchCount: 6,
+  });
+  const journalText = journalMatches.length
+    ? `\n\nJournal note excerpts (only cite these, never invent others):\n${journalMatches
+        .map((m) => `- [${m.metadata?.date || '?'}] ${String(m.content || '').slice(0, 500)}`)
+        .join('\n')}`
+    : '';
 
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
@@ -709,7 +744,7 @@ export async function handlePerformanceAnalyze(req, deps) {
       `Language: ${ctx.language}`,
       'Write a detailed trader performance review from these stats.',
       'Cite numbers. Give executable next-period rules.',
-      `Stats JSON:\n${JSON.stringify(brief)}`,
+      `Stats JSON:\n${JSON.stringify(brief)}${journalText}`,
     ].join('\n\n'),
     temperature: 0.35,
     maxTokens: 1800,
@@ -747,6 +782,7 @@ export async function handlePerformanceAnalyze(req, deps) {
       report: saved,
       title: report.title,
       content: report.content,
+      summary: ctx.summary,
     },
   };
 }

@@ -1,6 +1,6 @@
 // backend/api/__tests__/ai-performance-handler.test.mjs
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat, handleGetChatHistory, handleClearChatHistory } from '../ai-performance-handler.mjs';
+import { embedText, retrieveJournalContext, handlePerformanceStats, handlePerformanceChat, handleGetChatHistory, handleClearChatHistory, handlePerformanceAnalyze } from '../ai-performance-handler.mjs';
 
 const DEPS = {
   supabaseUrl: 'https://example.supabase.co',
@@ -304,5 +304,50 @@ describe('handleGetChatHistory / handleClearChatHistory', () => {
     expect(deleteCall[0]).toContain('/rest/v1/ai_chat_messages?');
     expect(deleteCall[0]).toContain('account_id=eq.acct-1');
     expect(deleteCall[1].method).toBe('DELETE');
+  });
+});
+
+describe('handlePerformanceAnalyze retrieval + snapshot', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('seeds retrieval from best/worst trades, returns summary, and saves a full stats_snapshot', async () => {
+    const token = makeAccessToken('user-1');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'acct-1', name: 'Main' }]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([
+        { date: '2026-07-14', result: 'loss', r_value: -1, pnl_usd: -100, symbol: 'XAUUSD' },
+        { date: '2026-07-15', result: 'win', r_value: 2, pnl_usd: 200, symbol: 'EURUSD' },
+      ]) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ embedding: [0.1] }) }) // embed seed query
+      .mockResolvedValueOnce({ ok: true, json: async () => ([]) }) // match RPC, no notes
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({
+            insights: [
+              { title: 'A', detail: 'a', tone: 'positive' }, { title: 'B', detail: 'b', tone: 'warning' },
+              { title: 'C', detail: 'c', tone: 'neutral' }, { title: 'D', detail: 'd', tone: 'positive' },
+              { title: 'E', detail: 'e', tone: 'warning' }, { title: 'F', detail: 'f', tone: 'neutral' },
+            ],
+            report: { title: 'Q3 review', summary: 'Net positive period.', working: ['w'], hurting: ['h'], habits: ['hb'], action_plan: ['ap'], focus_next: 'focus' },
+          }) } }],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ([{ id: 'report-1' }]) }); // save
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      body: { account_id: 'acct-1', from: '2026-07-01', to: '2026-07-31' },
+    };
+    const result = await handlePerformanceAnalyze(req, { ...DEPS, sealionApiKey: 'sk-1' });
+
+    expect(result.status).toBe(200);
+    expect(result.body.summary.trade_count).toBe(2);
+
+    const saveCall = fetchMock.mock.calls[5];
+    const savedBody = JSON.parse(saveCall[1].body);
+    expect(savedBody.stats_snapshot.by_symbol).toBeDefined();
+    expect(savedBody.stats_snapshot.sharpe).not.toBeUndefined();
   });
 });
