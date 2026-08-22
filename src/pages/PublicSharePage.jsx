@@ -23,6 +23,7 @@ import {
 import EquityChart from '../components/dashboard/EquityChart';
 import { BrandLogo } from '../components/BrandLogo';
 import PublicCalendar from '../components/share/PublicCalendar';
+import { startingEquityFromStats } from '../lib/equityChart';
 
 const PAGE_SIZE = 20;
 
@@ -436,7 +437,11 @@ export default function PublicSharePage() {
 
                   <section>
                     <h2 className={`${sectionLabel} mb-3`}>Equity</h2>
-                    <EquityChart daily={daily} denomination={denomination} />
+                    <EquityChart
+                      daily={daily}
+                      denomination={denomination}
+                      initialDeposit={startingEquityFromStats(stats)}
+                    />
                   </section>
 
                   {/* Overview Recent Trades for unauthenticated users */}

@@ -2,43 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { fmtPnlStrict, moneySymbol, toDisplayPnl } from '../../lib/format';
 import { normalizePnlDenomination } from '../../lib/accounts';
-import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
+import { buildSeries, pointsFromProps } from '../../lib/equityChart';
+import { card, cardBody, cardHd, cardTitle, emptyState } from '../../lib/ui';
 
 const CHART_FONT = 'ui-sans-serif, system-ui, sans-serif';
-
-function pointsFromProps(daily, trades) {
-  if (Array.isArray(daily) && daily.length > 0) {
-    return daily.map((d) => ({
-      date: d.date,
-      pnl: Number(d.pnl) || 0,
-      r_value: Number(d.r_value) || 0,
-    }));
-  }
-  return (trades || []).map((t) => ({
-    date: t.date,
-    pnl: Number(t.pnl_usd) || 0,
-    r_value: Number(t.r_value) || 0,
-  }));
-}
-
-function buildSeries(points, denomination, initialDeposit = 0) {
-  const sorted = [...points].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  const labels = [];
-  const dataUsd = [];
-  const peakUsd = [];
-  let cumUsd = initialDeposit;
-  let peak = initialDeposit;
-
-  sorted.forEach((t) => {
-    cumUsd += toDisplayPnl(t.pnl || 0, denomination);
-    if (cumUsd > peak) peak = cumUsd;
-    labels.push(new Date(`${t.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
-    dataUsd.push(parseFloat(cumUsd.toFixed(2)));
-    peakUsd.push(parseFloat(peak.toFixed(2)));
-  });
-
-  return { labels, dataUsd, peakUsd };
-}
 
 export default function EquityChart({ daily, trades, denomination = 'usd', initialDeposit = 0, fill = false, action = null, isModal = false, onClose = null }) {
   const canvasRef = useRef(null);
@@ -74,6 +41,7 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
     }
 
     const { labels, dataUsd, peakUsd } = buildSeries(points, denom, initialDeposit);
+    const showPoints = labels.length <= 3;
     const labelFmt = (v) => {
       const sym = moneySymbol(denom);
       return v >= 0 ? `+${sym}${Number(v).toFixed(2)}` : `-${sym}${Math.abs(Number(v)).toFixed(2)}`;
@@ -83,9 +51,10 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
       const chart = chartRef.current;
       chart.data.labels = labels;
       chart.data.datasets[0].data = dataUsd;
+      chart.data.datasets[0].pointRadius = showPoints ? 4 : 0;
       chart.options.scales.y.ticks.callback = labelFmt;
       chart.options.plugins.tooltip.callbacks.label = (ctx) => labelFmt(ctx.raw);
-      
+
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       const redColor = isDark ? '#fb7185' : '#e11d48';
       chart.data.datasets[0].segment = {
@@ -114,7 +83,7 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
           data: dataUsd,
           borderColor: accentColor,
           borderWidth: 2,
-          pointRadius: 0,
+          pointRadius: showPoints ? 4 : 0,
           pointHoverRadius: 5,
           pointHoverBackgroundColor: accentColor,
           pointHoverBorderColor: '#fff',
@@ -162,7 +131,7 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
         },
       },
     });
-  }, [points, empty, denom]);
+  }, [points, empty, denom, initialDeposit]);
 
   return (
     <>
@@ -214,14 +183,14 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
       {expanded && !isModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm sm:p-8">
           <div className="h-full w-full max-w-7xl overflow-hidden rounded-xl shadow-2xl ring-1 ring-zinc-200 dark:ring-zinc-800">
-            <EquityChart 
-              trades={trades} 
-              daily={daily} 
+            <EquityChart
+              trades={trades}
+              daily={daily}
               denomination={denomination}
-              initialDeposit={initialDeposit} 
-              fill 
-              isModal 
-              onClose={() => setExpanded(false)} 
+              initialDeposit={initialDeposit}
+              fill
+              isModal
+              onClose={() => setExpanded(false)}
             />
           </div>
         </div>

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
+  LuChevronRight,
   LuCircleAlert,
+  LuFileText,
   LuLightbulb,
   LuSend,
   LuSparkles,
@@ -36,12 +38,11 @@ import CustomDropdown from '../components/common/CustomDropdown';
 import RiskBanner from '../components/aiadvisor/RiskBanner';
 import PacingBar from '../components/aiadvisor/PacingBar';
 import DisciplineStreak from '../components/aiadvisor/DisciplineStreak';
-import JumpNav from '../components/aiadvisor/JumpNav';
 
 const RANGE_OPTIONS = [
-  { id: '7d', label: '7D' },
-  { id: '30d', label: '30D' },
-  { id: '90d', label: '90D' },
+  { id: '7d', label: 'Last 7 days' },
+  { id: '30d', label: 'Last 30 days' },
+  { id: '90d', label: 'Last 90 days' },
   { id: 'custom', label: 'Custom' },
 ];
 
@@ -414,10 +415,6 @@ export default function AiAdvisorPage() {
   const [from, setFrom] = useState(() => rangeFromPreset('30d').from);
   const [to, setTo] = useState(() => rangeFromPreset('30d').to);
   const [language, setLanguage] = useState('en');
-  const sectionRefs = useRef({});
-  const setSectionRef = (id) => (el) => {
-    sectionRefs.current[id] = el;
-  };
 
   const [insights, setInsights] = useState([]);
   const [insightsError, setInsightsError] = useState('');
@@ -441,6 +438,28 @@ export default function AiAdvisorPage() {
   const [analysisPercent, setAnalysisPercent] = useState(0);
   const [analysisLabel, setAnalysisLabel] = useState('Preparing…');
   const analysisBusy = analysisOpen;
+  const [viewMode, setViewMode] = useState('list');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [newAnalysisModalOpen, setNewAnalysisModalOpen] = useState(false);
+
+  function handleHistoryClick(row) {
+    setSelectedHistoryId(row.id);
+    setReport(row);
+    if (row.from_date && row.to_date) {
+      setPreset('custom');
+      setFrom(row.from_date);
+      setTo(row.to_date);
+    }
+    setActiveTab('overview');
+    setViewMode('detail');
+  }
+
+  function handleNewAnalysisClick() {
+    setSelectedHistoryId(null);
+    setReport(null);
+    setActiveTab('overview');
+    setNewAnalysisModalOpen(true);
+  }
 
   useEffect(() => {
     if (!accountId && defaultAccountId) setAccountId(defaultAccountId);
@@ -581,7 +600,12 @@ export default function AiAdvisorPage() {
       } else {
         void refreshHistory(accountId);
       }
+      setAnalysisLabel('Finalizing...');
+      await new Promise((r) => setTimeout(r, 800));
 
+      setActiveTab('overview');
+      setViewMode('detail');
+      setNewAnalysisModalOpen(false);
       toast.success('Insights and report ready');
     } catch (err) {
       setInsightsError(err.message || 'Could not generate analysis.');
@@ -689,107 +713,263 @@ export default function AiAdvisorPage() {
   const activeHistory = history.find((r) => r.id === selectedHistoryId) || null;
   const shownReport = activeHistory || report;
 
-  return (
-    <div className={dashboardPageWide}>
-      <header className="mb-4">
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
-          Performance advisor
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">AI Advisor</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Review {selectedAccountName} from {from} to {to}
-        </p>
-      </header>
+  const modals = (
+    <>
+      {newAnalysisModalOpen ? (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-xs">
+          <div className={`${card} w-full max-w-lg shadow-2xl overflow-hidden`}>
+            <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">New Analysis</h2>
+              <button
+                type="button"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                onClick={() => setNewAnalysisModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                <label className={label}>Account</label>
+                <CustomDropdown
+                  className="w-full"
+                  menuClassName="w-full"
+                  value={accountId}
+                  onChange={onAccountChange}
+                  options={accountOptions}
+                  ariaLabel="Trading account"
+                />
+              </div>
 
-      <section className={`${card} mb-5 overflow-visible z-20 relative`}>
-        <div className="flex flex-wrap items-end justify-between gap-4 p-4 md:px-5">
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label className={label}>Account</label>
-              <CustomDropdown
-                className="w-48"
-                menuClassName="w-48"
+              <div>
+                <label className={label}>Period</label>
+                <div className="flex flex-wrap gap-2">
+                  {RANGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={analysisBusy}
+                      onClick={() => setPreset(opt.id)}
+                      className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                        preset === opt.id
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                          : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {preset === 'custom' ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={label}>From</label>
+                    <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={label}>To</label>
+                    <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} />
+                  </div>
+                </div>
+              ) : null}
+
+              <div>
+                <label className={label}>Language</label>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'en', label: 'English' },
+                    { id: 'km', label: 'Khmer' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={analysisBusy}
+                      onClick={() => setLanguage(opt.id)}
+                      className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                        language === opt.id
+                          ? 'bg-violet-600 text-white'
+                          : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 border-t border-zinc-100 bg-zinc-50 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => setNewAnalysisModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`${btnPrimary} inline-flex items-center gap-2`}
+                disabled={analysisBusy || !accountId}
+                onClick={() => void handleGetAnalysis()}
+              >
+                <LuSparkles className="h-4 w-4" aria-hidden />
+                Analyze
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <AnalysisProgressModal open={analysisOpen} percent={analysisPercent} label={analysisLabel} />
+    </>
+  );
+
+  if (viewMode === 'list') {
+    return (
+      <div className={dashboardPageWide}>
+        <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-200/50 dark:border-zinc-800/50 pb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+               <LuSparkles className="h-4 w-4 text-violet-500" />
+               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
+                 Performance Advisor
+               </p>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-1">Analysis History</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Review generated performance reports for your trading accounts.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+             <CustomDropdown
+                className="w-full sm:w-48 shadow-sm"
+                menuClassName="w-full sm:w-48 shadow-lg"
                 value={accountId}
                 onChange={onAccountChange}
                 options={accountOptions}
                 ariaLabel="Trading account"
               />
-            </div>
-
-            <div>
-              <label className={label}>Period</label>
-              <div className="flex flex-wrap gap-1.5">
-                {RANGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    disabled={analysisBusy}
-                    onClick={() => setPreset(opt.id)}
-                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                      preset === opt.id
-                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className={label}>Language</label>
-              <div className="flex gap-1.5">
-                {[
-                  { id: 'en', label: 'EN' },
-                  { id: 'km', label: 'KM' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    disabled={analysisBusy}
-                    onClick={() => setLanguage(opt.id)}
-                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                      language === opt.id
-                        ? 'bg-violet-600 text-white'
-                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <button
+              onClick={handleNewAnalysisClick}
+              className={`${btnPrimary} w-full sm:w-auto inline-flex items-center justify-center gap-2 shadow-sm`}
+            >
+              <LuSparkles className="h-4 w-4" />
+              New Analysis
+            </button>
           </div>
+        </header>
 
-          <button
-            type="button"
-            className={`${btnPrimary} inline-flex items-center gap-2`}
-            disabled={analysisBusy || !accountId}
-            onClick={() => void handleGetAnalysis()}
-          >
-            <LuSparkles className="h-4 w-4" aria-hidden />
-            {analysisBusy ? 'Analyzing…' : 'Analyze'}
-          </button>
+        {historyBusy ? (
+          <div className="flex items-center justify-center p-12">
+            <p className="text-sm text-zinc-500 flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-zinc-300 border-t-violet-600 rounded-full animate-spin"></span>
+              Loading history...
+            </p>
+          </div>
+        ) : history.length === 0 ? (
+          <div className={`${card} p-12 text-center shadow-sm border border-zinc-200/50 dark:border-zinc-800/50 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col items-center justify-center mx-auto max-w-2xl`}>
+            <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mb-4 text-violet-600 dark:text-violet-400">
+              <LuFileText className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">No analyses found</h3>
+            <p className="text-zinc-500 dark:text-zinc-400 mb-6 max-w-sm">You haven't generated any performance reports for this account yet. Click "New Analysis" to get started.</p>
+            <button
+              onClick={handleNewAnalysisClick}
+              className={`${btnPrimary} inline-flex items-center gap-2 shadow-sm`}
+            >
+              <LuSparkles className="h-4 w-4" />
+              New Analysis
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {history.map(row => (
+              <button
+                key={row.id}
+                onClick={() => handleHistoryClick(row)}
+                className={`${card} flex flex-col p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-500/10 border border-zinc-200/70 hover:border-violet-500/50 dark:border-zinc-800/80 dark:hover:border-violet-500/50 bg-white dark:bg-zinc-950 group`}
+              >
+                <div className="flex items-start justify-between mb-4 w-full">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400 border border-violet-100 dark:border-violet-800/30 group-hover:bg-violet-600 group-hover:text-white dark:group-hover:bg-violet-500 transition-colors duration-300">
+                    <LuFileText className="h-5 w-5" />
+                  </div>
+                  <LuChevronRight className="h-5 w-5 text-zinc-300 group-hover:text-violet-500 group-hover:translate-x-1 transition-all mt-2" />
+                </div>
+                
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors line-clamp-2 mb-1.5 leading-snug">
+                  {row.title}
+                </h3>
+                
+                <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mb-5 font-medium">
+                  {row.from_date || '?'} → {row.to_date || '?'}
+                </p>
+                
+                <div className="mt-auto pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 w-full flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-[0.1em] text-zinc-400 font-semibold">Generated</span>
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    {row.created_at ? new Date(row.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unknown'}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        {modals}
+      </div>
+    );
+  }
+
+  return (
+    <div className={dashboardPageWide}>
+      <header className="mb-6 flex flex-row items-center gap-5">
+        <button
+          onClick={() => setViewMode('list')}
+          className={`${btnGhost} inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl py-2 px-3.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm`}
+          title="Back to History"
+        >
+          <LuChevronRight className="h-4 w-4 rotate-180" />
+          <span>Back</span>
+        </button>
+        <div className="flex-1 border-l border-zinc-200 dark:border-zinc-800 pl-5">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
+            Performance advisor
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">AI Advisor</h1>
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+            Review {selectedAccountName} from {from} to {to}
+          </p>
         </div>
+      </header>
 
-        {preset === 'custom' ? (
-          <div className="grid gap-3 border-t border-zinc-100 p-4 dark:border-zinc-800 sm:grid-cols-2 md:px-5">
-            <div>
-              <label className={label}>From</label>
-              <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} />
-            </div>
-            <div>
-              <label className={label}>To</label>
-              <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} />
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <div className="mb-6 border-b border-zinc-200 dark:border-zinc-800">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
+          {[
+            { id: 'overview', name: 'Overview' },
+            { id: 'insights', name: 'Insights' },
+            { id: 'report', name: 'Report' },
+            { id: 'chat', name: 'Chat' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors
+                ${activeTab === tab.id
+                  ? 'border-violet-500 text-violet-600 dark:border-violet-400 dark:text-violet-400'
+                  : 'border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:text-zinc-300'
+                }
+              `}
+            >
+              {tab.name}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-      <div className="flex items-start gap-6">
-        <div className="min-w-0 flex-1 space-y-5">
-          <div ref={setSectionRef('risk')} className="space-y-5">
+      <div className={`w-full flex-1 ${card} flex flex-col overflow-hidden`}>
+        {activeTab === 'overview' && (
+          <div className="space-y-5 p-4 md:p-5">
             <RiskBanner summary={statsSummary} />
             <MetricsStrip summary={statsSummary} busy={statsBusy} />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -797,13 +977,15 @@ export default function AiAdvisorPage() {
               <DisciplineStreak summary={statsSummary} />
             </div>
           </div>
+        )}
 
-          <section ref={setSectionRef('insights')} className={card}>
-            <div className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
+        {activeTab === 'insights' && (
+          <section className="flex-1">
+            <div className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5 bg-zinc-50/50 dark:bg-zinc-900/50">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Insights</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Grouped into strengths, risks, and focus.</p>
             </div>
-            <div className={cardBody}>
+            <div className="p-4 md:p-5">
               {insightsError ? <p className={`mb-3 ${msgError}`}>{insightsError}</p> : null}
               {insights.length > 0 ? (
                 <InsightsGroupedView insights={insights} />
@@ -814,9 +996,11 @@ export default function AiAdvisorPage() {
               ) : null}
             </div>
           </section>
+        )}
 
-          <section ref={setSectionRef('report')} className={card}>
-            <div className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
+        {activeTab === 'report' && (
+          <section className="flex-1">
+            <div className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5 bg-zinc-50/50 dark:bg-zinc-900/50">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Report</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Saved advisor write-ups for this account.</p>
             </div>
@@ -849,43 +1033,16 @@ export default function AiAdvisorPage() {
                 </div>
               ) : (
                 <p className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
-                  {history.length > 0
-                    ? 'Pick a saved report from History, or click Analyze above to generate a new one.'
-                    : 'Click Analyze above to generate a report for this period.'}
+                  Click Analyze above to generate a report for this period.
                 </p>
               )}
-
-              {history.length > 0 ? (
-                <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
-                      History
-                    </h4>
-                    {historyBusy ? <span className="text-[11px] text-zinc-400">Loading…</span> : null}
-                  </div>
-                  <CustomDropdown
-                    className="w-full sm:w-80"
-                    menuClassName="w-full sm:w-80"
-                    value={selectedHistoryId}
-                    onChange={(id) => {
-                      const row = history.find((r) => r.id === id);
-                      setSelectedHistoryId(id);
-                      setReport(row || null);
-                    }}
-                    options={history.map((row) => ({
-                      value: row.id,
-                      label: `${row.title}${row.created_at ? ` · ${new Date(row.created_at).toLocaleDateString()}` : ''}`,
-                    }))}
-                    placeholder="Select a saved report…"
-                    ariaLabel="Saved report history"
-                  />
-                </div>
-              ) : null}
             </div>
           </section>
+        )}
 
-          <section ref={setSectionRef('chat')} className={`${card} overflow-hidden`}>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
+        {activeTab === 'chat' && (
+          <section className="flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5 bg-zinc-50/50 dark:bg-zinc-900/50">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Chat</h2>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">Persistent thread for this account.</p>
@@ -895,7 +1052,7 @@ export default function AiAdvisorPage() {
               </button>
             </div>
 
-            <div className="flex min-h-[28rem] flex-col">
+            <div className="flex h-[32rem] flex-col">
               <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-50/50 p-4 dark:bg-zinc-950/30 md:p-5">
                 {messages.length === 0 ? (
                   <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
@@ -946,12 +1103,10 @@ export default function AiAdvisorPage() {
               </div>
             </div>
           </section>
-        </div>
-
-        <JumpNav sectionRefs={sectionRefs} />
+        )}
       </div>
 
-      <AnalysisProgressModal open={analysisOpen} percent={analysisPercent} label={analysisLabel} />
+      {modals}
     </div>
   );
 }

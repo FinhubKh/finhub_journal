@@ -11,6 +11,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 import SyncNowButton from '../components/common/SyncNowButton';
+import { startingEquityFromStats } from '../lib/equityChart';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
   const valueCls =
@@ -112,6 +113,8 @@ function EmptyOverview({ onOpenSetup }) {
 }
 
 function SummarySection({ stats, pfPositive, daily, denomination }) {
+  const initialDeposit = startingEquityFromStats(stats);
+
   return (
     <section
       aria-labelledby="overview-summary-heading"
@@ -159,7 +162,7 @@ function SummarySection({ stats, pfPositive, daily, denomination }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <h2 className={`${sectionLabel} mb-3 shrink-0`}>Equity</h2>
         <div className="min-h-0 flex-1">
-          <EquityChart daily={daily} denomination={denomination} fill />
+          <EquityChart daily={daily} denomination={denomination} initialDeposit={initialDeposit} fill />
         </div>
       </div>
     </section>
