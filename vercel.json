@@ -10,8 +10,6 @@
     { "source": "/v1/investor-sync", "destination": "/api/v1/mt5-bridge?route=investor-sync" },
     { "source": "/v1/investor-connect", "destination": "/api/v1/mt5-bridge?route=investor-connect" },
     { "source": "/v1/investor-verify", "destination": "/api/v1/mt5-bridge?route=investor-verify" },
-    { "source": "/v1/market/economic-calendar", "destination": "/api/v1/market/economic-calendar" },
-    { "source": "/v1/market/news", "destination": "/api/v1/market/news" },
     { "source": "/v1/ai/checklist", "destination": "/api/v1/ai/checklist" },
     { "source": "/v1/ai/performance/insights", "destination": "/api/v1/ai/performance/insights" },
     { "source": "/v1/ai/performance/report", "destination": "/api/v1/ai/performance/report" },
@@ -29,12 +27,6 @@
     },
     "api/v1/mt5-bridge.js": {
       "maxDuration": 30
-    },
-    "api/v1/market/economic-calendar.js": {
-      "maxDuration": 15
-    },
-    "api/v1/market/news.js": {
-      "maxDuration": 15
     },
     "api/v1/ai/checklist.js": {
       "maxDuration": 60
