@@ -13,7 +13,9 @@ import {
 import {
   analyzeAiPerformance,
   chatAiPerformance,
+  clearAiChatHistory,
   deleteAiPerformanceReport,
+  fetchAiChatHistory,
   fetchAiPerformanceInsights,
   fetchAiPerformanceStats,
   generateAiPerformanceReport,
@@ -473,10 +475,16 @@ export default function AiAdvisorPage() {
 
   useEffect(() => {
     void refreshHistory(accountId);
-    setMessages([]);
     setInsights([]);
     setReport(null);
     setSelectedHistoryId(null);
+    if (accountId) {
+      fetchAiChatHistory(accountId)
+        .then((rows) => setMessages(rows.map((r) => ({ role: r.role, content: r.content }))))
+        .catch(() => setMessages([]));
+    } else {
+      setMessages([]);
+    }
   }, [accountId]);
 
   useEffect(() => {
@@ -622,6 +630,25 @@ export default function AiAdvisorPage() {
       toast.success('Report deleted');
     } catch (err) {
       toast.error(err.message || 'Could not delete report');
+    }
+  }
+
+  async function handleClearChat() {
+    if (!accountId) return;
+    const ok = await confirm({
+      title: 'Clear chat history?',
+      message: 'This removes all saved advisor chat messages for this account.',
+      confirmLabel: 'Clear',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await clearAiChatHistory(accountId);
+      setMessages([]);
+      setChatError('');
+      toast.success('Chat history cleared');
+    } catch (err) {
+      toast.error(err.message || 'Could not clear chat history');
     }
   }
 
@@ -930,16 +957,13 @@ export default function AiAdvisorPage() {
             <div>
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Chat</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Temporary session for this account and date range.
+                Persistent thread for this account.
               </p>
             </div>
             <button
               className={btnGhost}
               type="button"
-              onClick={() => {
-                setMessages([]);
-                setChatError('');
-              }}
+              onClick={() => void handleClearChat()}
             >
               Clear
             </button>
