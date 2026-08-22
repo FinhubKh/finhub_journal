@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
   LuCircleAlert,
-  LuFileText,
   LuLightbulb,
-  LuMessageSquare,
   LuSend,
   LuSparkles,
   LuThumbsUp,
@@ -16,9 +14,7 @@ import {
   clearAiChatHistory,
   deleteAiPerformanceReport,
   fetchAiChatHistory,
-  fetchAiPerformanceInsights,
   fetchAiPerformanceStats,
-  generateAiPerformanceReport,
   listAiPerformanceReports,
 } from '../api/ai';
 import { useAppData } from '../context/AppDataContext';
@@ -26,9 +22,7 @@ import { useDialog } from '../context/DialogContext';
 import {
   btnDanger,
   btnGhost,
-  btnOutline,
   btnPrimary,
-  btnSm,
   card,
   cardBody,
   dashboardPageWide,
@@ -37,13 +31,12 @@ import {
   label,
   msgError,
 } from '../lib/ui';
+import { computePreviousPeriod } from '../lib/aiAdvisorHelpers';
 import CustomDropdown from '../components/common/CustomDropdown';
-
-const SECTIONS = [
-  { id: 'insights', label: 'Insights', icon: LuLightbulb },
-  { id: 'report', label: 'Report', icon: LuFileText },
-  { id: 'chat', label: 'Chat', icon: LuMessageSquare },
-];
+import RiskBanner from '../components/aiadvisor/RiskBanner';
+import PacingBar from '../components/aiadvisor/PacingBar';
+import DisciplineStreak from '../components/aiadvisor/DisciplineStreak';
+import JumpNav from '../components/aiadvisor/JumpNav';
 
 const RANGE_OPTIONS = [
   { id: '7d', label: '7D' },
@@ -110,41 +103,6 @@ function groupInsights(insights) {
   return buckets;
 }
 
-function SectionNav({ activeSection, onChange }) {
-  return (
-    <div
-      className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800"
-      role="tablist"
-      aria-label="AI Advisor sections"
-    >
-      {SECTIONS.map((section) => {
-        const Icon = section.icon;
-        const active = activeSection === section.id;
-        return (
-          <button
-            key={section.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(section.id)}
-            className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold transition ${
-              active
-                ? 'text-violet-700 dark:text-violet-300'
-                : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-            }`}
-          >
-            <Icon className="h-4 w-4" aria-hidden />
-            {section.label}
-            {active ? (
-              <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-violet-600 dark:bg-violet-400" />
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 const METRIC_TILES = [
   { key: 'sharpe', label: 'Sharpe (R)', format: (s) => (s.sharpe == null ? '—' : s.sharpe.toFixed(2)) },
   { key: 'sortino', label: 'Sortino (R)', format: (s) => (s.sortino == null ? '—' : s.sortino.toFixed(2)) },
@@ -181,19 +139,6 @@ function MetricsStrip({ summary, busy }) {
           </p>
         </div>
       ))}
-    </div>
-  );
-}
-
-function EmptyPanel({ title, detail, action }) {
-  return (
-    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
-        <LuSparkles className="h-5 w-5" aria-hidden />
-      </div>
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
-      <p className="mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">{detail}</p>
-      {action || null}
     </div>
   );
 }
@@ -464,22 +409,25 @@ export default function AiAdvisorPage() {
   const { confirm } = useDialog();
 
   const defaultAccountId = activeAccountId || tradingAccounts.find((a) => a.is_default)?.id || tradingAccounts[0]?.id || '';
-  const [activeSection, setActiveSection] = useState('insights');
   const [accountId, setAccountId] = useState(defaultAccountId);
   const [preset, setPreset] = useState('30d');
   const [from, setFrom] = useState(() => rangeFromPreset('30d').from);
   const [to, setTo] = useState(() => rangeFromPreset('30d').to);
   const [language, setLanguage] = useState('en');
+  const sectionRefs = useRef({});
+  const setSectionRef = (id) => (el) => {
+    sectionRefs.current[id] = el;
+  };
 
   const [insights, setInsights] = useState([]);
-  const [insightsBusy, setInsightsBusy] = useState(false);
   const [insightsError, setInsightsError] = useState('');
 
   const [statsSummary, setStatsSummary] = useState(null);
   const [statsBusy, setStatsBusy] = useState(false);
+  const [previousStatsSummary, setPreviousStatsSummary] = useState(null);
+  const [previousStatsBusy, setPreviousStatsBusy] = useState(false);
 
   const [report, setReport] = useState(null);
-  const [reportBusy, setReportBusy] = useState(false);
   const [reportError, setReportError] = useState('');
   const [history, setHistory] = useState([]);
   const [historyBusy, setHistoryBusy] = useState(false);
@@ -567,57 +515,32 @@ export default function AiAdvisorPage() {
     };
   }, [accountId, from, to, language]);
 
+  useEffect(() => {
+    if (!accountId || !from || !to) {
+      setPreviousStatsSummary(null);
+      return;
+    }
+    const { from: prevFrom, to: prevTo } = computePreviousPeriod(from, to);
+    let cancelled = false;
+    setPreviousStatsBusy(true);
+    fetchAiPerformanceStats({ accountId, from: prevFrom, to: prevTo, language })
+      .then((summary) => {
+        if (!cancelled) setPreviousStatsSummary(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviousStatsSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviousStatsBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, from, to, language]);
+
   function onAccountChange(id) {
     setAccountId(id);
     setActiveAccountId(id);
-  }
-
-  async function handleInsights() {
-    if (!accountId) {
-      setInsightsError('Select a trading account first.');
-      return;
-    }
-    setInsightsBusy(true);
-    setInsightsError('');
-    try {
-      const data = await fetchAiPerformanceInsights({ accountId, from, to, language });
-      setInsights(data.insights);
-      if (data.insights.length === 0) setInsightsError('No insights returned.');
-    } catch (err) {
-      setInsights([]);
-      setInsightsError(err.message || 'Could not generate insights.');
-    } finally {
-      setInsightsBusy(false);
-    }
-  }
-
-  async function handleReport() {
-    if (!accountId) {
-      setReportError('Select a trading account first.');
-      return;
-    }
-    setReportBusy(true);
-    setReportError('');
-    try {
-      const data = await generateAiPerformanceReport({ accountId, from, to, language });
-      const next = data.report || {
-        id: null,
-        title: data.title,
-        content: data.content,
-        from_date: from,
-        to_date: to,
-        language,
-        created_at: new Date().toISOString(),
-      };
-      setReport(next);
-      setSelectedHistoryId(next.id || null);
-      await refreshHistory(accountId);
-      toast.success('Report generated and saved');
-    } catch (err) {
-      setReportError(err.message || 'Could not generate report.');
-    } finally {
-      setReportBusy(false);
-    }
   }
 
   async function handleGetAnalysis() {
@@ -625,7 +548,7 @@ export default function AiAdvisorPage() {
       toast.error('Select a trading account first.');
       return;
     }
-    if (analysisBusy || insightsBusy || reportBusy) return;
+    if (analysisBusy) return;
 
     setAnalysisOpen(true);
     setAnalysisPercent(20);
@@ -657,7 +580,6 @@ export default function AiAdvisorPage() {
         void refreshHistory(accountId);
       }
 
-      setActiveSection(nextInsights.length > 0 ? 'insights' : 'report');
       toast.success('Insights and report ready');
     } catch (err) {
       setInsightsError(err.message || 'Could not generate analysis.');
@@ -767,89 +689,90 @@ export default function AiAdvisorPage() {
 
   return (
     <div className={dashboardPageWide}>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
-            Performance advisor
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">AI Advisor</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Review {selectedAccountName} from {from} to {to}
-          </p>
-        </div>
-        <button
-          type="button"
-          className={`${btnPrimary} inline-flex items-center gap-2`}
-          disabled={analysisBusy || !accountId}
-          onClick={() => void handleGetAnalysis()}
-        >
-          <LuSparkles className="h-4 w-4" aria-hidden />
-          {analysisBusy ? 'Analyzing…' : 'Get analysis'}
-        </button>
+      <header className="mb-4">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
+          Performance advisor
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">AI Advisor</h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Review {selectedAccountName} from {from} to {to}
+        </p>
       </header>
 
       <section className={`${card} mb-5 overflow-visible z-20 relative`}>
-        <div className="grid gap-4 border-b border-zinc-100 p-4 dark:border-zinc-800 md:grid-cols-[1.2fr_1fr_auto] md:items-end md:gap-5 md:px-5">
-          <div>
-            <label className={label}>Account</label>
-            <CustomDropdown
-              className="w-full"
-              menuClassName="w-full"
-              value={accountId}
-              onChange={onAccountChange}
-              options={accountOptions}
-              ariaLabel="Trading account"
-            />
-          </div>
+        <div className="flex flex-wrap items-end justify-between gap-4 p-4 md:px-5">
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <label className={label}>Account</label>
+              <CustomDropdown
+                className="w-48"
+                menuClassName="w-48"
+                value={accountId}
+                onChange={onAccountChange}
+                options={accountOptions}
+                ariaLabel="Trading account"
+              />
+            </div>
 
-          <div>
-            <label className={label}>Period</label>
-            <div className="flex flex-wrap gap-1.5">
-              {RANGE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={analysisBusy}
-                  onClick={() => setPreset(opt.id)}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                    preset === opt.id
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div>
+              <label className={label}>Period</label>
+              <div className="flex flex-wrap gap-1.5">
+                {RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={analysisBusy}
+                    onClick={() => setPreset(opt.id)}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                      preset === opt.id
+                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className={label}>Language</label>
+              <div className="flex gap-1.5">
+                {[
+                  { id: 'en', label: 'EN' },
+                  { id: 'km', label: 'KM' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={analysisBusy}
+                    onClick={() => setLanguage(opt.id)}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                      language === opt.id
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className={label}>Language</label>
-            <div className="flex gap-1.5">
-              {[
-                { id: 'en', label: 'EN' },
-                { id: 'km', label: 'KM' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={analysisBusy}
-                  onClick={() => setLanguage(opt.id)}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                    language === opt.id
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <button
+            type="button"
+            className={`${btnPrimary} inline-flex items-center gap-2`}
+            disabled={analysisBusy || !accountId}
+            onClick={() => void handleGetAnalysis()}
+          >
+            <LuSparkles className="h-4 w-4" aria-hidden />
+            {analysisBusy ? 'Analyzing…' : 'Analyze'}
+          </button>
         </div>
 
         {preset === 'custom' ? (
-          <div className="grid gap-3 border-b border-zinc-100 p-4 dark:border-zinc-800 sm:grid-cols-2 md:px-5">
+          <div className="grid gap-3 border-t border-zinc-100 p-4 dark:border-zinc-800 sm:grid-cols-2 md:px-5">
             <div>
               <label className={label}>From</label>
               <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -860,66 +783,42 @@ export default function AiAdvisorPage() {
             </div>
           </div>
         ) : null}
-
-        <SectionNav activeSection={activeSection} onChange={setActiveSection} />
       </section>
 
-      <div className="mb-5">
-        <MetricsStrip summary={statsSummary} busy={statsBusy} />
-      </div>
+      <div className="flex items-start gap-6">
+        <div className="min-w-0 flex-1 space-y-5">
+          <div ref={setSectionRef('risk')} className="space-y-5">
+            <RiskBanner summary={statsSummary} />
+            <MetricsStrip summary={statsSummary} busy={statsBusy} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <PacingBar summary={statsSummary} previousSummary={previousStatsSummary} previousBusy={previousStatsBusy} />
+              <DisciplineStreak summary={statsSummary} />
+            </div>
+          </div>
 
-      {activeSection === 'insights' && (
-        <section className={card} role="tabpanel" aria-label="Insights">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
-            <div>
+          <section ref={setSectionRef('insights')} className={card}>
+            <div className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Insights</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Grouped into strengths, risks, and focus.</p>
             </div>
-          </div>
-          <div className={cardBody}>
-            {insightsError ? <p className={`mb-3 ${msgError}`}>{insightsError}</p> : null}
-            {insights.length === 0 && !insightsBusy && !insightsError ? (
-              <EmptyPanel
-                title="No insights yet"
-                detail="Run a full analysis to generate strengths, risks, and focus points for this period."
-                action={(
-                  <button
-                    type="button"
-                    className={`${btnPrimary} mt-4 inline-flex items-center gap-2`}
-                    disabled={analysisBusy}
-                    onClick={() => void handleGetAnalysis()}
-                  >
-                    <LuSparkles className="h-4 w-4" aria-hidden />
-                    Get analysis
-                  </button>
-                )}
-              />
-            ) : null}
-            {insights.length > 0 ? <InsightsGroupedView insights={insights} /> : null}
-          </div>
-        </section>
-      )}
+            <div className={cardBody}>
+              {insightsError ? <p className={`mb-3 ${msgError}`}>{insightsError}</p> : null}
+              {insights.length > 0 ? (
+                <InsightsGroupedView insights={insights} />
+              ) : !insightsError ? (
+                <p className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
+                  Click Analyze above to generate insights for this period.
+                </p>
+              ) : null}
+            </div>
+          </section>
 
-      {activeSection === 'report' && (
-        <section className={card} role="tabpanel" aria-label="Report">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
-            <div>
+          <section ref={setSectionRef('report')} className={card}>
+            <div className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Report</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Saved advisor write-ups for this account.</p>
             </div>
-            <button
-              className={`${btnOutline} !px-4 !py-2 text-xs inline-flex items-center gap-1.5`}
-              type="button"
-              disabled={reportBusy || analysisBusy}
-              onClick={() => void handleReport()}
-            >
-              <LuFileText className="h-3.5 w-3.5" aria-hidden />
-              {reportBusy ? 'Generating…' : 'Generate only'}
-            </button>
-          </div>
-
-          <div className="grid lg:grid-cols-[1fr_240px]">
-            <div className="border-b border-zinc-100 p-4 dark:border-zinc-800 md:p-5 lg:border-b-0 lg:border-r">
+            <div className="p-4 md:p-5">
               {reportError ? <p className={`mb-3 ${msgError}`}>{reportError}</p> : null}
               {shownReport ? (
                 <div>
@@ -947,144 +846,109 @@ export default function AiAdvisorPage() {
                   <ReportBody content={shownReport.content} statsSnapshot={shownReport.stats_snapshot} />
                 </div>
               ) : (
-                <EmptyPanel
-                  title="No report selected"
-                  detail="Generate a full advisor report, or pick one from history on the right."
-                  action={(
-                    <button
-                      type="button"
-                      className={`${btnPrimary} mt-4 inline-flex items-center gap-2`}
-                      disabled={analysisBusy}
-                      onClick={() => void handleGetAnalysis()}
-                    >
-                      <LuSparkles className="h-4 w-4" aria-hidden />
-                      Get analysis
-                    </button>
-                  )}
-                />
+                <p className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
+                  {history.length > 0
+                    ? 'Pick a saved report from History, or click Analyze above to generate a new one.'
+                    : 'Click Analyze above to generate a report for this period.'}
+                </p>
               )}
-            </div>
 
-            <aside className="bg-zinc-50/70 p-4 dark:bg-zinc-950/40 md:p-5">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
-                  History
-                </h4>
-                {historyBusy ? <span className="text-[11px] text-zinc-400">Loading…</span> : null}
-              </div>
-              {history.length === 0 ? (
-                <p className="text-sm text-zinc-400 dark:text-zinc-500">No saved reports yet.</p>
-              ) : (
-                <ul className="space-y-1.5">
-                  {history.map((row) => {
-                    const selected = selectedHistoryId === row.id;
-                    return (
-                      <li key={row.id}>
-                        <button
-                          type="button"
-                          className={`w-full rounded-xl px-3 py-2.5 text-left transition ${
-                            selected
-                              ? 'bg-white shadow-sm ring-1 ring-violet-200 dark:bg-zinc-900 dark:ring-violet-800'
-                              : 'hover:bg-white/80 dark:hover:bg-zinc-900/80'
-                          }`}
-                          onClick={() => {
-                            setSelectedHistoryId(row.id);
-                            setReport(row);
-                          }}
-                        >
-                          <span className="block truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                            {row.title}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] text-zinc-400 dark:text-zinc-500">
-                            {row.created_at ? new Date(row.created_at).toLocaleDateString() : ''}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </aside>
-          </div>
-        </section>
-      )}
-
-      {activeSection === 'chat' && (
-        <section className={`${card} overflow-hidden`} role="tabpanel" aria-label="Chat">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Chat</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Persistent thread for this account.
-              </p>
-            </div>
-            <button
-              className={btnGhost}
-              type="button"
-              onClick={() => void handleClearChat()}
-            >
-              Clear
-            </button>
-          </div>
-
-          <div className="flex min-h-[28rem] flex-col">
-            <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-50/50 p-4 dark:bg-zinc-950/30 md:p-5">
-              {messages.length === 0 ? (
-                <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
-                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Ask about your performance</p>
-                  <p className="mt-1 max-w-sm text-sm text-zinc-400 dark:text-zinc-500">
-                    Example: Why are my London session losses high?
-                  </p>
-                </div>
-              ) : (
-                messages.map((msg, idx) => (
-                  <div
-                    key={`${msg.role}-${idx}`}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                        msg.role === 'user'
-                          ? 'bg-violet-600 text-white'
-                          : 'border border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
+              {history.length > 0 ? (
+                <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+                      History
+                    </h4>
+                    {historyBusy ? <span className="text-[11px] text-zinc-400">Loading…</span> : null}
                   </div>
-                ))
-              )}
+                  <CustomDropdown
+                    className="w-full sm:w-80"
+                    menuClassName="w-full sm:w-80"
+                    value={selectedHistoryId}
+                    onChange={(id) => {
+                      const row = history.find((r) => r.id === id);
+                      setSelectedHistoryId(id);
+                      setReport(row || null);
+                    }}
+                    options={history.map((row) => ({
+                      value: row.id,
+                      label: `${row.title}${row.created_at ? ` · ${new Date(row.created_at).toLocaleDateString()}` : ''}`,
+                    }))}
+                    ariaLabel="Saved report history"
+                  />
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section ref={setSectionRef('chat')} className={`${card} overflow-hidden`}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Chat</h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">Persistent thread for this account.</p>
+              </div>
+              <button className={btnGhost} type="button" onClick={() => void handleClearChat()}>
+                Clear
+              </button>
             </div>
 
-            <div className="border-t border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 md:px-5">
-              {chatError ? <p className={`mb-2 ${msgError}`}>{chatError}</p> : null}
-              <form className="flex gap-2" onSubmit={(e) => void handleChat(e)}>
-                <input
-                  className={`${input} min-w-0 flex-1`}
-                  placeholder="Ask a question about this period…"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  disabled={chatBusy}
-                />
-                <button
-                  className={`${btnPrimary} !px-4 inline-flex items-center gap-2`}
-                  type="submit"
-                  disabled={chatBusy || !chatInput.trim()}
-                >
-                  <LuSend className="h-4 w-4" aria-hidden />
-                  {chatBusy ? '…' : 'Send'}
-                </button>
-              </form>
-            </div>
-          </div>
-        </section>
-      )}
+            <div className="flex min-h-[28rem] flex-col">
+              <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-50/50 p-4 dark:bg-zinc-950/30 md:p-5">
+                {messages.length === 0 ? (
+                  <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
+                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Ask about your performance</p>
+                    <p className="mt-1 max-w-sm text-sm text-zinc-400 dark:text-zinc-500">
+                      Example: Why are my London session losses high?
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((msg, idx) => (
+                    <div
+                      key={`${msg.role}-${idx}`}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                          msg.role === 'user'
+                            ? 'bg-violet-600 text-white'
+                            : 'border border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
-      <AnalysisProgressModal
-        open={analysisOpen}
-        percent={analysisPercent}
-        label={analysisLabel}
-      />
+              <div className="border-t border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 md:px-5">
+                {chatError ? <p className={`mb-2 ${msgError}`}>{chatError}</p> : null}
+                <form className="flex gap-2" onSubmit={(e) => void handleChat(e)}>
+                  <input
+                    className={`${input} min-w-0 flex-1`}
+                    placeholder="Ask a question about this period…"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    disabled={chatBusy}
+                  />
+                  <button
+                    className={`${btnPrimary} !px-4 inline-flex items-center gap-2`}
+                    type="submit"
+                    disabled={chatBusy || !chatInput.trim()}
+                  >
+                    <LuSend className="h-4 w-4" aria-hidden />
+                    {chatBusy ? '…' : 'Send'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <JumpNav sectionRefs={sectionRefs} />
+      </div>
+
+      <AnalysisProgressModal open={analysisOpen} percent={analysisPercent} label={analysisLabel} />
     </div>
   );
 }
