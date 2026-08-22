@@ -43,6 +43,7 @@ export default function JumpNav({ sectionRefs }) {
           key={s.id}
           type="button"
           onClick={() => jumpTo(s.id)}
+          aria-current={activeId === s.id ? 'true' : undefined}
           className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition ${
             activeId === s.id
               ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300'

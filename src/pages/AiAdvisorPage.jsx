@@ -874,6 +874,7 @@ export default function AiAdvisorPage() {
                       value: row.id,
                       label: `${row.title}${row.created_at ? ` · ${new Date(row.created_at).toLocaleDateString()}` : ''}`,
                     }))}
+                    placeholder="Select a saved report…"
                     ariaLabel="Saved report history"
                   />
                 </div>

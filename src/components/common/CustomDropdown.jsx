@@ -48,11 +48,13 @@ export default function CustomDropdown({
   menuClassName = 'w-36',
   buttonClassName = '',
   disabled = false,
+  placeholder = null,
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const items = normalizeOptions(options);
-  const selected = items.find((item) => item.value === value) || items[0];
+  const matched = items.find((item) => item.value === value);
+  const selected = matched || (placeholder != null ? null : items[0]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -91,7 +93,7 @@ export default function CustomDropdown({
       >
         <span className="flex min-w-0 items-center gap-2.5">
           <OptionLogo src={selected?.logo} label={selected?.label} />
-          <span className="truncate">{selected?.label ?? value}</span>
+          <span className="truncate">{selected?.label ?? placeholder ?? value}</span>
         </span>
         <Chevron open={open} />
       </button>

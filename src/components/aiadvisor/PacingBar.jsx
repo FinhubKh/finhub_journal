@@ -8,6 +8,7 @@ export default function PacingBar({ summary, previousSummary, previousBusy }) {
   }
 
   const { hasComparison, pct } = computePeriodPacing(summary, previousSummary);
+  const displayPct = pct > 300 ? '300+' : pct;
 
   return (
     <div className="rounded-xl border border-zinc-200/80 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
@@ -23,7 +24,7 @@ export default function PacingBar({ summary, previousSummary, previousBusy }) {
             />
           </div>
           <p className="mt-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            {pct}% of your previous period&apos;s win rate
+            {displayPct}% of your previous period&apos;s win rate
           </p>
         </>
       ) : (
