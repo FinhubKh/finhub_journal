@@ -112,27 +112,40 @@ function groupBy(trades, keyFn) {
     .slice(0, MAX_GROUP_KEYS);
 }
 
-function calcStreaks(trades) {
+/** Compute win/loss streaks: best and worst ever seen, plus current trailing streak. */
+export function calcStreaks(trades) {
   const sorted = [...trades].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   let bestWin = 0;
   let worstLoss = 0;
   let curWin = 0;
   let curLoss = 0;
+  let currentType = null;
+  let currentCount = 0;
   for (const t of sorted) {
     if (t.result === 'win') {
       curWin += 1;
       curLoss = 0;
       bestWin = Math.max(bestWin, curWin);
+      currentType = 'win';
+      currentCount = curWin;
     } else if (t.result === 'loss') {
       curLoss += 1;
       curWin = 0;
       worstLoss = Math.max(worstLoss, curLoss);
+      currentType = 'loss';
+      currentCount = curLoss;
     } else {
       curWin = 0;
       curLoss = 0;
+      currentType = 'be';
+      currentCount = 0;
     }
   }
-  return { best_win_streak: bestWin, worst_loss_streak: worstLoss };
+  return {
+    best_win_streak: bestWin,
+    worst_loss_streak: worstLoss,
+    current_streak: { type: currentType, count: currentCount },
+  };
 }
 
 function slimGroup(rows) {

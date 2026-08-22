@@ -4,6 +4,7 @@ import {
   calcSortino,
   calcMaxDrawdown,
   calcKellyHalf,
+  calcStreaks,
   buildPerformanceSummary,
 } from '../performance-stats.mjs';
 
@@ -107,5 +108,67 @@ describe('buildPerformanceSummary quant metrics', () => {
     // peak that forms afterward -- so the later 300 peak does not change this drawdown's pct.
     expect(summary.max_drawdown).toEqual({ usd: 100, pct: 50 });
     expect(summary.kelly_half_pct).not.toBeNull();
+  });
+});
+
+describe('calcStreaks', () => {
+  it('reports the trailing streak as of the most recent trade', () => {
+    const trades = [
+      { date: '2026-01-01', result: 'win' },
+      { date: '2026-01-02', result: 'loss' },
+      { date: '2026-01-03', result: 'loss' },
+    ];
+    expect(calcStreaks(trades).current_streak).toEqual({ type: 'loss', count: 2 });
+  });
+
+  it('resets the current streak on a breakeven trade', () => {
+    const trades = [
+      { date: '2026-01-01', result: 'loss' },
+      { date: '2026-01-02', result: 'loss' },
+      { date: '2026-01-03', result: 'be' },
+    ];
+    expect(calcStreaks(trades).current_streak).toEqual({ type: 'be', count: 0 });
+  });
+
+  it('still computes best/worst streaks alongside the current one', () => {
+    const trades = [
+      { date: '2026-01-01', result: 'win' },
+      { date: '2026-01-02', result: 'win' },
+      { date: '2026-01-03', result: 'loss' },
+    ];
+    const streaks = calcStreaks(trades);
+    expect(streaks.best_win_streak).toBe(2);
+    expect(streaks.worst_loss_streak).toBe(1);
+    expect(streaks.current_streak).toEqual({ type: 'loss', count: 1 });
+  });
+
+  it('returns a null-type current streak with no trades', () => {
+    expect(calcStreaks([]).current_streak).toEqual({ type: null, count: 0 });
+  });
+
+  it('reports a shorter trailing streak even when an earlier streak was longer', () => {
+    const trades = [
+      { date: '2026-01-01', result: 'loss' },
+      { date: '2026-01-02', result: 'loss' },
+      { date: '2026-01-03', result: 'loss' },
+      { date: '2026-01-04', result: 'win' },
+      { date: '2026-01-05', result: 'loss' },
+    ];
+    const streaks = calcStreaks(trades);
+    expect(streaks.worst_loss_streak).toBe(3);
+    expect(streaks.current_streak).toEqual({ type: 'loss', count: 1 });
+  });
+
+  it('handles trades supplied out of chronological order by sorting internally', () => {
+    const trades = [
+      { date: '2026-01-05', result: 'win' },
+      { date: '2026-01-01', result: 'loss' },
+      { date: '2026-01-03', result: 'loss' },
+      { date: '2026-01-02', result: 'loss' },
+      { date: '2026-01-04', result: 'win' },
+    ];
+    const streaks = calcStreaks(trades);
+    expect(streaks.worst_loss_streak).toBe(3);
+    expect(streaks.current_streak).toEqual({ type: 'win', count: 2 });
   });
 });
