@@ -22,8 +22,7 @@ const TRADE_SELECT = [
 
 const rateBuckets = new Map();
 
-const INSIGHTS_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
-Traders use this to improve process, risk, and edge — not for motivational fluff.
+const INSIGHTS_SYSTEM = `You are a senior quantitative performance analyst producing an internal review for a professional trader at FinHubKH Journal. Write like an institutional research desk — precise, numbers-first — never like a motivational coach.
 
 Return ONLY valid JSON:
 {"insights":[{"title":"Short title","detail":"2-4 sentences with specific numbers from the stats","tone":"positive|warning|neutral"}]}
@@ -31,52 +30,55 @@ Return ONLY valid JSON:
 Rules:
 - Return exactly 6 insights with a balanced tone mix: 2 positive, 2 warning, 2 neutral
 - tone mapping: positive = Strengths, warning = Risks, neutral = Focus (actionable next-step items)
-- Cover different angles across the set: edge quality, session/symbol/weekday edge, risk/payoff, streaks/discipline, direction or model bias when data exists
+- Cover different angles: edge quality (expectancy/profit factor), risk-adjusted return (Sharpe/Sortino when provided), drawdown/streak discipline, session/symbol/weekday/model attribution, position sizing (Kelly) when relevant
 - positive: relative strengths only (best session/symbol/weekday/direction, payoff bright spots, or least-damaging context) — still cite numbers; never invent wins that are not in the stats
-- warning: concrete leaks and risks with numbers
+- warning: concrete leaks and risks with numbers, referencing drawdown or Sharpe/Sortino degradation where applicable
 - neutral: actionable focus rules for the next period (when to trade, stand down, size, or review) tied to the stats
-- Every insight MUST cite concrete stats (win rate, PnL, avg R, expectancy, session/symbol names, streak counts)
-- Explain WHY it matters for the next trading week and what to change
-- No generic advice like "stay disciplined" unless tied to a number in the data
+- Every insight MUST cite concrete stats (win rate, PnL, avg R, expectancy, Sharpe, Sortino, max drawdown, Kelly size, session/symbol names, streak counts)
+- Every insight, regardless of tone, must make clear what it implies for the next trading period — not just report a number in isolation
+- No exclamation points, no "great job", no generic encouragement
 - No fluff, no markdown, no code fences
-- Do not invent trades or numbers not in the stats
+- Do not invent trades, numbers, or journal content not in the input
 - Write in the requested language (en or km)`;
 
-const REPORT_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
-Write a detailed process review a serious discretionary/system trader would actually use.
+const REPORT_SYSTEM = `You are a senior quantitative performance analyst at FinHubKH Journal, writing an internal performance review memo for a professional trader — the kind of process review a prop desk's risk manager would produce, not a motivational recap.
 
 Return ONLY valid JSON:
 {"title":"Report title","summary":"...","working":["..."],"hurting":["..."],"habits":["..."],"action_plan":["..."],"focus_next":"Primary focus for next period"}
 
 Rules:
-- summary: 4 to 6 sentences covering net result, expectancy/payoff, strongest and weakest contexts (session/symbol/weekday/direction), and the main process risk
-- working / hurting / habits / action_plan: 4 to 6 items each
-- Each list item must be specific and include numbers from the stats when relevant
-- action_plan items must be concrete process rules (when to trade, when to stand down, size rules, review rules) — not vague tips
-- Base only on provided stats; do not invent numbers
+- summary (Executive Summary): 4 to 6 sentences covering net result, expectancy/payoff, Sharpe/Sortino and max drawdown when provided, strongest and weakest contexts (session/symbol/weekday/direction), and the primary process risk
+- working (performance drivers) / hurting (risk factors) / habits (behavioral flags) / action_plan (trading directives): 4 to 6 items each
+- Each item must be specific and include numbers when relevant — cite Sharpe, Sortino, max drawdown, Kelly-suggested size, or expectancy wherever they sharpen the point
+- action_plan items must be concrete, executable trading directives (position sizing rule, session/time filter, stand-down rule, review cadence) — not vague tips
+- If journal note excerpts are provided, cite specific ones by date to ground "habits" or "hurting" items in the trader's own documented reasoning — never fabricate a note that was not provided
+- No motivational language, no exclamation points
+- Base only on provided stats and provided journal notes; do not invent numbers or quotes
 - No markdown, no code fences
 - Write in the requested language (en or km)`;
 
-const CHAT_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
-Answer using ONLY the provided stats for the selected account and date range.
-Be specific with numbers. If the answer is not in the data, say you do not have that information.
+const CHAT_SYSTEM = `You are a senior quantitative performance analyst for FinHubKH Journal, answering a professional trader's question about their own account.
+Answer using ONLY the provided stats and any provided journal note excerpts for the selected account and date range. Cite numbers precisely (win rate, expectancy, Sharpe, Sortino, max drawdown, Kelly size, attribution by session/symbol/weekday/model) whenever they help answer the question.
+If journal note excerpts are provided and relevant, cite them inline by date and symbol, e.g. "(2026-07-14 XAUUSD, -1.2R)" — never invent a note that was not provided.
+If the answer is not in the data, say you do not have that information — do not speculate.
 No trade placement or broker advice. Advisory guidance and process review only.
+No markdown, no code fences — plain text only.
+Register: institutional analyst, precise and numbers-first — not a motivational coach.
 Reply in the requested language (en or km), or match the user's message language if clearer.
 Return ONLY valid JSON: {"reply":"your answer"}`;
 
-const ANALYZE_SYSTEM = `You are an elite trading performance advisor for FinHubKH Journal.
-Your job is a serious post-period review that helps the trader improve edge, risk, and process.
+const ANALYZE_SYSTEM = `You are a senior quantitative performance analyst at FinHubKH Journal. Produce a serious post-period review — the kind a prop desk's risk manager would write — that helps the trader improve edge, risk-adjusted return, and process. Write like an institutional research desk, never like a motivational coach.
 
 Return ONLY valid JSON:
 {
   "insights":[{"title":"Short title","detail":"2-4 sentences with specific numbers","tone":"positive|warning|neutral"}],
   "report":{
     "title":"Report title",
-    "summary":"4-6 sentences covering results, expectancy/payoff, best/worst contexts, and main process risk",
-    "working":["specific strength with numbers"],
-    "hurting":["specific leak with numbers"],
-    "habits":["behavior or pattern flag with numbers"],
-    "action_plan":["concrete process rule for next period"],
+    "summary":"4-6 sentences: results, expectancy/payoff, Sharpe/Sortino and max drawdown when provided, best/worst contexts, primary process risk",
+    "working":["performance driver with numbers"],
+    "hurting":["risk factor with numbers"],
+    "habits":["behavioral flag with numbers"],
+    "action_plan":["concrete trading directive for next period"],
     "focus_next":"One primary focus for the next period"
   }
 }
@@ -84,14 +86,15 @@ Return ONLY valid JSON:
 Rules:
 - Exactly 6 insights with a balanced tone mix: 2 positive, 2 warning, 2 neutral
 - tone mapping: positive = Strengths, warning = Risks, neutral = Focus (actionable next-step items)
-- Cover different angles (overall edge, session or weekday, symbol or model, risk/payoff, discipline/streaks)
+- Cover different angles: overall edge, risk-adjusted return (Sharpe/Sortino when provided), drawdown/streak discipline, session/weekday or symbol/model attribution, position sizing (Kelly) when relevant
 - positive: relative strengths only (best context or least-damaging pattern) with numbers — never invent wins not in the stats
 - warning: concrete leaks and risks with numbers
 - neutral: actionable focus rules for the next period tied to the stats
 - working, hurting, habits, action_plan: 4 to 5 items each
-- Every point must reference real stats from the input (WR, PnL, avg R, expectancy, profit factor, streaks, session/symbol/weekday/direction splits)
+- Every point must reference real stats from the input (WR, PnL, avg R, expectancy, Sharpe, Sortino, max drawdown, Kelly size, profit factor, streaks, session/symbol/weekday/direction splits)
+- If journal note excerpts are provided, cite specific ones by date to ground a point in the trader's own documented reasoning — never fabricate a note that was not provided
 - Ban generic lines like "be more disciplined" or "manage risk" unless tied to a specific number and a rule
-- action_plan must be executable rules (e.g. "Stand aside in X session after 2 losses", "Only trade Y when Z WR context holds")
+- action_plan must be executable directives (e.g. "Stand aside in X session after 2 losses", "Cap size at half-Kelly (Y%) until Sharpe recovers above Z")
 - Do not invent trades or numbers
 - No markdown, no code fences
 - Write in the requested language (en or km)`;
@@ -260,6 +263,72 @@ async function sealionChat({
   return { status: 200, content };
 }
 
+export async function embedText({ supabaseUrl, embedSecret, text }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/embed`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'x-embed-secret': embedSecret },
+      body: JSON.stringify({ mode: 'query', content: text }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data?.embedding) ? data.embedding : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Semantic search over the trader's own journal notes. Empty array on any failure — chat/report always fall back to stats-only grounding. */
+export async function retrieveJournalContext({
+  supabaseUrl,
+  anonKey,
+  embedFunctionSecret,
+  accessToken,
+  accountId,
+  queryText,
+  fromDate = null,
+  toDate = null,
+  matchCount = 8,
+}) {
+  if (!embedFunctionSecret || !String(queryText || '').trim()) return [];
+
+  const embedding = await embedText({ supabaseUrl, embedSecret: embedFunctionSecret, text: queryText });
+  if (!embedding) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/match_journal_embeddings`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        p_account_id: accountId,
+        p_query_embedding: embedding,
+        p_from: fromDate,
+        p_to: toDate,
+        p_match_count: matchCount,
+      }),
+    });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchAccountAndTrades({
   supabaseUrl,
   anonKey,
@@ -402,6 +471,14 @@ function asReportList(v, max = 6) {
     .slice(0, max);
 }
 
+/** No user-typed question in report/analyze flows — seed retrieval from the period's extremes. */
+function journalSeedQuery(summary) {
+  const parts = ['biggest losses and trading mistakes', 'recurring errors and lessons learned'];
+  if (summary.worst_trade?.symbol) parts.push(`${summary.worst_trade.symbol} loss`);
+  if (summary.best_trade?.symbol) parts.push(`${summary.best_trade.symbol} win`);
+  return parts.join(', ');
+}
+
 /** Prefer nested report only when it actually has a summary. */
 function pickReportPayload(parsed) {
   const nested = parsed?.report;
@@ -489,6 +566,16 @@ export async function handlePerformanceInsights(req, deps) {
   }
 }
 
+/** Stats only, no LLM call — powers the instant metrics strip. Never errors on zero trades. */
+export async function handlePerformanceStats(req, deps) {
+  const ctx = await prepareContext(req, deps);
+  if (ctx.error) return ctx.error;
+  if (!checkRateLimit(ctx.user.id, 'stats', 200)) {
+    return { status: 429, body: { error: 'Too many stats requests. Try again later.' } };
+  }
+  return { status: 200, body: { summary: ctx.summary } };
+}
+
 async function savePerformanceReport(deps, ctx, report) {
   const insertRes = await fetch(`${deps.supabaseUrl}/rest/v1/ai_performance_reports`, {
     method: 'POST',
@@ -506,13 +593,7 @@ async function savePerformanceReport(deps, ctx, report) {
       language: ctx.language,
       title: report.title,
       content: report.content,
-      stats_snapshot: {
-        trade_count: ctx.summary.trade_count,
-        win_rate: ctx.summary.win_rate,
-        net_pnl: ctx.summary.net_pnl,
-        avg_r: ctx.summary.avg_r,
-        expectancy: ctx.summary.expectancy,
-      },
+      stats_snapshot: ctx.summary,
     }),
   });
 
@@ -523,6 +604,35 @@ async function savePerformanceReport(deps, ctx, report) {
 
   const rows = await insertRes.json();
   return { saved: rows?.[0] || null };
+}
+
+async function saveChatMessage(deps, ctx, role, content) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${deps.supabaseUrl}/rest/v1/ai_chat_messages`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        apikey: deps.anonKey,
+        Authorization: `Bearer ${ctx.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: ctx.user.id,
+        account_id: ctx.accountId,
+        role,
+        content,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`saveChatMessage failed (${res.status}) for user ${ctx.user.id}, account ${ctx.accountId}`);
+    }
+  } catch (err) {
+    console.error(`saveChatMessage error for user ${ctx.user.id}, account ${ctx.accountId}:`, err?.message || err);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function unsavedReportRow(ctx, report) {
@@ -549,11 +659,28 @@ export async function handlePerformanceReport(req, deps) {
   }
 
   const brief = buildAdvisorBrief(ctx.summary);
+  const journalMatches = await retrieveJournalContext({
+    supabaseUrl: deps.supabaseUrl,
+    anonKey: deps.anonKey,
+    embedFunctionSecret: deps.embedFunctionSecret,
+    accessToken: ctx.token,
+    accountId: ctx.accountId,
+    queryText: journalSeedQuery(ctx.summary),
+    fromDate: ctx.fromDate,
+    toDate: ctx.toDate,
+    matchCount: 6,
+  });
+  const journalText = journalMatches.length
+    ? `\n\nJournal note excerpts (only cite these, never invent others):\n${journalMatches
+        .map((m) => `- [${m.metadata?.date || '?'}] ${String(m.content || '').slice(0, 500)}`)
+        .join('\n')}`
+    : '';
+
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
     model: deps.model || FAST_MODEL,
     system: REPORT_SYSTEM,
-    user: `Language: ${ctx.language}\nStats:\n${JSON.stringify(brief)}`,
+    user: `Language: ${ctx.language}\nStats:\n${JSON.stringify(brief)}${journalText}`,
     temperature: 0.3,
     maxTokens: 1000,
   });
@@ -595,6 +722,22 @@ export async function handlePerformanceAnalyze(req, deps) {
   }
 
   const brief = buildAdvisorBrief(ctx.summary);
+  const journalMatches = await retrieveJournalContext({
+    supabaseUrl: deps.supabaseUrl,
+    anonKey: deps.anonKey,
+    embedFunctionSecret: deps.embedFunctionSecret,
+    accessToken: ctx.token,
+    accountId: ctx.accountId,
+    queryText: journalSeedQuery(ctx.summary),
+    fromDate: ctx.fromDate,
+    toDate: ctx.toDate,
+    matchCount: 6,
+  });
+  const journalText = journalMatches.length
+    ? `\n\nJournal note excerpts (only cite these, never invent others):\n${journalMatches
+        .map((m) => `- [${m.metadata?.date || '?'}] ${String(m.content || '').slice(0, 500)}`)
+        .join('\n')}`
+    : '';
 
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
@@ -604,7 +747,7 @@ export async function handlePerformanceAnalyze(req, deps) {
       `Language: ${ctx.language}`,
       'Write a detailed trader performance review from these stats.',
       'Cite numbers. Give executable next-period rules.',
-      `Stats JSON:\n${JSON.stringify(brief)}`,
+      `Stats JSON:\n${JSON.stringify(brief)}${journalText}`,
     ].join('\n\n'),
     temperature: 0.35,
     maxTokens: 1800,
@@ -642,6 +785,7 @@ export async function handlePerformanceAnalyze(req, deps) {
       report: saved,
       title: report.title,
       content: report.content,
+      summary: ctx.summary,
     },
   };
 }
@@ -668,6 +812,22 @@ export async function handlePerformanceChat(req, deps) {
     .join('\n');
 
   const brief = buildAdvisorBrief(ctx.summary);
+  const journalMatches = await retrieveJournalContext({
+    supabaseUrl: deps.supabaseUrl,
+    anonKey: deps.anonKey,
+    embedFunctionSecret: deps.embedFunctionSecret,
+    accessToken: ctx.token,
+    accountId: ctx.accountId,
+    queryText: message,
+    fromDate: ctx.fromDate,
+    toDate: ctx.toDate,
+  });
+  const journalText = journalMatches.length
+    ? `\n\nRelevant journal notes (only cite these, never invent others):\n${journalMatches
+        .map((m) => `- [${m.metadata?.date || '?'} ${m.metadata?.symbol || ''}] ${String(m.content || '').slice(0, 500)}`)
+        .join('\n')}`
+    : '';
+
   const ai = await sealionChat({
     apiKey: deps.sealionApiKey,
     model: deps.model || FAST_MODEL,
@@ -676,21 +836,26 @@ export async function handlePerformanceChat(req, deps) {
       `Language: ${ctx.language}`,
       `Stats:\n${JSON.stringify(brief)}`,
       historyText ? `Recent chat:\n${historyText}` : '',
-      `User: ${message}`,
+      `User: ${message}${journalText}`,
     ].filter(Boolean).join('\n\n'),
     temperature: 0.35,
     maxTokens: 600,
   });
   if (ai.status !== 200) return ai;
 
+  let reply;
   try {
     const parsed = extractJsonObject(ai.content);
-    const reply = String(parsed?.reply || '').trim().slice(0, 3500);
+    reply = String(parsed?.reply || '').trim().slice(0, 3500);
     if (!reply) throw new Error('Empty chat reply');
-    return { status: 200, body: { reply } };
   } catch (err) {
     return { status: 502, body: { error: err.message || 'Could not parse chat reply' } };
   }
+
+  await saveChatMessage(deps, ctx, 'user', message);
+  await saveChatMessage(deps, ctx, 'assistant', reply);
+
+  return { status: 200, body: { reply } };
 }
 
 export async function handleListPerformanceReports(req, deps) {
@@ -770,11 +935,74 @@ export async function handleDeletePerformanceReport(req, deps) {
   return { status: 200, body: { ok: true } };
 }
 
+export async function handleGetChatHistory(req, deps) {
+  const token = getBearerToken(req);
+  const auth = await verifySupabaseUser({ supabaseUrl: deps.supabaseUrl, anonKey: deps.anonKey, accessToken: token });
+  if (!auth.ok) return { status: auth.status, body: { error: auth.error } };
+
+  const url = new URL(req.url || '', 'http://localhost');
+  const accountId = String(url.searchParams.get('account_id') || '').trim();
+  if (!accountId) return { status: 400, body: { error: 'account_id is required' } };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `${deps.supabaseUrl}/rest/v1/ai_chat_messages`
+        + `?select=id,role,content,created_at`
+        + `&user_id=eq.${encodeURIComponent(auth.user.id)}`
+        + `&account_id=eq.${encodeURIComponent(accountId)}`
+        + `&order=created_at.desc&limit=200`,
+      { signal: controller.signal, headers: { apikey: deps.anonKey, Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      return { status: 500, body: { error: text || 'Failed to load chat history' } };
+    }
+    const messages = await res.json();
+    const ordered = Array.isArray(messages) ? messages.reverse() : [];
+    return { status: 200, body: { messages: ordered } };
+  } catch (err) {
+    return { status: 500, body: { error: err?.message || 'Failed to load chat history' } };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function handleClearChatHistory(req, deps) {
+  const token = getBearerToken(req);
+  const auth = await verifySupabaseUser({ supabaseUrl: deps.supabaseUrl, anonKey: deps.anonKey, accessToken: token });
+  if (!auth.ok) return { status: auth.status, body: { error: auth.error } };
+
+  const url = new URL(req.url || '', 'http://localhost');
+  const accountId = String(url.searchParams.get('account_id') || '').trim();
+  if (!accountId) return { status: 400, body: { error: 'account_id is required' } };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `${deps.supabaseUrl}/rest/v1/ai_chat_messages?user_id=eq.${encodeURIComponent(auth.user.id)}&account_id=eq.${encodeURIComponent(accountId)}`,
+      { method: 'DELETE', signal: controller.signal, headers: { apikey: deps.anonKey, Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      return { status: 500, body: { error: text || 'Failed to clear chat history' } };
+    }
+    return { status: 200, body: { ok: true } };
+  } catch (err) {
+    return { status: 500, body: { error: err?.message || 'Failed to clear chat history' } };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function getPerformanceDepsFromEnv(env = process.env) {
   return {
     supabaseUrl: env.VITE_SUPABASE_URL?.replace(/\/$/, ''),
     anonKey: env.VITE_SUPABASE_ANON_KEY,
     sealionApiKey: (env.SEALION_API_KEY || '').trim(),
     model: (env.SEALION_MODEL || '').trim() || undefined,
+    embedFunctionSecret: (env.EMBED_FUNCTION_SECRET || '').trim(),
   };
 }

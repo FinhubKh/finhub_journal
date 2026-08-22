@@ -13,6 +13,76 @@ function round(n, digits = 2) {
   return Math.round(x * p) / p;
 }
 
+function mean(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((s, x) => s + x, 0) / arr.length;
+}
+
+function sampleStdev(arr) {
+  if (arr.length < 2) return 0;
+  const m = mean(arr);
+  const variance = arr.reduce((s, x) => s + (x - m) ** 2, 0) / (arr.length - 1);
+  return Math.sqrt(variance);
+}
+
+function downsideDeviation(arr) {
+  const downside = arr.filter((x) => x < 0);
+  if (downside.length < 2) return 0;
+  const variance = downside.reduce((s, x) => s + x ** 2, 0) / downside.length;
+  return Math.sqrt(variance);
+}
+
+/** Trade-level Sharpe on the R-multiple series. Not an annualized fund Sharpe. */
+export function calcSharpe(rValues) {
+  if (!Array.isArray(rValues) || rValues.length < 2) return null;
+  const sd = sampleStdev(rValues);
+  if (sd === 0) return null;
+  return round(mean(rValues) / sd, 2);
+}
+
+/** Trade-level Sortino: mean R over downside deviation of losing trades only. */
+export function calcSortino(rValues) {
+  if (!Array.isArray(rValues) || rValues.length < 2) return null;
+  const dd = downsideDeviation(rValues);
+  if (dd === 0) return null;
+  return round(mean(rValues) / dd, 2);
+}
+
+/** Peak-to-trough decline on the cumulative-PnL equity curve, in $ and % of peak. */
+export function calcMaxDrawdown(trades) {
+  const list = Array.isArray(trades) ? trades : [];
+  if (list.length < 2) return { usd: 0, pct: 0 };
+  const sorted = [...list].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  let cumulative = 0;
+  let peak = 0;
+  let maxDrawdownUsd = 0;
+  let peakAtMaxDrawdown = 0;
+  for (const t of sorted) {
+    cumulative += Number(t.pnl_usd) || 0;
+    if (cumulative > peak) peak = cumulative;
+    const drawdown = peak - cumulative;
+    if (drawdown > maxDrawdownUsd) {
+      maxDrawdownUsd = drawdown;
+      peakAtMaxDrawdown = peak;
+    }
+  }
+  // pct is intentionally 0 when no positive peak was ever reached (e.g. an
+  // all-losing series) — usd still reflects the real dollar decline from the
+  // zero baseline, but a percentage of a zero peak has no meaningful value.
+  const pct = peakAtMaxDrawdown > 0 ? (maxDrawdownUsd / peakAtMaxDrawdown) * 100 : 0;
+  return { usd: round(maxDrawdownUsd), pct: round(pct, 1) };
+}
+
+/** Half-Kelly suggested risk-per-trade percentage from win rate + payoff ratio. */
+export function calcKellyHalf(winRatePct, payoffRatio) {
+  if (!Number.isFinite(payoffRatio) || payoffRatio <= 0) return null;
+  const p = Number(winRatePct) / 100;
+  if (!Number.isFinite(p) || p <= 0 || p >= 1) return null;
+  const f = p - (1 - p) / payoffRatio;
+  const clamped = Math.max(0, Math.min(1, f));
+  return round((clamped / 2) * 100, 1);
+}
+
 function groupBy(trades, keyFn) {
   const groups = {};
   for (const t of trades) {
@@ -96,6 +166,10 @@ export function buildAdvisorBrief(summary) {
       payoff_ratio: s.payoff_ratio,
       expectancy: s.expectancy,
       profit_factor: s.profit_factor,
+      sharpe: s.sharpe,
+      sortino: s.sortino,
+      max_drawdown: s.max_drawdown,
+      kelly_half_pct: s.kelly_half_pct,
     },
     streaks: s.streaks,
     by_session: slimGroup(s.by_session),
@@ -241,6 +315,12 @@ export function buildPerformanceSummary(trades, meta = {}) {
   const expectancy = total ? (wr / 100) * avgWin - ((losses.length / total) * avgLoss) : 0;
   const payoffRatio = avgLoss > 0 ? avgWin / avgLoss : null;
 
+  const rValues = list.map((t) => Number(t.r_value) || 0);
+  const sharpe = calcSharpe(rValues);
+  const sortino = calcSortino(rValues);
+  const maxDrawdown = calcMaxDrawdown(list);
+  const kellyHalfPct = calcKellyHalf(wr, payoffRatio);
+
   const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const byWeekday = groupBy(list, (t) => {
     const d = new Date(`${String(t.date).slice(0, 10)}T12:00:00Z`);
@@ -283,6 +363,10 @@ export function buildPerformanceSummary(trades, meta = {}) {
     payoff_ratio: payoffRatio == null ? null : round(payoffRatio),
     expectancy: round(expectancy),
     profit_factor: grossLoss > 0 ? round(grossWin / grossLoss) : (grossWin > 0 ? null : 0),
+    sharpe,
+    sortino,
+    max_drawdown: maxDrawdown,
+    kelly_half_pct: kellyHalfPct,
     streaks: calcStreaks(list),
     by_session: groupBy(list, (t) => t.session),
     by_symbol: groupBy(list, (t) => t.symbol),

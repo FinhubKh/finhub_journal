@@ -13,8 +13,11 @@ import {
 import {
   analyzeAiPerformance,
   chatAiPerformance,
+  clearAiChatHistory,
   deleteAiPerformanceReport,
+  fetchAiChatHistory,
   fetchAiPerformanceInsights,
+  fetchAiPerformanceStats,
   generateAiPerformanceReport,
   listAiPerformanceReports,
 } from '../api/ai';
@@ -142,6 +145,46 @@ function SectionNav({ activeSection, onChange }) {
   );
 }
 
+const METRIC_TILES = [
+  { key: 'sharpe', label: 'Sharpe (R)', format: (s) => (s.sharpe == null ? '—' : s.sharpe.toFixed(2)) },
+  { key: 'sortino', label: 'Sortino (R)', format: (s) => (s.sortino == null ? '—' : s.sortino.toFixed(2)) },
+  { key: 'max_drawdown', label: 'Max Drawdown', format: (s) => (s.max_drawdown ? `-${s.max_drawdown.pct.toFixed(1)}%` : '—') },
+  { key: 'profit_factor', label: 'Profit Factor', format: (s) => (s.profit_factor == null ? '—' : s.profit_factor.toFixed(2)) },
+  { key: 'expectancy', label: 'Expectancy', format: (s) => (s.expectancy == null ? '—' : `${s.expectancy >= 0 ? '+' : ''}${s.expectancy.toFixed(2)}R`) },
+  { key: 'kelly_half_pct', label: 'Half-Kelly Size', format: (s) => (s.kelly_half_pct == null ? '—' : `${s.kelly_half_pct.toFixed(1)}%`) },
+];
+
+function MetricsStrip({ summary, busy }) {
+  if (busy) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        {METRIC_TILES.map((tile) => (
+          <div key={tile.key} className="h-16 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+        ))}
+      </div>
+    );
+  }
+  if (!summary || summary.trade_count === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+      {METRIC_TILES.map((tile) => (
+        <div
+          key={tile.key}
+          className="rounded-xl border border-zinc-200/80 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500">
+            {tile.label}
+          </p>
+          <p className="mt-1 font-mono text-base font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+            {tile.format(summary)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EmptyPanel({ title, detail, action }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
@@ -219,45 +262,103 @@ function InsightsGroupedView({ insights }) {
   );
 }
 
-function ReportBody({ content }) {
-  if (!content) return null;
-  const blocks = [
-    ['What is working', content.working],
-    ['What is hurting', content.hurting],
-    ['Habits / flags', content.habits],
-    ['Action plan', content.action_plan],
+function AttributionTable({ summary }) {
+  const groups = [
+    { key: 'by_session', label: 'Session' },
+    { key: 'by_symbol', label: 'Symbol' },
+    { key: 'by_weekday', label: 'Weekday' },
+    { key: 'by_model', label: 'Model' },
   ];
+  const rows = groups.flatMap((g) =>
+    (summary?.[g.key] || []).slice(0, 4).map((row) => ({ ...row, group: g.label })),
+  );
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-zinc-100 dark:border-zinc-800">
+      <table className="w-full text-sm">
+        <thead className="bg-zinc-50 text-[11px] uppercase tracking-wide text-zinc-400 dark:bg-zinc-950/40 dark:text-zinc-500">
+          <tr>
+            <th className="px-3 py-2 text-left font-semibold">Segment</th>
+            <th className="px-3 py-2 text-left font-semibold">Name</th>
+            <th className="px-3 py-2 text-right font-semibold">Trades</th>
+            <th className="px-3 py-2 text-right font-semibold">Edge (avg R)</th>
+            <th className="px-3 py-2 text-right font-semibold">PnL</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {rows.map((row) => (
+            <tr key={`${row.group}-${row.name}`}>
+              <td className="px-3 py-2 text-zinc-400 dark:text-zinc-500">{row.group}</td>
+              <td className="px-3 py-2 font-medium text-zinc-800 dark:text-zinc-200">{row.name}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-zinc-600 dark:text-zinc-400">{row.trades}</td>
+              <td className={`px-3 py-2 text-right font-mono tabular-nums ${row.avg_r >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {row.avg_r >= 0 ? '+' : ''}{row.avg_r}R
+              </td>
+              <td className={`px-3 py-2 text-right font-mono tabular-nums ${row.pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {row.pnl >= 0 ? '+' : ''}{row.pnl}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ReportSection({ heading, items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+      <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+        {heading}
+      </h4>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-violet-500" aria-hidden />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ReportBody({ content, statsSnapshot }) {
+  if (!content) return null;
 
   return (
     <div className="space-y-6">
       {content.summary ? (
-        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{content.summary}</p>
+        <div>
+          <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+            Executive Summary
+          </h4>
+          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{content.summary}</p>
+        </div>
+      ) : null}
+
+      {statsSnapshot ? (
+        <div>
+          <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+            Performance Attribution
+          </h4>
+          <AttributionTable summary={statsSnapshot} />
+        </div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {blocks.map(([heading, items]) => (
-          Array.isArray(items) && items.length > 0 ? (
-            <div key={heading} className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
-                {heading}
-              </h4>
-              <ul className="space-y-2">
-                {items.map((item) => (
-                  <li key={item} className="flex gap-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-violet-500" aria-hidden />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null
-        ))}
+        <ReportSection heading="Performance drivers" items={content.working} />
+        <ReportSection heading="Risk factors" items={content.hurting} />
+        <ReportSection heading="Behavioral flags" items={content.habits} />
+        <ReportSection heading="Trading directives" items={content.action_plan} />
       </div>
 
       {content.focus_next ? (
         <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-800/60 dark:bg-violet-950/40">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-500 dark:text-violet-400">
-            Next focus
+            Primary Focus
           </p>
           <p className="mt-1 text-sm font-medium text-violet-900 dark:text-violet-200">{content.focus_next}</p>
         </div>
@@ -374,6 +475,9 @@ export default function AiAdvisorPage() {
   const [insightsBusy, setInsightsBusy] = useState(false);
   const [insightsError, setInsightsError] = useState('');
 
+  const [statsSummary, setStatsSummary] = useState(null);
+  const [statsBusy, setStatsBusy] = useState(false);
+
   const [report, setReport] = useState(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [reportError, setReportError] = useState('');
@@ -429,11 +533,39 @@ export default function AiAdvisorPage() {
 
   useEffect(() => {
     void refreshHistory(accountId);
-    setMessages([]);
     setInsights([]);
     setReport(null);
     setSelectedHistoryId(null);
+    if (accountId) {
+      fetchAiChatHistory(accountId)
+        .then((rows) => setMessages(rows.map((r) => ({ role: r.role, content: r.content }))))
+        .catch(() => setMessages([]));
+    } else {
+      setMessages([]);
+    }
   }, [accountId]);
+
+  useEffect(() => {
+    if (!accountId || !from || !to) {
+      setStatsSummary(null);
+      return;
+    }
+    let cancelled = false;
+    setStatsBusy(true);
+    fetchAiPerformanceStats({ accountId, from, to, language })
+      .then((summary) => {
+        if (!cancelled) setStatsSummary(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setStatsSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setStatsBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, from, to, language]);
 
   function onAccountChange(id) {
     setAccountId(id);
@@ -556,6 +688,25 @@ export default function AiAdvisorPage() {
       toast.success('Report deleted');
     } catch (err) {
       toast.error(err.message || 'Could not delete report');
+    }
+  }
+
+  async function handleClearChat() {
+    if (!accountId) return;
+    const ok = await confirm({
+      title: 'Clear chat history?',
+      message: 'This removes all saved advisor chat messages for this account.',
+      confirmLabel: 'Clear',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await clearAiChatHistory(accountId);
+      setMessages([]);
+      setChatError('');
+      toast.success('Chat history cleared');
+    } catch (err) {
+      toast.error(err.message || 'Could not clear chat history');
     }
   }
 
@@ -713,6 +864,10 @@ export default function AiAdvisorPage() {
         <SectionNav activeSection={activeSection} onChange={setActiveSection} />
       </section>
 
+      <div className="mb-5">
+        <MetricsStrip summary={statsSummary} busy={statsBusy} />
+      </div>
+
       {activeSection === 'insights' && (
         <section className={card} role="tabpanel" aria-label="Insights">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800 md:px-5">
@@ -789,7 +944,7 @@ export default function AiAdvisorPage() {
                       </button>
                     ) : null}
                   </div>
-                  <ReportBody content={shownReport.content} />
+                  <ReportBody content={shownReport.content} statsSnapshot={shownReport.stats_snapshot} />
                 </div>
               ) : (
                 <EmptyPanel
@@ -860,16 +1015,13 @@ export default function AiAdvisorPage() {
             <div>
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Chat</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Temporary session for this account and date range.
+                Persistent thread for this account.
               </p>
             </div>
             <button
               className={btnGhost}
               type="button"
-              onClick={() => {
-                setMessages([]);
-                setChatError('');
-              }}
+              onClick={() => void handleClearChat()}
             >
               Clear
             </button>

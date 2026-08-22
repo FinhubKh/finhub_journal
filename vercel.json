@@ -17,7 +17,9 @@
     { "source": "/v1/ai/performance/report", "destination": "/api/v1/ai/performance/report" },
     { "source": "/v1/ai/performance/analyze", "destination": "/api/v1/ai/performance/analyze" },
     { "source": "/v1/ai/performance/chat", "destination": "/api/v1/ai/performance/chat" },
+    { "source": "/v1/ai/performance/stats", "destination": "/api/v1/ai/performance/stats" },
     { "source": "/v1/ai/performance/reports", "destination": "/api/v1/ai/performance/reports" },
+    { "source": "/v1/ai/performance/chat/history", "destination": "/api/v1/ai/performance/chat/history" },
     { "source": "/health", "destination": "/api/health" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
@@ -50,6 +52,12 @@
       "maxDuration": 60
     },
     "api/v1/ai/performance/reports.js": {
+      "maxDuration": 15
+    },
+    "api/v1/ai/performance/stats.js": {
+      "maxDuration": 15
+    },
+    "api/v1/ai/performance/chat/history.js": {
       "maxDuration": 15
     }
   }
