@@ -499,6 +499,7 @@ export default function AiAdvisorPage() {
       return;
     }
     let cancelled = false;
+    setStatsSummary(null);
     setStatsBusy(true);
     fetchAiPerformanceStats({ accountId, from, to, language })
       .then((summary) => {
@@ -522,6 +523,7 @@ export default function AiAdvisorPage() {
     }
     const { from: prevFrom, to: prevTo } = computePreviousPeriod(from, to);
     let cancelled = false;
+    setPreviousStatsSummary(null);
     setPreviousStatsBusy(true);
     fetchAiPerformanceStats({ accountId, from: prevFrom, to: prevTo, language })
       .then((summary) => {
