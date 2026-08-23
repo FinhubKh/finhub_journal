@@ -143,6 +143,7 @@ export function parseMt5StrategyTesterHtml(html) {
   const dealsHtml = dealsSection(text);
   const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
   const dailyMap = new Map();
+  const trades = [];
   let tradeCount = 0;
   let wins = 0;
   let losses = 0;
@@ -178,7 +179,7 @@ export function parseMt5StrategyTesterHtml(html) {
       maxTradeProfit = profit;
     }
 
-    const tradeSymbol = symbol || 'Unknown';
+    const tradeSymbol = (cells[2] || '').trim() || symbol || 'Unknown';
     if (!symbolBreakdownMap.has(tradeSymbol)) {
       symbolBreakdownMap.set(tradeSymbol, { count: 0, wins: 0, pnl: 0 });
     }
@@ -187,8 +188,9 @@ export function parseMt5StrategyTesterHtml(html) {
     symObj.pnl += profit;
     if (profit > 0) symObj.wins += 1;
 
-    const timeMatch = cells[0].match(/ (\d{2}):/);
-    const hour = timeMatch ? parseInt(timeMatch[1], 10) : 0;
+    const timeMatch = cells[0].match(/ (\d{2}:\d{2}:\d{2})/);
+    const time = timeMatch ? timeMatch[1] : '';
+    const hour = timeMatch ? parseInt(time.slice(0, 2), 10) : 0;
     let sessionName = 'asia';
     if (hour >= 8 && hour < 13) sessionName = 'london';
     else if (hour >= 13 && hour < 22) sessionName = 'new york';
@@ -201,24 +203,52 @@ export function parseMt5StrategyTesterHtml(html) {
     sessObj.pnl += profit;
     if (profit > 0) sessObj.wins += 1;
 
-    const tradeDir = (type === 'buy' || type === 'long') ? 'Long (Buy)' : (type === 'sell' || type === 'short') ? 'Short (Sell)' : 'Unknown';
-    if (!directionBreakdownMap.has(tradeDir)) {
-      directionBreakdownMap.set(tradeDir, { count: 0, wins: 0, pnl: 0 });
+    // Out deal type is the closing side: sell out closes a long, buy out closes a short.
+    const positionDir = (type === 'sell' || type === 'short')
+      ? 'long'
+      : (type === 'buy' || type === 'long')
+        ? 'short'
+        : 'unknown';
+    const tradeDirLabel = positionDir === 'long'
+      ? 'Long (Buy)'
+      : positionDir === 'short'
+        ? 'Short (Sell)'
+        : 'Unknown';
+    if (!directionBreakdownMap.has(tradeDirLabel)) {
+      directionBreakdownMap.set(tradeDirLabel, { count: 0, wins: 0, pnl: 0 });
     }
-    const dirObj = directionBreakdownMap.get(tradeDir);
+    const dirObj = directionBreakdownMap.get(tradeDirLabel);
     dirObj.count += 1;
     dirObj.pnl += profit;
     if (profit > 0) dirObj.wins += 1;
 
+    let result = 'be';
     if (profit > 0) {
       wins += 1;
       grossWin += profit;
+      result = 'win';
     } else if (profit < 0) {
       losses += 1;
       grossLoss += Math.abs(profit);
+      result = 'loss';
     } else {
       beCount += 1;
     }
+
+    trades.push({
+      date,
+      time,
+      deal: String(cells[1] || '').trim() || String(parsedOutDeals),
+      symbol: tradeSymbol,
+      direction: positionDir,
+      volume: parseMt5Number(cells[5]),
+      price: parseMt5Number(cells[6]),
+      commission: Math.round(commission * 100) / 100,
+      swap: Math.round(swap * 100) / 100,
+      pnl_usd: Math.round(profit * 100) / 100,
+      result,
+      session: sessionName,
+    });
 
     const existing = dailyMap.get(date) || {
       date,
@@ -312,8 +342,28 @@ export function parseMt5StrategyTesterHtml(html) {
       shortWr,
       initialDeposit: initialDeposit || 0,
     },
+    trades,
     daily,
   };
+}
+
+/** Pull breakdown + per-deal trades from the JSON stored in source_html. */
+export function parseBacktestStoredPayload(sourceHtml) {
+  try {
+    if (sourceHtml && String(sourceHtml).startsWith('{')) {
+      const parsed = JSON.parse(sourceHtml);
+      const { trades, ...breakdown } = parsed;
+      return {
+        breakdown: breakdown && typeof breakdown === 'object'
+          ? breakdown
+          : { symbol: [], session: [] },
+        trades: Array.isArray(trades) ? trades : [],
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { breakdown: { symbol: [], session: [] }, trades: [] };
 }
 
 export function dailyRowsForCalendar(daily) {

@@ -53,6 +53,24 @@ describe('parseMt5StrategyTesterHtml', () => {
         be_count: 0,
       },
     ]);
+    expect(parsed.trades).toHaveLength(2);
+    expect(parsed.trades[0]).toMatchObject({
+      date: '2025-05-16',
+      time: '09:00:00',
+      symbol: 'XAUUSD',
+      direction: 'long',
+      volume: 0.1,
+      pnl_usd: 10,
+      result: 'win',
+      session: 'london',
+    });
+    expect(parsed.trades[1]).toMatchObject({
+      date: '2025-05-16',
+      time: '11:00:00',
+      direction: 'short',
+      pnl_usd: 2.5,
+      result: 'win',
+    });
   });
 
   it('parses ReportTester-308040.html to match report totals', () => {

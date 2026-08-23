@@ -105,7 +105,10 @@ export async function createBacktest({ name, currency, reportMeta, dailyRows }) 
     losses: Number(reportMeta?.losses) || 0,
     be_count: Number(reportMeta?.beCount) || 0,
     profit_factor: reportMeta?.profitFactorInfinite ? null : (Number(reportMeta?.profitFactor) || null),
-    source_html: JSON.stringify(reportMeta?.breakdown || { symbol: [], session: [] }),
+    source_html: JSON.stringify({
+      ...(reportMeta?.breakdown || { symbol: [], session: [] }),
+      trades: Array.isArray(reportMeta?.trades) ? reportMeta.trades : [],
+    }),
   };
 
   const createdRes = await authFetch(`${SUPABASE_URL}/rest/v1/strategy_backtests`, {
@@ -196,7 +199,10 @@ export async function saveBacktestUpload(backtestId, { currency, reportMeta, dai
     losses: Number(reportMeta?.losses) || 0,
     be_count: Number(reportMeta?.beCount) || 0,
     profit_factor: reportMeta?.profitFactorInfinite ? null : (Number(reportMeta?.profitFactor) || null),
-    source_html: JSON.stringify(reportMeta?.breakdown || { symbol: [], session: [] }),
+    source_html: JSON.stringify({
+      ...(reportMeta?.breakdown || { symbol: [], session: [] }),
+      trades: Array.isArray(reportMeta?.trades) ? reportMeta.trades : [],
+    }),
     user_id: uid,
   };
 

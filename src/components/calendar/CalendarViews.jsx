@@ -179,6 +179,7 @@ export function MonthDetailView({
   onPrevMonth,
   onNextMonth,
   onEditDay,
+  onSelectDay,
   showManualLegend = true,
   fill = false,
 }) {
@@ -231,6 +232,9 @@ export function MonthDetailView({
       {useOverrides && (
         <p className="text-xs text-zinc-500">Click any day to set or edit manual PnL.</p>
       )}
+      {!useOverrides && onSelectDay && (
+        <p className="text-xs text-zinc-500">Click a day to view its trading log.</p>
+      )}
 
       {loading ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400`}>Loading...</div>
@@ -265,6 +269,7 @@ export function MonthDetailView({
                     const dayNum = parseInt(ds.split('-')[2], 10);
                     const manual = Boolean(override);
                     const weekend = isWeekendDateString(ds);
+                    const canOpenLog = Boolean(onSelectDay) && active;
 
                     const inner = (
                       <>
@@ -295,6 +300,19 @@ export function MonthDetailView({
                           className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left`}
                           key={ds}
                           onClick={() => onEditDay(ds, row, override)}
+                        >
+                          {inner}
+                        </button>
+                      );
+                    }
+
+                    if (canOpenLog) {
+                      return (
+                        <button
+                          type="button"
+                          className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left transition hover:ring-2 hover:ring-violet-300/70 dark:hover:ring-violet-700/60`}
+                          key={ds}
+                          onClick={() => onSelectDay(ds, row)}
                         >
                           {inner}
                         </button>

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchSharedBacktest } from '../api/backtests';
 import { fmtPnlStrict, fmtDateShort } from '../lib/format';
 import { bucketDailyByMonth, EMPTY_YEAR_BUCKETS, yearsFromDates } from '../lib/calendarCells';
-import { dailyRowsForCalendar } from '../lib/mt5BacktestParse';
+import { dailyRowsForCalendar, parseBacktestStoredPayload } from '../lib/mt5BacktestParse';
 import {
   btnSm,
   card,
@@ -20,7 +20,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
 import RiskCard from '../components/dashboard/RiskCard';
 import HighlightsCard from '../components/dashboard/HighlightsCard';
-import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
+import BacktestDayTradesModal from '../components/modals/BacktestDayTradesModal';
 import { BrandLogo } from '../components/BrandLogo';
 import YearDropdown from '../components/common/YearDropdown';
 
@@ -62,6 +62,7 @@ export default function PublicBacktestPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [screen, setScreen] = useState('year');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -87,16 +88,8 @@ export default function PublicBacktestPage() {
   const overview = useMemo(() => {
     if (!data?.backtest) return null;
     const base = data.backtest;
-    let bd = { symbol: [], session: [] };
-    if (base.source_html) {
-      try {
-        const parsed = JSON.parse(base.source_html);
-        if (parsed.symbol || parsed.session) bd = parsed;
-      } catch {
-        // ignore
-      }
-    }
-    return { ...base, breakdown: bd };
+    const stored = parseBacktestStoredPayload(base.source_html);
+    return { ...base, breakdown: stored.breakdown, trades: stored.trades };
   }, [data?.backtest]);
   const calendarDaily = useMemo(() => dailyRowsForCalendar(data?.daily), [data?.daily]);
   const uiCurrency = overview?.currency === 'cent' ? 'cent' : 'usd';
@@ -343,6 +336,11 @@ export default function PublicBacktestPage() {
                       return m + 1;
                     });
                   }}
+                  onSelectDay={(date, row) => setSelectedDay({
+                    date,
+                    pnl: Number(row?.pnl) || 0,
+                    trades: (overview?.trades || []).filter((t) => t.date === date),
+                  })}
                   showManualLegend={false}
                   fill
                 />
@@ -351,6 +349,16 @@ export default function PublicBacktestPage() {
           )}
         </div>
       </main>
+
+      {selectedDay ? (
+        <BacktestDayTradesModal
+          date={selectedDay.date}
+          trades={selectedDay.trades}
+          dayPnl={selectedDay.pnl}
+          denomination={uiCurrency}
+          onClose={() => setSelectedDay(null)}
+        />
+      ) : null}
     </div>
   );
 }

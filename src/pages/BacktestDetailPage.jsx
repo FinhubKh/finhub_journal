@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import {
   dailyRowsForCalendar,
   decodeMt5ReportText,
-  parseMt5StrategyTesterHtml,
+  parseBacktestStoredPayload,
 } from '../lib/mt5BacktestParse';
 import { bucketDailyByMonth, EMPTY_YEAR_BUCKETS, yearsFromDates } from '../lib/calendarCells';
 import { fmtDateShort, fmtPnlStrict } from '../lib/format';
@@ -20,7 +20,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
 import RiskCard from '../components/dashboard/RiskCard';
 import HighlightsCard from '../components/dashboard/HighlightsCard';
-import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
+import BacktestDayTradesModal from '../components/modals/BacktestDayTradesModal';
 import {
   btnGhost,
   btnOutline,
@@ -94,6 +94,7 @@ function metaFromBacktest(row) {
   const wins = Number(row.wins) || 0;
   const losses = Number(row.losses) || 0;
   const profitFactorInfinite = row.profit_factor == null && trades > 0 && losses === 0 && wins > 0;
+  const stored = parseBacktestStoredPayload(row.source_html);
   return {
     name: row.name,
     symbol: row.report_symbol,
@@ -108,16 +109,8 @@ function metaFromBacktest(row) {
     wr: trades > 0 ? Math.round((wins / trades) * 100) : 0,
     profitFactor: row.profit_factor,
     profitFactorInfinite,
-    breakdown: (() => {
-      try {
-        if (row.source_html && row.source_html.startsWith('{')) {
-          return JSON.parse(row.source_html);
-        }
-      } catch {
-        // ignore
-      }
-      return { symbol: [], session: [] };
-    })(),
+    breakdown: stored.breakdown || { symbol: [], session: [] },
+    trades: stored.trades,
   };
 }
 
@@ -142,6 +135,7 @@ export default function BacktestDetailPage() {
   const [screen, setScreen] = useState('year');
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const calendarDaily = useMemo(() => dailyRowsForCalendar(daily), [daily]);
   const overview = useMemo(() => metaFromBacktest(backtestRow), [backtestRow]);
@@ -245,6 +239,7 @@ export default function BacktestDetailPage() {
           profitFactor: preview.profitFactor,
           profitFactorInfinite: preview.profitFactorInfinite,
           breakdown: preview.breakdown || { symbol: [], session: [] },
+          trades: preview.trades || [],
         },
         dailyRows: preview.daily,
         sourceHtml,
@@ -637,6 +632,11 @@ export default function BacktestDetailPage() {
                         return m + 1;
                       });
                     }}
+                    onSelectDay={(date, row) => setSelectedDay({
+                      date,
+                      pnl: Number(row?.pnl) || 0,
+                      trades: (overview?.trades || []).filter((t) => t.date === date),
+                    })}
                     showManualLegend={false}
                     fill
                   />
@@ -645,6 +645,16 @@ export default function BacktestDetailPage() {
             )}
           </div>
         </div>
+      ) : null}
+
+      {selectedDay ? (
+        <BacktestDayTradesModal
+          date={selectedDay.date}
+          trades={selectedDay.trades}
+          dayPnl={selectedDay.pnl}
+          denomination={uiCurrency}
+          onClose={() => setSelectedDay(null)}
+        />
       ) : null}
     </div>
   );
