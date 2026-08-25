@@ -103,10 +103,10 @@ export default function TradeScreenshots({ tradeId, enabled }) {
   return (
     <div className="space-y-3" onPaste={handlePaste}>
       <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
           Setup screenshots
         </div>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           Manual trades only. Upload or paste up to {MAX_IMAGES} chart images (max 5MB each).
         </p>
       </div>
@@ -114,11 +114,11 @@ export default function TradeScreenshots({ tradeId, enabled }) {
       {error && <p className={msgError}>{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-zinc-400">Loading screenshots...</p>
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading screenshots...</p>
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {images.map((img) => (
-            <div key={img.id} className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+            <div key={img.id} className="group relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60">
               <button
                 type="button"
                 className="block aspect-[4/3] w-full overflow-hidden"
@@ -133,16 +133,16 @@ export default function TradeScreenshots({ tradeId, enabled }) {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-zinc-400">Unavailable</div>
+                  <div className="flex h-full items-center justify-center text-xs text-zinc-400 dark:text-zinc-500">Unavailable</div>
                 )}
               </button>
-              <div className="flex items-center justify-between gap-1 px-2 py-1.5">
-                <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              <div className="flex items-center justify-between gap-1 px-2 py-1.5 border-t border-zinc-100 dark:border-zinc-800">
+                <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   {img.label}
                 </span>
                 <button
                   type="button"
-                  className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 hover:bg-rose-50"
+                  className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                   disabled={busyId === img.id}
                   onClick={() => handleDelete(img)}
                 >
@@ -155,7 +155,7 @@ export default function TradeScreenshots({ tradeId, enabled }) {
       )}
 
       {canUpload && (
-        <div className="space-y-2 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/60 p-3">
+        <div className="space-y-2 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/60 p-3">
           <div>
             <label className={label}>Label</label>
             <CustomDropdown
@@ -175,7 +175,7 @@ export default function TradeScreenshots({ tradeId, enabled }) {
             >
               {uploading ? 'Uploading...' : 'Upload image'}
             </button>
-            <span className="self-center text-xs text-zinc-400">or paste (Ctrl/Cmd+V)</span>
+            <span className="self-center text-xs text-zinc-400 dark:text-zinc-500">or paste (Ctrl/Cmd+V)</span>
           </div>
           <input
             ref={inputRef}
@@ -188,7 +188,7 @@ export default function TradeScreenshots({ tradeId, enabled }) {
       )}
 
       {!canUpload && images.length >= MAX_IMAGES && (
-        <p className="text-xs text-zinc-400">Screenshot limit reached ({MAX_IMAGES}).</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">Screenshot limit reached ({MAX_IMAGES}).</p>
       )}
 
       {previewUrl && (

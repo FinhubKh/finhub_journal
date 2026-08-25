@@ -151,10 +151,10 @@ export default function ManualTradeModal({ isOpen, onClose }) {
         aria-labelledby="manual-trade-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 px-5 py-4">
           <div>
-            <h2 id="manual-trade-title" className="text-base font-semibold text-zinc-900">Log manual trade</h2>
-            <p className="mt-0.5 text-xs text-zinc-500">Screenshots only work on manual trades (not MT5 sync).</p>
+            <h2 id="manual-trade-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Log manual trade</h2>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Screenshots only work on manual trades (not MT5 sync).</p>
           </div>
           <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Close</button>
         </div>
@@ -227,8 +227,8 @@ export default function ManualTradeModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          <div className="space-y-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/60 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
               Screenshots ({pendingFiles.length}/{MAX_IMAGES})
             </div>
             <input
@@ -244,7 +244,7 @@ export default function ManualTradeModal({ isOpen, onClose }) {
             {pendingFiles.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {pendingFiles.map((item) => (
-                  <div key={item.id} className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+                  <div key={item.id} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                     <img src={item.preview} alt="" className="aspect-[4/3] w-full object-cover" />
                     <div className="space-y-1 p-1.5">
                       <CustomDropdown
@@ -263,7 +263,7 @@ export default function ManualTradeModal({ isOpen, onClose }) {
                       />
                       <button
                         type="button"
-                        className="w-full rounded-md text-[10px] font-semibold text-rose-600 hover:bg-rose-50"
+                        className="w-full rounded-md text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                         onClick={() => removePending(item.id)}
                       >
                         Remove
@@ -275,7 +275,7 @@ export default function ManualTradeModal({ isOpen, onClose }) {
             )}
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-4">
             <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Cancel</button>
             <button className={btnPrimary} type="submit" disabled={saving}>
               {saving ? 'Saving...' : 'Save trade'}

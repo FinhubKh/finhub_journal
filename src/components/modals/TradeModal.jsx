@@ -51,8 +51,8 @@ export default function TradeModal() {
   const r = tradeRValue(t, journalStats?.avgLoss);
   const rDisplay = fmtTradeR(t, journalStats?.avgLoss);
   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denomination);
-  const pnlClass = (t.pnl_usd || 0) >= 0 ? 'text-violet-600' : 'text-rose-600';
-  const rClass = (r || 0) > 0 ? 'text-violet-600' : (r || 0) < 0 ? 'text-rose-600' : 'text-zinc-900';
+  const pnlClass = (t.pnl_usd || 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+  const rClass = (r || 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : (r || 0) < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100';
 
   async function handleDelete() {
     const ok = await confirm({
@@ -90,55 +90,55 @@ export default function TradeModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-4 sm:items-center"
       id="trade-modal"
       onClick={(e) => { if (e.target.id === 'trade-modal') close(); }}
     >
-      <div className={`${card} max-h-[90vh] w-full max-w-lg overflow-y-auto shadow-lg`}>
-        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3.5 md:px-5">
-          <div className="text-sm font-semibold text-zinc-900">Trade Detail</div>
+      <div className={`${card} max-h-[90vh] w-full max-w-lg overflow-y-auto shadow-2xl`}>
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 px-4 py-3.5 md:px-5">
+          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Trade Detail</div>
           <button className={btnGhost} onClick={close} type="button">Close</button>
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
           <div className="flex flex-wrap gap-2">
             <span className={tradeResultBadge(t.result)}>{t.result}</span>
-            {isApi && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600">API</span>}
-            {isManual && <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">Manual</span>}
-            {t.account && <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">{t.account}</span>}
-            {t.session && <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">{t.session}</span>}
+            {isApi && <span className="rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">API</span>}
+            {isManual && <span className="rounded-md bg-violet-50 dark:bg-violet-950/60 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">Manual</span>}
+            {t.account && <span className="rounded-md bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">{t.account}</span>}
+            {t.session && <span className="rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-600 dark:text-zinc-300">{t.session}</span>}
           </div>
 
-          <p className="text-xs text-zinc-400">{fmtDateLong(t.date)}</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">{fmtDateLong(t.date)}</p>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-zinc-50 p-3">
-              <div className="text-xs text-zinc-500">R Value</div>
+            <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-3">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">R Value</div>
               <div className={`mt-1 text-lg font-bold ${rClass}`}>{rDisplay}</div>
             </div>
-            <div className="rounded-xl bg-zinc-50 p-3">
-              <div className="text-xs text-zinc-500">PnL (USD)</div>
+            <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-3">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">PnL (USD)</div>
               <div className={`mt-1 text-lg font-bold ${pnlClass}`}>{pnlDisplay}</div>
             </div>
           </div>
 
           {isApi && (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Synced from MT4/5</div>
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-4">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Synced from MT4/5</div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-zinc-500">Symbol</span><div className="font-medium">{t.symbol || '—'}</div></div>
-                <div><span className="text-zinc-500">Direction</span><div className="font-medium">{(t.direction || '—').toUpperCase()}</div></div>
-                <div><span className="text-zinc-500">Entry</span><div className="font-medium">{t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—'}</div></div>
-                <div><span className="text-zinc-500">Exit</span><div className="font-medium">{t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—'}</div></div>
-                <div><span className="text-zinc-500">Lot Size</span><div className="font-medium">{t.lot_size ?? '—'}</div></div>
-                <div><span className="text-zinc-500">Ticket</span><div className="font-medium">{t.ticket ?? '—'}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Symbol</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.symbol || '—'}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Direction</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{(t.direction || '—').toUpperCase()}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Entry</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—'}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Exit</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—'}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Lot Size</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.lot_size ?? '—'}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Ticket</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.ticket ?? '—'}</div></div>
               </div>
             </div>
           )}
 
           {(isApi || isManual) && (
             <>
-              <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                 {isManual ? 'Journal details' : 'Your journal entry'}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -180,14 +180,14 @@ export default function TradeModal() {
           )}
 
           {isManual && (
-            <div className="border-t border-zinc-100 pt-4">
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
               <TradeScreenshots tradeId={t.id} enabled />
             </div>
           )}
         </div>
 
         {isManual && (
-          <div className="border-t border-zinc-100 p-4 md:p-5">
+          <div className="border-t border-zinc-100 dark:border-zinc-800 p-4 md:p-5">
             <button className={`${btnDanger} w-full`} type="button" onClick={handleDelete}>Delete this trade</button>
           </div>
         )}
