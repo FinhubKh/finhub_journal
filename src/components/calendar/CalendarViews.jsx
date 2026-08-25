@@ -239,109 +239,111 @@ export function MonthDetailView({
       {loading ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400`}>Loading...</div>
       ) : (
-        <div className={`${card} ${fill ? 'min-h-0 flex-1 overflow-auto' : ''}`}>
-          <div className={cardBody}>
-            <div className="mb-2 grid grid-cols-8 gap-2">
-              {WEEK_DAYS.map((d) => (
-                <div
-                  className={`py-1 text-center text-xs font-semibold ${
-                    d === 'Sat' || d === 'Sun' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400'
-                  }`}
-                  key={d}
-                >
-                  {d}
-                </div>
-              ))}
-              <div className="py-1 text-center text-xs font-semibold text-violet-600">Week PnL</div>
-            </div>
-
-            <div className="space-y-2">
-              {weeks.map((week) => (
-                <div className="grid grid-cols-8 gap-2" key={week.index}>
-                  {week.days.map((ds, idx) => {
-                    if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
-                    const row = dayMap[ds];
-                    const override = useOverrides ? overrideMap[ds] : null;
-                    const dayPnl = rowPnl(row, override);
-                    const count = rowTrades(row, override);
-                    const active = rowActive(row, override);
-                    const tone = toneFromPnl(dayPnl, active);
-                    const dayNum = parseInt(ds.split('-')[2], 10);
-                    const manual = Boolean(override);
-                    const weekend = isWeekendDateString(ds);
-                    const canOpenLog = Boolean(onSelectDay) && active;
-
-                    const inner = (
-                      <>
-                        <span className="flex w-full items-start justify-between gap-1">
-                          <span className={`text-xs font-medium ${weekend ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                            {dayNum}
-                          </span>
-                          {manual && <span className="text-[9px] font-bold text-violet-600">M</span>}
-                        </span>
-                        {active && (
-                          <span className={`mt-auto text-xs font-bold ${dayPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
-                            {fmtPnlStrict(dayPnl, denomination)}
-                          </span>
-                        )}
-                        {active && (
-                          <span className="text-[10px] text-zinc-400">{count} trade{count !== 1 ? 's' : ''}</span>
-                        )}
-                        {!active && useOverrides && (
-                          <span className="mt-auto text-[9px] text-zinc-400">Tap to add</span>
-                        )}
-                      </>
-                    );
-
-                    if (useOverrides) {
-                      return (
-                        <button
-                          type="button"
-                          className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left`}
-                          key={ds}
-                          onClick={() => onEditDay(ds, row, override)}
-                        >
-                          {inner}
-                        </button>
-                      );
-                    }
-
-                    if (canOpenLog) {
-                      return (
-                        <button
-                          type="button"
-                          className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left transition hover:ring-2 hover:ring-violet-300/70 dark:hover:ring-violet-700/60`}
-                          key={ds}
-                          onClick={() => onSelectDay(ds, row)}
-                        >
-                          {inner}
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <div className={cellClass(tone, ds === today, false, weekend)} key={ds}>
-                        {inner}
-                      </div>
-                    );
-                  })}
-                  <div className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border p-2 text-center ${
-                    !week.weekActive
-                      ? 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60'
-                      : week.weekPnl >= 0
-                        ? 'border-violet-200 bg-violet-50'
-                        : 'border-rose-200 bg-rose-50'
-                  }`}>
-                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{weekRangeLabel(week.days)}</span>
-                    <span className={`mt-1 text-sm font-bold ${!week.weekActive ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
-                      {week.weekActive ? fmtPnlStrict(week.weekPnl, denomination) : '—'}
-                    </span>
-                    {week.weekTrades > 0 && (
-                      <span className="mt-0.5 text-[9px] text-zinc-400">{week.weekTrades} trade{week.weekTrades !== 1 ? 's' : ''}</span>
-                    )}
+        <div className={`${card} overflow-hidden ${fill ? 'min-h-0 flex-1 overflow-auto' : ''}`}>
+          <div className={`${cardBody} overflow-x-auto pb-3`}>
+            <div className="min-w-[620px]">
+              <div className="mb-2 grid grid-cols-8 gap-2">
+                {WEEK_DAYS.map((d) => (
+                  <div
+                    className={`py-1 text-center text-xs font-semibold ${
+                      d === 'Sat' || d === 'Sun' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400'
+                    }`}
+                    key={d}
+                  >
+                    {d}
                   </div>
-                </div>
-              ))}
+                ))}
+                <div className="py-1 text-center text-xs font-semibold text-violet-600">Week PnL</div>
+              </div>
+
+              <div className="space-y-2">
+                {weeks.map((week) => (
+                  <div className="grid grid-cols-8 gap-2" key={week.index}>
+                    {week.days.map((ds, idx) => {
+                      if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
+                      const row = dayMap[ds];
+                      const override = useOverrides ? overrideMap[ds] : null;
+                      const dayPnl = rowPnl(row, override);
+                      const count = rowTrades(row, override);
+                      const active = rowActive(row, override);
+                      const tone = toneFromPnl(dayPnl, active);
+                      const dayNum = parseInt(ds.split('-')[2], 10);
+                      const manual = Boolean(override);
+                      const weekend = isWeekendDateString(ds);
+                      const canOpenLog = Boolean(onSelectDay) && active;
+
+                      const inner = (
+                        <>
+                          <span className="flex w-full items-start justify-between gap-1">
+                            <span className={`text-xs font-medium ${weekend ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                              {dayNum}
+                            </span>
+                            {manual && <span className="text-[9px] font-bold text-violet-600">M</span>}
+                          </span>
+                          {active && (
+                            <span className={`mt-auto text-xs font-bold whitespace-nowrap truncate ${dayPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+                              {fmtPnlStrict(dayPnl, denomination)}
+                            </span>
+                          )}
+                          {active && (
+                            <span className="text-[10px] text-zinc-400 whitespace-nowrap truncate">{count} trade{count !== 1 ? 's' : ''}</span>
+                          )}
+                          {!active && useOverrides && (
+                            <span className="mt-auto text-[9px] text-zinc-400">Tap to add</span>
+                          )}
+                        </>
+                      );
+
+                      if (useOverrides) {
+                        return (
+                          <button
+                            type="button"
+                            className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left`}
+                            key={ds}
+                            onClick={() => onEditDay(ds, row, override)}
+                          >
+                            {inner}
+                          </button>
+                        );
+                      }
+
+                      if (canOpenLog) {
+                        return (
+                          <button
+                            type="button"
+                            className={`${cellClass(tone, ds === today, false, weekend)} cursor-pointer text-left transition hover:ring-2 hover:ring-violet-300/70 dark:hover:ring-violet-700/60`}
+                            key={ds}
+                            onClick={() => onSelectDay(ds, row)}
+                          >
+                            {inner}
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <div className={cellClass(tone, ds === today, false, weekend)} key={ds}>
+                          {inner}
+                        </div>
+                      );
+                    })}
+                    <div className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border p-2 text-center ${
+                      !week.weekActive
+                        ? 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60'
+                        : week.weekPnl >= 0
+                          ? 'border-violet-200 bg-violet-50'
+                          : 'border-rose-200 bg-rose-50'
+                    }`}>
+                      <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate">{weekRangeLabel(week.days)}</span>
+                      <span className={`mt-1 text-sm font-bold whitespace-nowrap truncate ${!week.weekActive ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+                        {week.weekActive ? fmtPnlStrict(week.weekPnl, denomination) : '—'}
+                      </span>
+                      {week.weekTrades > 0 && (
+                        <span className="mt-0.5 text-[9px] text-zinc-400 whitespace-nowrap truncate">{week.weekTrades} trade{week.weekTrades !== 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

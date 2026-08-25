@@ -260,54 +260,56 @@ function MonthDetailView({ year, month, monthDays, denomination, onBack, onPrevM
       {totals.trades === 0 ? (
         <div className={`${card} ${cardBody} text-center text-sm text-zinc-400 dark:text-zinc-500`}>No trades in this month.</div>
       ) : (
-        <div className={card}>
-          <div className={cardBody}>
-            <div className="mb-2 grid grid-cols-8 gap-2">
-              {WEEK_DAYS.map((d) => (
-                <div key={d} className={`py-1 text-center text-xs font-semibold ${d === 'Sat' || d === 'Sun' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400 dark:text-zinc-500'}`}>{d}</div>
-              ))}
-              <div className="py-1 text-center text-xs font-semibold text-violet-600 dark:text-emerald-400">Week</div>
-            </div>
-            <div className="space-y-2">
-              {weeks.map((week) => (
-                <div className="grid grid-cols-8 gap-2" key={week.index}>
-                  {week.days.map((ds, idx) => {
-                    if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
-                    const row = dayMap[ds];
-                    const dayPnl = rowPnl(row);
-                    const count = rowTrades(row);
-                    const active = rowActive(row);
-                    const tone = toneFromPnl(dayPnl, active);
-                    const dayNum = parseInt(ds.split('-')[2], 10);
-                    const [dy, dm, dd] = ds.split('-').map(Number);
-                    const weekend = isWeekendDow(new Date(dy, dm - 1, dd).getDay());
-                    return (
-                      <div className={cellClass(tone, ds === today, weekend)} key={ds}>
-                        <span className="flex w-full items-start justify-between">
-                          <span className={`text-xs font-medium ${weekend ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-300'}`}>{dayNum}</span>
-                        </span>
-                        {active && (
-                          <span className={`mt-auto text-xs font-bold ${dayPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {fmtPnlStrict(dayPnl, denomination)}
+        <div className={`${card} overflow-hidden`}>
+          <div className={`${cardBody} overflow-x-auto pb-3`}>
+            <div className="min-w-[620px]">
+              <div className="mb-2 grid grid-cols-8 gap-2">
+                {WEEK_DAYS.map((d) => (
+                  <div key={d} className={`py-1 text-center text-xs font-semibold ${d === 'Sat' || d === 'Sun' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400 dark:text-zinc-500'}`}>{d}</div>
+                ))}
+                <div className="py-1 text-center text-xs font-semibold text-violet-600 dark:text-emerald-400">Week</div>
+              </div>
+              <div className="space-y-2">
+                {weeks.map((week) => (
+                  <div className="grid grid-cols-8 gap-2" key={week.index}>
+                    {week.days.map((ds, idx) => {
+                      if (!ds) return <div key={`empty-${week.index}-${idx}`} className="rounded-xl bg-zinc-100/80 dark:bg-zinc-900/50" />;
+                      const row = dayMap[ds];
+                      const dayPnl = rowPnl(row);
+                      const count = rowTrades(row);
+                      const active = rowActive(row);
+                      const tone = toneFromPnl(dayPnl, active);
+                      const dayNum = parseInt(ds.split('-')[2], 10);
+                      const [dy, dm, dd] = ds.split('-').map(Number);
+                      const weekend = isWeekendDow(new Date(dy, dm - 1, dd).getDay());
+                      return (
+                        <div className={cellClass(tone, ds === today, weekend)} key={ds}>
+                          <span className="flex w-full items-start justify-between">
+                            <span className={`text-xs font-medium ${weekend ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-300'}`}>{dayNum}</span>
                           </span>
-                        )}
-                        {active && <span className="text-[10px] text-zinc-400 dark:text-zinc-500">{count} trade{count !== 1 ? 's' : ''}</span>}
-                      </div>
-                    );
-                  })}
-                  <div className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border p-2 text-center ${
-                    !week.weekActive ? 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60'
-                      : week.weekPnl >= 0 ? 'border-violet-200 bg-violet-50 dark:border-violet-900/50 dark:bg-violet-950/30'
-                      : 'border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/30'
-                  }`}>
-                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{weekRangeLabel(week.days)}</span>
-                    <span className={`mt-1 text-sm font-bold ${!week.weekActive ? 'text-zinc-400 dark:text-zinc-500' : week.weekPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      {week.weekActive ? fmtPnlStrict(week.weekPnl, denomination) : '—'}
-                    </span>
-                    {week.weekTrades > 0 && <span className="mt-0.5 text-[9px] text-zinc-400 dark:text-zinc-500">{week.weekTrades} trades</span>}
+                          {active && (
+                            <span className={`mt-auto text-xs font-bold whitespace-nowrap truncate ${dayPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                              {fmtPnlStrict(dayPnl, denomination)}
+                            </span>
+                          )}
+                          {active && <span className="text-[10px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap truncate">{count} trade{count !== 1 ? 's' : ''}</span>}
+                        </div>
+                      );
+                    })}
+                    <div className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border p-2 text-center ${
+                      !week.weekActive ? 'border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60'
+                        : week.weekPnl >= 0 ? 'border-violet-200 bg-violet-50 dark:border-violet-900/50 dark:bg-violet-950/30'
+                        : 'border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/30'
+                    }`}>
+                      <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate">{weekRangeLabel(week.days)}</span>
+                      <span className={`mt-1 text-sm font-bold whitespace-nowrap truncate ${!week.weekActive ? 'text-zinc-400 dark:text-zinc-500' : week.weekPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {week.weekActive ? fmtPnlStrict(week.weekPnl, denomination) : '—'}
+                      </span>
+                      {week.weekTrades > 0 && <span className="mt-0.5 text-[9px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap truncate">{week.weekTrades} trades</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
