@@ -101,7 +101,7 @@ export async function connectAndVerifyInvestorCredentials(params) {
     if (status.status === 'pending') continue;
     if (status.status === 'ok') return { ok: true, ...started };
     throw new Error(
-      status.error || 'Login failed — check broker server, MT5 login, and investor password',
+      status.error || 'Login failed — check broker server, MetaTrader login, and investor password',
     );
   }
 
@@ -109,7 +109,7 @@ export async function connectAndVerifyInvestorCredentials(params) {
   if (last?.status === 'ok') return { ok: true, ...started };
   if (last?.status === 'failed') {
     throw new Error(
-      last.error || 'Login failed — check broker server, MT5 login, and investor password',
+      last.error || 'Login failed — check broker server, MetaTrader login, and investor password',
     );
   }
   throw new Error('Could not verify right now — bridge busy or unreachable. Your login is saved; try Sync now shortly.');

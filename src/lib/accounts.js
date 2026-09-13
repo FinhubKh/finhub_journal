@@ -13,6 +13,20 @@ export const PNL_DENOMINATIONS = [
   { value: 'cent', label: 'Cent account' },
 ];
 
+export const PLATFORMS = [
+  { value: 'mt5', label: 'MetaTrader 5' },
+  { value: 'mt4', label: 'MetaTrader 4' },
+];
+
+export function normalizePlatform(value) {
+  const v = String(value || '').trim().toLowerCase();
+  return v === 'mt4' ? 'mt4' : 'mt5';
+}
+
+export function platformLabel(value) {
+  return normalizePlatform(value) === 'mt4' ? 'MetaTrader 4' : 'MetaTrader 5';
+}
+
 /** Active view denomination: cent only when drilling into a cent account. Portfolio stays USD. */
 export function viewPnlDenomination(viewMode, activeAccount) {
   if (viewMode === 'account' && activeAccount) {

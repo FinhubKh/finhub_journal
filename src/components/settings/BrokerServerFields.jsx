@@ -15,8 +15,9 @@ const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 
 
 /**
  * Broker → server picker for investor connect.
- * Emits the exact MT5 `brokerServer` string plus optional display `brokerName`.
+ * Emits the exact MetaTrader `brokerServer` string plus optional display `brokerName`.
  * `mode`: "all" | "broker" | "server"
+ * `platform`: "mt4" | "mt5" — labels only (server catalog is shared; custom entry works for both).
  */
 export default function BrokerServerFields({
   brokerId = '',
@@ -25,10 +26,12 @@ export default function BrokerServerFields({
   onChange,
   disabled = false,
   mode = 'all',
+  platform = 'mt5',
 }) {
   const [brokerQuery, setBrokerQuery] = useState('');
   const showBroker = mode === 'all' || mode === 'broker';
   const showServer = mode === 'all' || mode === 'server';
+  const platShort = String(platform || 'mt5').toLowerCase() === 'mt4' ? 'MT4' : 'MT5';
   const allBrokers = useMemo(() => brokerSelectOptions({ includePlaceholder: true }), []);
   const filteredBrokers = useMemo(() => {
     const q = brokerQuery.trim().toLowerCase();
@@ -121,13 +124,13 @@ export default function BrokerServerFields({
             className="w-full"
             menuClassName="w-full max-h-72"
             buttonClassName={formSelectBtn}
-            ariaLabel="MT5 server"
+            ariaLabel={`${platShort} server`}
             value={serverChoice || CUSTOM_SERVER_VALUE}
             onChange={(v) => patch({ serverChoice: v })}
             options={serverOpts}
           />
           <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-            Use the exact server from your broker portal / MT5 login. Wrong server = login fails even with the right password.
+            Use the exact server from your broker portal / {platShort} login. Wrong server = login fails even with the right password.
           </p>
         </div>
       ) : null}
@@ -135,11 +138,15 @@ export default function BrokerServerFields({
       {showCustom ? (
         <div>
           <label className={label}>
-            {brokerId && brokerId !== OTHER_BROKER_ID ? 'Exact server name' : 'MT5 server name'}
+            {brokerId && brokerId !== OTHER_BROKER_ID ? 'Exact server name' : `${platShort} server name`}
           </label>
           <input
             className={input}
-            placeholder="e.g. STMarket-Live or Exness-MT5Real36"
+            placeholder={
+              platShort === 'MT4'
+                ? 'e.g. BlackwellGlobal2-Live3 or Exness-Real'
+                : 'e.g. STMarket-Live or Exness-MT5Real36'
+            }
             value={customServer}
             onChange={(e) =>
               patch({

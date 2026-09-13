@@ -1,14 +1,18 @@
 // src/components/settings/InvestorSyncPanel.jsx
 import { useState } from 'react';
-import { connectAndVerifyInvestorCredentials, runInvestorSyncAndWait, removeInvestorCredentials } from '../../api';
+import { connectAndVerifyInvestorCredentials, runInvestorSyncAndWait, removeInvestorCredentials, updateTradingAccount } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
 import SyncLoadingModal from '../common/SyncLoadingModal';
 import PasswordInput from '../common/PasswordInput';
 import BrokerServerFields from './BrokerServerFields';
+import CustomDropdown from '../common/CustomDropdown';
+import { PLATFORMS, platformLabel, normalizePlatform } from '../../lib/accounts';
 import {
-  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, input, label, msgError, sectionLabel,
+  btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, input, label, msgError, sectionLabel, select,
 } from '../../lib/ui';
+
+const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 text-left font-normal`;
 
 function formatLastSynced(iso) {
   if (!iso) return null;
@@ -34,6 +38,7 @@ function StatusBadge({ ok, okLabel, idleLabel }) {
 }
 
 const EMPTY_CONNECT = {
+  platform: 'mt5',
   brokerId: '',
   serverChoice: '',
   customServer: '',
@@ -46,14 +51,27 @@ const EMPTY_CONNECT = {
 export default function InvestorSyncPanel({ account, status, onChanged, compact = false }) {
   const { alert, confirm } = useDialog();
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_CONNECT);
+  const [form, setForm] = useState(() => ({
+    ...EMPTY_CONNECT,
+    platform: normalizePlatform(account?.platform),
+  }));
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncStage, setSyncStage] = useState(null);
   const [msg, setMsg] = useState(null);
+  const plat = platformLabel(form.platform);
 
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function openForm() {
+    setForm({
+      ...EMPTY_CONNECT,
+      platform: normalizePlatform(account?.platform),
+    });
+    setMsg(null);
+    setFormOpen(true);
   }
 
   async function handleSave(e) {
@@ -63,19 +81,24 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
       return;
     }
     if (!form.brokerServer.trim() || !form.login.trim() || !form.investorPassword) {
-      setMsg('MT5 server, login, and investor password are all required.');
+      setMsg(`${plat} server, login, and investor password are all required.`);
       return;
     }
     setBusy(true);
     setMsg(null);
     try {
+      const platform = normalizePlatform(form.platform);
+      // Persist MT4/MT5 before verify so the bridge routes to the right terminal.
+      if (normalizePlatform(account?.platform) !== platform) {
+        await updateTradingAccount(account.id, { platform });
+      }
       await connectAndVerifyInvestorCredentials({
         tradingAccountId: account.id,
         brokerServer: form.brokerServer.trim(),
         login: form.login.trim(),
         investorPassword: form.investorPassword,
       });
-      setForm(EMPTY_CONNECT);
+      setForm({ ...EMPTY_CONNECT, platform });
       setFormOpen(false);
       await onChanged();
       toast.success('Investor password connected');
@@ -182,7 +205,23 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
         </>
       ) : formOpen ? (
         <form className="mt-1 space-y-3" onSubmit={handleSave}>
+          <div>
+            <label className={label}>Platform</label>
+            <CustomDropdown
+              className="w-full"
+              menuClassName="w-full"
+              buttonClassName={formSelectBtn}
+              value={normalizePlatform(form.platform)}
+              onChange={(v) => setField('platform', v)}
+              options={PLATFORMS}
+              disabled={busy}
+            />
+            <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              Choose MetaTrader 4 or 5 to match the account you are connecting.
+            </p>
+          </div>
           <BrokerServerFields
+            platform={form.platform}
             brokerId={form.brokerId}
             serverChoice={form.serverChoice}
             customServer={form.customServer}
@@ -199,10 +238,10 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
             }}
           />
           <div>
-            <label className={label}>MT5 login</label>
+            <label className={label}>{plat} login</label>
             <input
               className={input}
-              placeholder="MT5 login number"
+              placeholder={`${plat} login number`}
               value={form.login}
               onChange={(e) => setField('login', e.target.value)}
               inputMode="numeric"
@@ -227,9 +266,9 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
       ) : (
         <>
           <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Alternative to the EA: choose your broker, pick the MT5 server, then paste a read-only investor password.
+            Alternative to the EA: pick MT4 or MT5, choose your broker and server, then paste a read-only investor password.
           </p>
-          <button className={`${btnOutline} mt-3`} type="button" onClick={() => setFormOpen(true)}>
+          <button className={`${btnOutline} mt-3`} type="button" onClick={openForm}>
             Connect via investor password
           </button>
         </>

@@ -31,6 +31,7 @@ export const TRADING_ACCOUNT_SELECT = [
   'name',
   'slug',
   'account_type',
+  'platform',
   'broker',
   'starting_balance',
   'color',

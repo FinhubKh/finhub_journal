@@ -13,11 +13,14 @@ import { invalidateLeaderboardCache } from '../../lib/leaderboardCache';
 import {
   ACCOUNT_TYPES,
   PNL_DENOMINATIONS,
+  PLATFORMS,
   ACCOUNT_COLORS,
   accountTypeLabel,
   pnlDenominationLabel,
+  platformLabel,
   normalizeSlug,
   normalizePnlDenomination,
+  normalizePlatform,
 } from '../../lib/accounts';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
@@ -35,6 +38,7 @@ const EMPTY_FORM = {
   name: '',
   accountType: 'live',
   pnlDenomination: 'usd',
+  platform: 'mt5',
   syncMode: 'ea',
   brokerId: '',
   serverChoice: '',
@@ -50,6 +54,7 @@ function accountToForm(account) {
     name: account.name || '',
     accountType: account.account_type || 'live',
     pnlDenomination: normalizePnlDenomination(account.pnl_denomination),
+    platform: normalizePlatform(account.platform),
   };
 }
 
@@ -84,7 +89,7 @@ function Badge({ children, tone = 'neutral' }) {
 const CENT_HELPER = (
   <p className="text-xs text-zinc-500 dark:text-zinc-400">
     Choose <strong className="font-medium text-zinc-600 dark:text-zinc-300">Cent account</strong> if your broker shows PnL in cents (e.g. USC).
-    Sync stores the same numbers MT5 shows; switching Cent ↔ USD automatically rescales existing trades (×100 / ÷100).
+    Sync stores the same numbers MetaTrader shows; switching Cent ↔ USD automatically rescales existing trades (×100 / ÷100).
   </p>
 );
 
@@ -100,6 +105,25 @@ function AccountFormFields({ form, setField }) {
           onChange={(e) => setField('name', e.target.value)}
           autoFocus
         />
+      </div>
+      <div>
+        <label className={label}>Platform</label>
+        <CustomDropdown
+          className="w-full"
+          menuClassName="w-full"
+          buttonClassName={formSelectBtn}
+          value={form.platform || 'mt5'}
+          onChange={(v) => {
+            setField('platform', v);
+            if (v === 'mt4') setField('syncMode', 'investor');
+          }}
+          options={PLATFORMS}
+        />
+        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+          {normalizePlatform(form.platform) === 'mt4'
+            ? 'MT4 accounts use investor-password sync for now (EA sync coming later).'
+            : 'MT5 supports EA sync key or investor-password cloud sync.'}
+        </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
@@ -158,8 +182,19 @@ function CreateStepProgress({ steps, index }) {
 }
 
 function SyncModeStep({ form, setField }) {
+  const isMt4 = normalizePlatform(form.platform) === 'mt4';
   const selected = 'border-violet-400 bg-white ring-2 ring-violet-200 dark:bg-zinc-900 dark:ring-violet-900/50';
   const idle = 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700';
+  if (isMt4) {
+    return (
+      <div className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3 dark:border-violet-900/40 dark:bg-violet-950/20">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Investor password</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+          MT4 accounts sync with the read-only investor password through the cloud bridge. EA sync for MT4 comes later.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       <label
@@ -202,16 +237,23 @@ function SyncModeStep({ form, setField }) {
   );
 }
 
-function createWizardSteps(syncMode) {
+function createWizardSteps(syncMode, platform = 'mt5') {
+  const plat = platformLabel(platform);
   const base = [
-    { id: 'basics', title: 'Account details', hint: 'Name this account and set type / currency.' },
-    { id: 'sync', title: 'How should we sync MT5?', hint: 'Pick EA if you run MetaTrader locally, or investor password for hands-off sync.' },
+    { id: 'basics', title: 'Account details', hint: 'Name this account and set platform / type / currency.' },
+    {
+      id: 'sync',
+      title: `How should we sync ${plat}?`,
+      hint: normalizePlatform(platform) === 'mt4'
+        ? 'MT4 uses investor-password cloud sync.'
+        : 'Pick EA if you run MetaTrader locally, or investor password for hands-off sync.',
+    },
   ];
-  if (syncMode === 'investor') {
+  if (syncMode === 'investor' || normalizePlatform(platform) === 'mt4') {
     return [
       ...base,
       { id: 'broker', title: 'Choose your broker', hint: 'Type or pick from popular brokers.' },
-      { id: 'server', title: 'Select MT5 server', hint: 'Exact server name from MetaTrader login box.' },
+      { id: 'server', title: `Select ${plat} server`, hint: 'Exact server name from the MetaTrader login box.' },
       { id: 'credentials', title: 'Login & investor password', hint: 'Use the investor (read-only) password — not the master password.' },
       { id: 'review', title: 'Review & create', hint: 'We’ll verify the investor login after creating the account.' },
     ];
@@ -233,6 +275,10 @@ function ReviewStep({ form }) {
         <dd className={dd}>{form.name.trim() || '—'}</dd>
       </div>
       <div className={row}>
+        <dt className={dt}>Platform</dt>
+        <dd className={dd}>{platformLabel(form.platform)}</dd>
+      </div>
+      <div className={row}>
         <dt className={dt}>Type</dt>
         <dd className={dd}>{accountTypeLabel(form.accountType)}</dd>
       </div>
@@ -243,10 +289,12 @@ function ReviewStep({ form }) {
       <div className={row}>
         <dt className={dt}>Sync</dt>
         <dd className={dd}>
-          {form.syncMode === 'investor' ? 'Investor password' : 'EA sync key'}
+          {normalizePlatform(form.platform) === 'mt4' || form.syncMode === 'investor'
+            ? 'Investor password'
+            : 'EA sync key'}
         </dd>
       </div>
-      {form.syncMode === 'investor' ? (
+      {normalizePlatform(form.platform) === 'mt4' || form.syncMode === 'investor' ? (
         <>
           <div className={row}>
             <dt className={dt}>Broker</dt>
@@ -278,7 +326,8 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
   const [createdAccount, setCreatedAccount] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
 
-  const steps = isEdit ? [] : createWizardSteps(form.syncMode);
+  const effectiveSyncMode = normalizePlatform(form.platform) === 'mt4' ? 'investor' : form.syncMode;
+  const steps = isEdit ? [] : createWizardSteps(effectiveSyncMode, form.platform);
   const step = steps[stepIndex] || null;
 
   useEffect(() => {
@@ -296,8 +345,8 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
   // Keep step index in range when sync mode changes step list length
   useEffect(() => {
     if (isEdit) return;
-    setStepIndex((i) => Math.min(i, createWizardSteps(form.syncMode).length - 1));
-  }, [form.syncMode, isEdit]);
+    setStepIndex((i) => Math.min(i, createWizardSteps(effectiveSyncMode, form.platform).length - 1));
+  }, [form.syncMode, form.platform, isEdit, effectiveSyncMode]);
 
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -315,12 +364,13 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
   }
 
   function validateStep(id) {
+    const plat = platformLabel(form.platform);
     if (id === 'basics') {
       if (!form.name.trim()) return 'Account name is required.';
       return null;
     }
     if (id === 'sync') {
-      if (!form.syncMode) return 'Choose how to sync MT5.';
+      if (!effectiveSyncMode) return `Choose how to sync ${plat}.`;
       return null;
     }
     if (id === 'broker') {
@@ -328,12 +378,12 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
       return null;
     }
     if (id === 'server') {
-      if (!form.brokerServer.trim()) return 'Pick or type the exact MT5 server.';
+      if (!form.brokerServer.trim()) return `Pick or type the exact ${plat} server.`;
       return null;
     }
     if (id === 'credentials') {
       if (!form.mt5Login.trim() || !form.investorPassword) {
-        return 'MT5 login and investor password are required.';
+        return `${plat} login and investor password are required.`;
       }
       return null;
     }
@@ -379,13 +429,13 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
       return;
     }
 
-    if (!isEdit && form.syncMode === 'investor') {
+    if (!isEdit && effectiveSyncMode === 'investor') {
       if (!form.brokerId) {
         setMsg({ type: 'error', text: 'Choose your broker first.' });
         return;
       }
       if (!form.brokerServer.trim() || !form.mt5Login.trim() || !form.investorPassword) {
-        setMsg({ type: 'error', text: 'MT5 server, login, and investor password are required.' });
+        setMsg({ type: 'error', text: `${platformLabel(form.platform)} server, login, and investor password are required.` });
         return;
       }
     }
@@ -418,6 +468,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           name,
           slug: normalizeSlug(name),
           account_type: form.accountType,
+          platform: normalizePlatform(form.platform),
           pnl_denomination: newDenom,
         });
         await onSaved();
@@ -434,18 +485,19 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           name,
           slug: normalizeSlug(name),
           account_type: form.accountType,
+          platform: normalizePlatform(form.platform),
           pnl_denomination: form.pnlDenomination,
           color,
           is_default: tradingAccounts.length === 0,
-          connection_status: form.syncMode === 'investor' ? 'investor' : 'ea',
-          broker: form.syncMode === 'investor'
+          connection_status: effectiveSyncMode === 'investor' ? 'investor' : 'ea',
+          broker: effectiveSyncMode === 'investor'
             ? (form.brokerName || form.brokerServer).trim() || null
             : null,
         });
         const row = Array.isArray(created) ? created[0] : created;
         if (!row?.id) throw new Error('Account was created but no id was returned.');
 
-        if (form.syncMode === 'investor') {
+        if (effectiveSyncMode === 'investor') {
           try {
             await connectAndVerifyInvestorCredentials({
               tradingAccountId: row.id,
@@ -526,6 +578,25 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                       autoFocus
                     />
                   </div>
+                  <div>
+                    <label className={label}>Platform</label>
+                    <CustomDropdown
+                      className="w-full"
+                      menuClassName="w-full"
+                      buttonClassName={formSelectBtn}
+                      value={form.platform || 'mt5'}
+                      onChange={(v) => {
+                        setField('platform', v);
+                        if (v === 'mt4') setField('syncMode', 'investor');
+                      }}
+                      options={PLATFORMS}
+                    />
+                    <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {normalizePlatform(form.platform) === 'mt4'
+                        ? 'MT4 accounts use investor-password sync for now (EA sync coming later).'
+                        : 'MT5 supports EA sync key or investor-password cloud sync.'}
+                    </p>
+                  </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className={label}>Type</label>
@@ -557,6 +628,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
               {step?.id === 'broker' ? (
                 <BrokerServerFields
                   mode="broker"
+                  platform={form.platform}
                   brokerId={form.brokerId}
                   serverChoice={form.serverChoice}
                   customServer={form.customServer}
@@ -566,6 +638,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
               {step?.id === 'server' ? (
                 <BrokerServerFields
                   mode="server"
+                  platform={form.platform}
                   brokerId={form.brokerId}
                   serverChoice={form.serverChoice}
                   customServer={form.customServer}
@@ -575,10 +648,24 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
               {step?.id === 'credentials' ? (
                 <div className="space-y-3">
                   <div>
-                    <label className={label}>MT5 login</label>
+                    <label className={label}>Platform</label>
+                    <CustomDropdown
+                      className="w-full"
+                      menuClassName="w-full"
+                      buttonClassName={formSelectBtn}
+                      value={form.platform || 'mt5'}
+                      onChange={(v) => {
+                        setField('platform', v);
+                        if (v === 'mt4') setField('syncMode', 'investor');
+                      }}
+                      options={PLATFORMS}
+                    />
+                  </div>
+                  <div>
+                    <label className={label}>{platformLabel(form.platform)} login</label>
                     <input
                       className={input}
-                      placeholder="MT5 login number"
+                      placeholder={`${platformLabel(form.platform)} login number`}
                       value={form.mt5Login}
                       onChange={(e) => setField('mt5Login', e.target.value)}
                       inputMode="numeric"
@@ -694,6 +781,7 @@ export function SyncKeyModal({ account, syncKey, onClose }) {
 }
 
 function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit, onSetDefault, onUpdated, onKeysChanged, onInvestorChanged }) {
+  const isMt4 = normalizePlatform(account.platform) === 'mt4';
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [revealedKey, setRevealedKey] = useState(null);
@@ -857,6 +945,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
                 aria-hidden
               />
               <h4 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{account.name}</h4>
+              <Badge tone="muted">{isMt4 ? 'MT4' : 'MT5'}</Badge>
               {account.is_default ? <Badge tone="accent">Default</Badge> : null}
             </div>
             <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
@@ -870,7 +959,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
           </button>
         </div>
 
-        <div className="grid gap-px border-t border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800 sm:grid-cols-2">
+        <div className={`grid gap-px border-t border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800 ${isMt4 ? '' : 'sm:grid-cols-2'}`}>
           <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className={sectionLabel}>Sharing</p>
@@ -898,46 +987,48 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
             </div>
           </div>
 
-          <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className={sectionLabel}>MT5 sync</p>
-              {hasSyncKey ? <Badge tone="success">Connected</Badge> : <Badge tone="muted">No key</Badge>}
-            </div>
-            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-              {hasSyncKey
-                ? 'A sync key is active for this account. Show it to reconnect the EA if needed.'
-                : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
-            </p>
-            {hasSyncKey ? (
-              <p className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
-                {lastSyncedAt ? `Last synced: ${formatLastSynced(lastSyncedAt)}` : 'Not synced yet'}
+          {isMt4 ? null : (
+            <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className={sectionLabel}>MT5 sync</p>
+                {hasSyncKey ? <Badge tone="success">Connected</Badge> : <Badge tone="muted">No key</Badge>}
+              </div>
+              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                {hasSyncKey
+                  ? 'A sync key is active for this account. Show it to reconnect the EA if needed.'
+                  : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
               </p>
-            ) : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
               {hasSyncKey ? (
-                <>
-                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
-                    Key info
+                <p className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                  {lastSyncedAt ? `Last synced: ${formatLastSynced(lastSyncedAt)}` : 'Not synced yet'}
+                </p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {hasSyncKey ? (
+                  <>
+                    <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
+                      Key info
+                    </button>
+                    <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+                      Regenerate
+                    </button>
+                    <button
+                      className={btnDanger}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void handleRevokeKey()}
+                    >
+                      Revoke
+                    </button>
+                  </>
+                ) : (
+                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+                    Generate key
                   </button>
-                  <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                    Regenerate
-                  </button>
-                  <button
-                    className={btnDanger}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void handleRevokeKey()}
-                  >
-                    Revoke
-                  </button>
-                </>
-              ) : (
-                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                  Generate key
-                </button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <InvestorSyncPanel account={account} status={investorStatus} onChanged={onInvestorChanged} />

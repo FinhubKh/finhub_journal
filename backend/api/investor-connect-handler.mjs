@@ -10,7 +10,7 @@ import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
 import { encryptSecret } from './crypto-helper.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 
-const LOGIN_FAILED_MSG = 'Login failed — check broker server, MT5 login, and investor password';
+const LOGIN_FAILED_MSG = 'Login failed — check broker server, MetaTrader login, and investor password';
 const VERIFY_UNAVAILABLE_MSG = 'Could not verify right now — bridge busy or unreachable. Your login is saved; try Sync now shortly.';
 
 function bearerToken(req) {
