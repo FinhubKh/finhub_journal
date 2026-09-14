@@ -7,7 +7,7 @@ const METHODS = [
   {
     id: 'ea',
     title: 'EA sync key',
-    desc: 'Install the EA on MetaTrader 5 and paste a sync key. Best if you keep MT5 open locally.',
+    desc: 'Install the EA on MetaTrader 5 and paste a sync key. Best if you keep MT5 open locally. (MT4 uses investor password.)',
     meta: 'Local terminal',
   },
   {
@@ -46,13 +46,13 @@ export default function SetupPage() {
     <div className={`${dashboardPageWideFull} flex min-h-0 flex-col`}>
       <header className="mb-5 shrink-0 animate-install-fade-up">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-emerald-400">
-          MT5 connection
+          MetaTrader connection
         </p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
           Choose your sync method
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Connect MetaTrader 5 with an investor password, or install the local EA. Both paths keep closed trades in your journal.
+          Connect MetaTrader 4 or 5 with an investor password, or install the local EA on MT5. Both paths keep closed trades in your journal.
         </p>
       </header>
 

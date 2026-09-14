@@ -154,7 +154,7 @@ export default function ManualTradeModal({ isOpen, onClose }) {
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 px-5 py-4">
           <div>
             <h2 id="manual-trade-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Log manual trade</h2>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Screenshots only work on manual trades (not MT5 sync).</p>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Screenshots only work on manual trades (not MetaTrader sync).</p>
           </div>
           <button className={btnGhost} type="button" disabled={saving} onClick={onClose}>Close</button>
         </div>

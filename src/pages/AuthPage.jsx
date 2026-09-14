@@ -9,7 +9,7 @@ import { BrandLogo } from '../components/BrandLogo';
 const PERKS = [
   'Log trades with R-multiples and notes',
   'Review equity curve and win rate stats',
-  'Sync closed trades from MT5 automatically',
+  'Sync closed trades from MetaTrader automatically',
 ];
 
 function FieldIcon({ children }) {

@@ -27,6 +27,11 @@ export function platformLabel(value) {
   return normalizePlatform(value) === 'mt4' ? 'MetaTrader 4' : 'MetaTrader 5';
 }
 
+/** Short label for badges and sync copy: MT4 | MT5 */
+export function platformShort(value) {
+  return normalizePlatform(value) === 'mt4' ? 'MT4' : 'MT5';
+}
+
 /** Active view denomination: cent only when drilling into a cent account. Portfolio stays USD. */
 export function viewPnlDenomination(viewMode, activeAccount) {
   if (viewMode === 'account' && activeAccount) {

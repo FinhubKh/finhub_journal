@@ -18,6 +18,7 @@ import {
   accountTypeLabel,
   pnlDenominationLabel,
   platformLabel,
+  platformShort,
   normalizeSlug,
   normalizePnlDenomination,
   normalizePlatform,
@@ -450,7 +451,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           const ok = await confirm({
             title: 'Change account currency?',
             message: newDenom === 'cent'
-              ? 'Existing trade PnL will be multiplied by 100 so amounts match MT5 cent accounts (¢).'
+              ? `Existing trade PnL will be multiplied by 100 so amounts match MetaTrader cent accounts (¢).`
               : 'Existing trade PnL will be divided by 100 so amounts match USD ($).',
             confirmLabel: 'Update trades',
           });
@@ -724,6 +725,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
 }
 
 export function SyncKeyModal({ account, syncKey, onClose }) {
+  const plat = platformShort(account?.platform);
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     function onKey(e) {
@@ -759,13 +761,13 @@ export function SyncKeyModal({ account, syncKey, onClose }) {
       >
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
           <h2 id="sync-key-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            MT5 sync key — {account.name}
+            {plat} sync key — {account.name}
           </h2>
           <button className={btnGhost} type="button" onClick={onClose}>Close</button>
         </div>
         <div className="px-5 py-4">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Paste this key into the EA <strong className="font-medium text-zinc-700 dark:text-zinc-300">Sync Key</strong> field on this MT5 account only.
+            Paste this key into the EA <strong className="font-medium text-zinc-700 dark:text-zinc-300">Sync Key</strong> field on this {plat} account only.
           </p>
           <div className="mt-3 break-all rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-mono text-xs text-zinc-800 select-all dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
             {syncKey}
@@ -782,6 +784,7 @@ export function SyncKeyModal({ account, syncKey, onClose }) {
 
 function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit, onSetDefault, onUpdated, onKeysChanged, onInvestorChanged }) {
   const isMt4 = normalizePlatform(account.platform) === 'mt4';
+  const plat = platformShort(account.platform);
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [revealedKey, setRevealedKey] = useState(null);
@@ -793,7 +796,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
       const ok = await confirm({
         title: `Publish "${account.name}"?`,
         message:
-          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session). Journal notes and MT5 sync keys stay private. The account also becomes eligible for the public leaderboard.',
+          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session). Journal notes and MetaTrader sync keys stay private. The account also becomes eligible for the public leaderboard.',
         confirmLabel: 'Publish',
       });
       if (!ok) return;
@@ -871,8 +874,8 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
     const ok = await confirm({
       title: `Generate sync key for "${account.name}"?`,
       message: hasSyncKey
-        ? 'The previous key for this account will stop working until you update MT5.'
-        : 'Copy the key into the EA on this MT5 terminal.',
+        ? `The previous key for this account will stop working until you update ${plat}.`
+        : `Copy the key into the EA on this ${plat} terminal.`,
       confirmLabel: 'Generate',
     });
     if (!ok) return;
@@ -891,14 +894,14 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
   async function handleShowKey() {
     await alert({
       title: 'Key shown only once',
-      message: 'For security, the sync key cannot be retrieved again. Generate a new key and update MT5 if you lost it.',
+      message: `For security, the sync key cannot be retrieved again. Generate a new key and update ${plat} if you lost it.`,
     });
   }
 
   async function handleRevokeKey() {
     const ok = await confirm({
       title: `Revoke sync key for "${account.name}"?`,
-      message: 'MT5 will stop syncing for this account until you generate a new key.',
+      message: `${plat} will stop syncing for this account until you generate a new key.`,
       confirmLabel: 'Revoke',
       destructive: true,
     });
@@ -917,7 +920,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
-      message: 'All synced trades for this account will be permanently deleted. The MT5 sync key for this account will also be revoked.',
+      message: 'All synced trades for this account will be permanently deleted. Any MetaTrader sync key for this account will also be revoked.',
       confirmLabel: 'Remove account',
       destructive: true,
     });
@@ -990,7 +993,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
           {isMt4 ? null : (
             <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <p className={sectionLabel}>MT5 sync</p>
+                <p className={sectionLabel}>{plat} sync</p>
                 {hasSyncKey ? <Badge tone="success">Connected</Badge> : <Badge tone="muted">No key</Badge>}
               </div>
               <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">

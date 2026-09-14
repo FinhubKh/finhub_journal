@@ -20,7 +20,7 @@ import {
 } from '../components/settings/TradingAccountsManager';
 import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
-import { accountTypeLabel, pnlDenominationLabel } from '../lib/accounts';
+import { accountTypeLabel, pnlDenominationLabel, normalizePlatform, platformLabel, platformShort } from '../lib/accounts';
 import { invalidateLeaderboardCache } from '../lib/leaderboardCache';
 import {
   btnDanger, btnGhost, btnOutline, btnSm, card, cardBody, cardHd, cardTitle,
@@ -209,11 +209,12 @@ export default function AccountDetailPage() {
 
   async function handleGenerateKey() {
     const hasSyncKey = Boolean(syncMeta);
+    const plat = platformShort(account.platform);
     const ok = await confirm({
       title: `Generate sync key for "${account.name}"?`,
       message: hasSyncKey
-        ? 'The previous key for this account will stop working until you update MT5.'
-        : 'Copy the key into the EA on this MT5 terminal.',
+        ? `The previous key for this account will stop working until you update ${plat}.`
+        : `Copy the key into the EA on this ${plat} terminal.`,
       confirmLabel: 'Generate',
     });
     if (!ok) return;
@@ -230,16 +231,18 @@ export default function AccountDetailPage() {
   }
 
   async function handleShowKey() {
+    const plat = platformShort(account.platform);
     await alert({
       title: 'Key shown only once',
-      message: 'For security, the sync key cannot be retrieved again. Generate a new key and update MT5 if you lost it.',
+      message: `For security, the sync key cannot be retrieved again. Generate a new key and update ${plat} if you lost it.`,
     });
   }
 
   async function handleRevokeKey() {
+    const plat = platformShort(account.platform);
     const ok = await confirm({
       title: `Revoke sync key for "${account.name}"?`,
-      message: 'MT5 will stop syncing for this account until you generate a new key.',
+      message: `${plat} will stop syncing for this account until you generate a new key.`,
       confirmLabel: 'Revoke',
       destructive: true,
     });
@@ -259,7 +262,7 @@ export default function AccountDetailPage() {
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
-      message: 'All synced trades for this account will be permanently deleted. The MT5 sync key will also be revoked.',
+      message: 'All synced trades for this account will be permanently deleted. Any MetaTrader sync key will also be revoked.',
       confirmLabel: 'Remove account',
       destructive: true,
     });
@@ -294,6 +297,9 @@ export default function AccountDetailPage() {
 
   const hasSyncKey = Boolean(syncMeta);
   const shareUrl = getAccountShareUrl(account);
+  const isMt4 = normalizePlatform(account.platform) === 'mt4';
+  const plat = platformShort(account.platform);
+  const platFull = platformLabel(account.platform);
 
   return (
     <div className={`${dashboardPageWideFull} overflow-y-auto`}>
@@ -330,6 +336,9 @@ export default function AccountDetailPage() {
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                 {account.name}
               </h1>
+              <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                {plat}
+              </span>
               {account.is_default ? (
                 <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
                   Default
@@ -340,58 +349,64 @@ export default function AccountDetailPage() {
               {accountTypeLabel(account.account_type)}
               <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
               {pnlDenominationLabel(account.pnl_denomination)}
+              <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
+              {platFull}
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Connect this account with an EA sync key, an investor password, or both. Choose what fits how you trade.
+              {isMt4
+                ? 'Connect this MT4 account with an investor password. Closed trades sync through the cloud bridge — no EA install on your PC.'
+                : 'Connect this account with an EA sync key, an investor password, or both. Choose what fits how you trade.'}
             </p>
           </div>
         </div>
       </header>
 
-      <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <Panel
-          eyebrow="Option A"
-          title="EA sync key"
-          badge={<StatusBadge ok={hasSyncKey} okLabel="Key active" idleLabel="No key" />}
-        >
-          <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Install the Finhub EA on MetaTrader 5 and paste a sync key. Best if you keep the terminal open locally.
-          </p>
-          {hasSyncKey ? (
-            <p className={`mt-3 text-xs font-medium ${syncMeta?.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
-              {syncMeta?.last_synced_at
-                ? `Last synced: ${formatLastSynced(syncMeta.last_synced_at)}`
-                : 'Not synced yet'}
+      <div className={`mb-6 grid gap-4 ${isMt4 ? '' : 'lg:grid-cols-2'}`}>
+        {isMt4 ? null : (
+          <Panel
+            eyebrow="Option A"
+            title="EA sync key"
+            badge={<StatusBadge ok={hasSyncKey} okLabel="Key active" idleLabel="No key" />}
+          >
+            <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+              Install the Finhub EA on MetaTrader 5 and paste a sync key. Best if you keep the terminal open locally.
             </p>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-2">
             {hasSyncKey ? (
-              <>
-                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
-                  Key info
+              <p className={`mt-3 text-xs font-medium ${syncMeta?.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                {syncMeta?.last_synced_at
+                  ? `Last synced: ${formatLastSynced(syncMeta.last_synced_at)}`
+                  : 'Not synced yet'}
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {hasSyncKey ? (
+                <>
+                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
+                    Key info
+                  </button>
+                  <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+                    Regenerate
+                  </button>
+                  <button
+                    className={btnDanger}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleRevokeKey()}
+                  >
+                    Revoke
+                  </button>
+                </>
+              ) : (
+                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
+                  Generate sync key
                 </button>
-                <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                  Regenerate
-                </button>
-                <button
-                  className={btnDanger}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleRevokeKey()}
-                >
-                  Revoke
-                </button>
-              </>
-            ) : (
-              <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                Generate sync key
-              </button>
-            )}
-          </div>
-        </Panel>
+              )}
+            </div>
+          </Panel>
+        )}
 
         <Panel
-          eyebrow="Option B"
+          eyebrow={isMt4 ? 'Sync' : 'Option B'}
           title="Investor password"
           badge={(
             <StatusBadge
@@ -402,7 +417,7 @@ export default function AccountDetailPage() {
           )}
         >
           <p className="mb-3 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Read-only MetaTrader login. We pull closed trades for you — no EA install on your PC.
+            Read-only {platFull} login. We pull closed trades for you — no EA install on your PC.
           </p>
           <div className="-mx-4 -mb-4 border-t border-zinc-100 dark:border-zinc-800 md:-mx-5 md:-mb-5">
             <InvestorSyncPanel

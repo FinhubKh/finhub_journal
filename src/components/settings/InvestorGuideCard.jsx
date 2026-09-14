@@ -144,7 +144,7 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
           </div>
           <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Investor password sync</h3>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Connect with a read-only MT5 login. We pull closed trades for you.
+            Connect with a read-only MetaTrader login. We pull closed trades for you.
           </p>
         </div>
         {!standalone ? (

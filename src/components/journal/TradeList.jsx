@@ -5,7 +5,7 @@ import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, fetchCashflows, TRADE_PAGE_SIZE } from '../../api';
 import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue, fmtBalance } from '../../lib/format';
 import { mergeCashflowsIntoPage, CASHFLOW_RESULTS, TRADE_RESULTS } from '../../lib/tradeLog';
-import { tradePnlDenomination } from '../../lib/accounts';
+import { tradePnlDenomination, platformShort } from '../../lib/accounts';
 import {
   btnGhost, btnDanger, btnSm, btnPrimary, cardTitle, emptyState, tradeResultBadge,
 } from '../../lib/ui';
@@ -309,7 +309,9 @@ export default function TradeList() {
           <div className={`${emptyState} min-h-0 flex-1`}>Loading trades…</div>
         ) : total === 0 && visibleRows.length === 0 ? (
           <div className={`${emptyState} min-h-0 flex-1`}>
-            {hasFilters || unfilteredTotal > 0 ? `No ${rowNouns} match your filters.` : 'No trades yet. Log a manual trade or sync from MT5.'}
+            {hasFilters || unfilteredTotal > 0
+              ? `No ${rowNouns} match your filters.`
+              : `No trades yet. Log a manual trade or sync from ${platformShort(activeAccount?.platform)}.`}
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">

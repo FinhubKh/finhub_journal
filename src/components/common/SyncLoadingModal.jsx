@@ -1,11 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { platformLabel, platformShort } from '../../lib/accounts';
 import { card } from '../../lib/ui';
-
-const STEPS = [
-  { stage: 'connecting', label: 'Connecting to MT5' },
-  { stage: 'fetching_history', label: 'Fetching trade history' },
-  { stage: 'saving_trades', label: 'Saving trades' },
-];
 
 function stepStatus(stepIndex, currentIndex) {
   if (currentIndex === -1) return stepIndex === 0 ? 'active' : 'pending';
@@ -42,11 +37,21 @@ function StepIcon({ status }) {
 }
 
 /**
- * Blocking loading overlay shown while investor MT5 sync is in progress.
- * `stage` mirrors investor_credentials.sync_stage, patched live by the bridge
- * worker as it moves through the job — see finhub-mt5-bridge/workers/mt5_worker.py.
+ * Blocking loading overlay shown while investor MetaTrader sync is in progress.
+ * `stage` mirrors investor_credentials.sync_stage, patched live by the bridge worker.
  */
-export default function SyncLoadingModal({ open, accountName, stage }) {
+export default function SyncLoadingModal({ open, accountName, stage, platform }) {
+  const short = platformShort(platform);
+  const full = platformLabel(platform);
+  const steps = useMemo(
+    () => [
+      { stage: 'connecting', label: `Connecting to ${short}` },
+      { stage: 'fetching_history', label: 'Fetching trade history' },
+      { stage: 'saving_trades', label: 'Saving trades' },
+    ],
+    [short],
+  );
+
   useEffect(() => {
     if (!open) return undefined;
     const prev = document.body.style.overflow;
@@ -58,7 +63,7 @@ export default function SyncLoadingModal({ open, accountName, stage }) {
 
   if (!open) return null;
 
-  const currentIndex = STEPS.findIndex((s) => s.stage === stage);
+  const currentIndex = steps.findIndex((s) => s.stage === stage);
 
   return (
     <div
@@ -75,17 +80,17 @@ export default function SyncLoadingModal({ open, accountName, stage }) {
             id="sync-loading-title"
             className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
           >
-            Syncing MT5 trades
+            Syncing {short} trades
           </h2>
           <p
             id="sync-loading-message"
             className="mt-1.5 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400"
           >
-            {accountName ? `“${accountName}”` : 'Pulling closed trades from MetaTrader 5.'}
+            {accountName ? `“${accountName}”` : `Pulling closed trades from ${full}.`}
           </p>
 
           <ol className="mt-6 w-full space-y-3 text-left">
-            {STEPS.map((step, i) => {
+            {steps.map((step, i) => {
               const status = stepStatus(i, currentIndex);
               return (
                 <li key={step.stage} className="flex items-center gap-3">

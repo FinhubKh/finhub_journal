@@ -103,10 +103,10 @@ function EmptyOverview({ onOpenSetup }) {
     <div className={`${card} flex flex-col items-center justify-center px-6 py-12 text-center`}>
       <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">No trades in this view yet</p>
       <p className="mt-2 max-w-md text-sm text-zinc-500 dark:text-zinc-400">
-        Connect MetaTrader 5 from Settings → How to install, or switch accounts in the sidebar.
+        Connect MetaTrader from Settings → How to install, or switch accounts in the sidebar.
       </p>
       <button className={`${btnOutline} mt-5`} type="button" onClick={onOpenSetup}>
-        Open MT5 setup guide
+        Open MetaTrader setup guide
       </button>
     </div>
   );

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { listInvestorCredentialsStatus, listAccountSyncKeys, runInvestorSyncAndWait } from '../../api';
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
+import { platformShort } from '../../lib/accounts';
 import { btnOutline, btnSm } from '../../lib/ui';
 import SyncLoadingModal from './SyncLoadingModal';
 
@@ -39,6 +40,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   const singleAccount = viewMode === 'account' && activeAccount;
   const hasInvestor = Boolean(investorStatus);
   const isEaAccount = activeAccount?.connection_status === 'ea' || Boolean(eaSyncMeta);
+  const platShort = platformShort(activeAccount?.platform);
 
   const reloadStatus = useCallback(async (alive = () => true) => {
     if (viewMode !== 'account' || !activeAccount?.id) {
@@ -85,7 +87,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
     if (busy) return;
 
     if (!singleAccount) {
-      toast.info('Switch to a single account to sync MT5 data.');
+      toast.info('Switch to a single account to sync MetaTrader data.');
       return;
     }
     if (loadingStatus) {
@@ -104,7 +106,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
           await alert({
             title: 'EA sync has not run yet',
             message:
-              'The journal cannot pull trades until FinhubJournal_TradeSync is attached to a chart in MT5 with this account\'s sync key.\n\n'
+              `The journal cannot pull trades until FinhubJournal_TradeSync is attached to a chart in ${platShort} with this account's sync key.\n\n`
               + '1. Tools -> Options -> Expert Advisors -> Allow WebRequest\n'
               + '2. Add https://journal.finhubkh.com and https://finhubjournal.vercel.app\n'
               + '3. Drag the EA onto a chart, paste the sync key, click OK\n'
@@ -147,12 +149,12 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   }
 
   const btnClass = size === 'sm' ? btnSm : btnOutline;
-  let title = 'Sync MT5 trades for this account';
+  let title = `Sync ${platShort} trades for this account`;
   if (!singleAccount) title = 'Switch to a single account to sync';
   else if (!loadingStatus && !hasInvestor && isEaAccount) title = 'EA accounts sync from MetaTrader — attach the EA on a chart';
   else if (!loadingStatus && !hasInvestor) title = 'Connect investor password in Accounts to sync';
   else if (loadingStatus) title = 'Loading sync status…';
-  else if (busy) title = 'Waiting for MT5 sync to finish…';
+  else if (busy) title = `Waiting for ${platShort} sync to finish…`;
 
   let statusLine = null;
   if (singleAccount && hasInvestor) {
@@ -204,7 +206,12 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
           <p className="max-w-[16rem] truncate text-[11px] leading-tight">{statusLine}</p>
         ) : null}
       </div>
-      <SyncLoadingModal open={busy} accountName={activeAccount?.name} stage={investorStatus?.sync_stage} />
+      <SyncLoadingModal
+        open={busy}
+        accountName={activeAccount?.name}
+        stage={investorStatus?.sync_stage}
+        platform={activeAccount?.platform}
+      />
     </>
   );
 }

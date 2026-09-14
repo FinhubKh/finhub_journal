@@ -166,7 +166,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
 
   return (
     <div className={`${compact ? 'bg-transparent px-4 py-4 md:px-5' : 'border-t border-zinc-100 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900 md:px-5'}`}>
-      <SyncLoadingModal open={syncing} accountName={account?.name} stage={syncStage} />
+      <SyncLoadingModal open={syncing} accountName={account?.name} stage={syncStage} platform={account?.platform || form.platform} />
       {!compact ? (
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className={sectionLabel}>Investor password sync</p>
