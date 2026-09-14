@@ -266,7 +266,9 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
       ) : (
         <>
           <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Alternative to the EA: pick MT4 or MT5, choose your broker and server, then paste a read-only investor password.
+            {normalizePlatform(account?.platform) === 'mt4'
+              ? 'Choose your broker and MT4 server, then paste a read-only investor password.'
+              : 'Alternative to the EA: pick MT4 or MT5, choose your broker and server, then paste a read-only investor password.'}
           </p>
           <button className={`${btnOutline} mt-3`} type="button" onClick={openForm}>
             Connect via investor password
