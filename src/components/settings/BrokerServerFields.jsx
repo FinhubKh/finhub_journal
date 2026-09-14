@@ -1,5 +1,5 @@
 // src/components/settings/BrokerServerFields.jsx
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CustomDropdown from '../common/CustomDropdown';
 import { input, label, select } from '../../lib/ui';
 import {
@@ -17,7 +17,7 @@ const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 
  * Broker → server picker for investor connect.
  * Emits the exact MetaTrader `brokerServer` string plus optional display `brokerName`.
  * `mode`: "all" | "broker" | "server"
- * `platform`: "mt4" | "mt5" — labels only (server catalog is shared; custom entry works for both).
+ * `platform`: "mt4" | "mt5" — labels + MT4/MT5 server lists when a broker defines both.
  */
 export default function BrokerServerFields({
   brokerId = '',
@@ -47,7 +47,10 @@ export default function BrokerServerFields({
     return matched.length ? matched : base;
   }, [allBrokers, brokerQuery, brokerId]);
 
-  const serverOpts = useMemo(() => serverSelectOptions(brokerId), [brokerId]);
+  const serverOpts = useMemo(
+    () => serverSelectOptions(brokerId, platform),
+    [brokerId, platform],
+  );
   const showCustom =
     showServer && (
       !brokerId ||
@@ -71,6 +74,23 @@ export default function BrokerServerFields({
     });
   }
 
+  // When platform flips MT4 ↔ MT5, keep the broker but refresh the default server list.
+  useEffect(() => {
+    if (!brokerId || brokerId === OTHER_BROKER_ID) return;
+    const opts = serverSelectOptions(brokerId, platform);
+    const values = opts.map((o) => o.value).filter((v) => v && v !== CUSTOM_SERVER_VALUE);
+    if (!values.length) return;
+    if (serverChoice && serverChoice !== CUSTOM_SERVER_VALUE && values.includes(serverChoice)) {
+      return;
+    }
+    const first = values[0];
+    if (first && first !== serverChoice) {
+      patch({ serverChoice: first, customServer: '' });
+    }
+    // Intentionally only react to platform/broker changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platform, brokerId]);
+
   function handleBroker(nextId) {
     if (!nextId) {
       setBrokerQuery('');
@@ -81,7 +101,7 @@ export default function BrokerServerFields({
       });
       return;
     }
-    const opts = serverSelectOptions(nextId);
+    const opts = serverSelectOptions(nextId, platform);
     const first = opts.find((o) => o.value !== CUSTOM_SERVER_VALUE);
     const nextChoice = first?.value || CUSTOM_SERVER_VALUE;
     setBrokerQuery('');
@@ -99,7 +119,7 @@ export default function BrokerServerFields({
           <label className={label}>Broker</label>
           <input
             className={`${input} mb-2`}
-            placeholder="Search brokers (ST Markets, Lirunex, Exness…)"
+            placeholder="Search brokers (Blackwell, ST Markets, ATFX…)"
             value={brokerQuery}
             onChange={(e) => setBrokerQuery(e.target.value)}
             disabled={disabled}
@@ -144,7 +164,7 @@ export default function BrokerServerFields({
             className={input}
             placeholder={
               platShort === 'MT4'
-                ? 'e.g. BlackwellGlobal2-Live3 or Exness-Real'
+                ? 'e.g. Blackwellglobal2-Live3 or Exness-Real'
                 : 'e.g. STMarket-Live or Exness-MT5Real36'
             }
             value={customServer}

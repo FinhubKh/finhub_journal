@@ -1,68 +1,244 @@
 /**
- * Curated MT5 broker → server catalog for investor connect UX.
- * Exact `servers[].name` values are what MetaTrader / the bridge need.
- * Brokers with many numbered nodes also allow free-text custom server.
+ * Curated MetaTrader broker → server catalog for investor connect UX.
+ * Exact `servers[].name` / `serversMt4[].name` values are what MetaTrader / the bridge need.
+ * Names are taken from MetaQuotes directories / broker help centers / live latency scans.
+ * Brokers always allow free-text custom server because node assignment is per-account.
  */
 
 export const CUSTOM_SERVER_VALUE = '__custom__';
 export const OTHER_BROKER_ID = 'other';
 
-/** @typedef {{ name: string, type?: 'live'|'demo'|'unknown' }} Mt5Server */
-/** @typedef {{ id: string, name: string, region?: string, logo?: string, pinned?: boolean, allowCustomServer?: boolean, servers: Mt5Server[] }} Mt5Broker */
+/** @typedef {{ name: string, type?: 'live'|'demo'|'unknown' }} MtServer */
+/**
+ * @typedef {{
+ *   id: string,
+ *   name: string,
+ *   region?: string,
+ *   logo?: string,
+ *   pinned?: boolean,
+ *   pinRank?: number,
+ *   allowCustomServer?: boolean,
+ *   servers: MtServer[],
+ *   serversMt4?: MtServer[] | null,
+ * }} MtBroker
+ */
 
-const brokerLogo = (id) => `/brokers/${id}.svg`;
+const brokerLogo = (id, ext = 'svg') => `/brokers/${id}.${ext}`;
 
-/** @type {Mt5Broker[]} */
+/** @param {string[]} names @param {'live'|'demo'|'unknown'} [type] */
+function live(names) {
+  return names.map((name) => ({ name, type: 'live' }));
+}
+/** @param {string[]} names */
+function demo(names) {
+  return names.map((name) => ({ name, type: 'demo' }));
+}
+
+/** Build Exness-MT5Real / Exness-MT5RealN */
+function exnessMt5Servers() {
+  return [
+    { name: 'Exness-MT5Real', type: 'live' },
+    ...Array.from({ length: 40 }, (_, i) => ({ name: `Exness-MT5Real${i + 1}`, type: 'live' })),
+    { name: 'Exness-MT5Trial', type: 'demo' },
+    ...Array.from({ length: 16 }, (_, i) => ({ name: `Exness-MT5Trial${i + 2}`, type: 'demo' })),
+  ];
+}
+
+/** Verified Exness MT4 Real/Trial nodes (gaps are intentional — those nodes are unused). */
+function exnessMt4Servers() {
+  const real = [null, 2, 3, 4, 6, 7, 8, 9, 11, 12, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38];
+  const trial = [null, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16];
+  return [
+    { name: 'Exness-Real', type: 'live' },
+    ...real.filter(Boolean).map((n) => ({ name: `Exness-Real${n}`, type: 'live' })),
+    { name: 'Exness-Trial', type: 'demo' },
+    ...trial.filter(Boolean).map((n) => ({ name: `Exness-Trial${n}`, type: 'demo' })),
+  ];
+}
+
+/** XM MT4 uses a space before the node number: "XMGlobal-Real 1" */
+function xmMt4Servers() {
+  const reals = [1, 2, 3, 5, 6, 8, 9, 10, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 33, 35, 36, 38, 39, 41, 42, 43, 44, 46];
+  return [
+    { name: 'XMGlobal-Real', type: 'live' },
+    ...reals.map((n) => ({ name: `XMGlobal-Real ${n}`, type: 'live' })),
+    { name: 'XMGlobal-Demo', type: 'demo' },
+    { name: 'XMGlobal-Demo 2', type: 'demo' },
+    { name: 'XMGlobal-Demo 4', type: 'demo' },
+    { name: 'XMGlobal-Demo 8', type: 'demo' },
+  ];
+}
+
+/** XM MT5 uses a space before the node number: "XMGlobal-MT5 2" */
+function xmMt5Servers() {
+  return [
+    { name: 'XMGlobal-MT5', type: 'live' },
+    ...Array.from({ length: 30 }, (_, i) => ({ name: `XMGlobal-MT5 ${i + 2}`, type: 'live' })),
+    { name: 'XMGlobal-Demo', type: 'demo' },
+    { name: 'XM-MT5', type: 'live' },
+  ];
+}
+
+/** @type {MtBroker[]} */
 export const MT5_BROKERS = [
+  // --- Cambodia (SERC derivatives / popular local MT brokers) ---
+  {
+    id: 'blackwell',
+    name: 'Blackwell Global',
+    region: 'Cambodia',
+    logo: brokerLogo('blackwell', 'png'),
+    pinned: true,
+    pinRank: 10,
+    allowCustomServer: true,
+    servers: [
+      ...live([
+        'BlackwellGlobalInvestments-MT5-Server',
+        'BlackwellGlobalFutures-MT5-Server',
+        'BlackwellGlobalInvestmentsUK-Live',
+      ]),
+      ...demo(['BlackwellGlobalInvestments-Demo_Server']),
+    ],
+    serversMt4: [
+      // Exact company node name inside the .srv (capital G)
+      { name: 'BlackwellGlobal2-Live3', type: 'live' },
+      { name: 'Blackwellglobal2-Live3', type: 'live' },
+      { name: 'BlackwellGlobal-Live', type: 'live' },
+      { name: 'BlackwellGlobal1-Live5', type: 'live' },
+      { name: 'BGPreciousMetals-Live', type: 'live' },
+      { name: 'BlackwellGlobal2-Demo3', type: 'demo' },
+      { name: 'BlackwellGlobal-Demo', type: 'demo' },
+      { name: 'BGPreciousMetals-Demo', type: 'demo' },
+    ],
+  },
   {
     id: 'stmarket',
     name: 'ST Markets',
     region: 'Cambodia',
-    logo: brokerLogo('stmarket'),
+    logo: brokerLogo('stmarket', 'png'),
     pinned: true,
+    pinRank: 20,
     allowCustomServer: true,
-    servers: [
-      { name: 'STMarket-Live', type: 'live' },
-      { name: 'STMarket-Demo', type: 'demo' },
-    ],
+    // MetaQuotes directory currently lists MT5 Live only.
+    servers: live(['STMarket-Live']),
+    // No verified ST Markets MT4 company node — force exact/custom entry.
+    serversMt4: [],
+  },
+  {
+    id: 'atfx',
+    name: 'ATFX',
+    region: 'Cambodia',
+    logo: brokerLogo('atfx', 'png'),
+    pinned: true,
+    pinRank: 30,
+    allowCustomServer: true,
+    servers: live(['ATFXKH-LIVE2']),
+    serversMt4: live([
+      'ATFXGM1-Live',
+      'ATFXGM12-Live01',
+      'ATFXGM8-Live',
+      'ATFXGM3-Live01',
+    ]),
   },
   {
     id: 'lirunex',
     name: 'Lirunex',
-    region: 'Asia',
-    logo: brokerLogo('lirunex'),
+    region: 'Cambodia',
+    logo: brokerLogo('lirunex', 'png'),
     pinned: true,
+    pinRank: 40,
     allowCustomServer: true,
-    servers: [
-      { name: 'LirunexLimited-Live', type: 'live' },
-      { name: 'LirunexLimited-Live-MT5', type: 'live' },
-      { name: 'LirunexLimited-Demo', type: 'demo' },
-      { name: 'Lirunex-Live-UK', type: 'live' },
-      { name: 'Lirunex-Demo-UK', type: 'demo' },
-    ],
+    servers: live(['LirunexLimited-Live-MT5', 'LirunexLimited-Live2']),
+    serversMt4: live(['LirunexLimited-Live', 'LirunexLimited-Live2']),
   },
+  {
+    id: 'alphagold',
+    name: 'Alpha Gold Futures',
+    region: 'Cambodia',
+    logo: brokerLogo('alphagold'),
+    pinned: true,
+    pinRank: 50,
+    allowCustomServer: true,
+    servers: live(['AlphaGoldFutures-Live']),
+    serversMt4: [],
+  },
+  {
+    id: 'bfx',
+    name: 'BFX Capital',
+    region: 'Cambodia',
+    logo: brokerLogo('bfx'),
+    pinned: true,
+    pinRank: 60,
+    allowCustomServer: true,
+    servers: live(['BFXCapital-Server']),
+    serversMt4: [],
+  },
+  {
+    id: 'brokerjet',
+    name: 'Broker Jet',
+    region: 'Cambodia',
+    logo: brokerLogo('brokerjet'),
+    pinned: true,
+    pinRank: 70,
+    allowCustomServer: true,
+    servers: live(['BrokerJetLtd-Live']),
+    serversMt4: [],
+  },
+  {
+    id: 'xaumerlion',
+    name: 'XAU Merlion Financial',
+    region: 'Cambodia',
+    logo: brokerLogo('xaumerlion'),
+    pinned: true,
+    pinRank: 80,
+    allowCustomServer: true,
+    servers: [],
+    serversMt4: live(['XAUMerlion-Live1']),
+  },
+  {
+    id: 'tridentpro',
+    name: 'TridentPro Future',
+    region: 'Cambodia',
+    logo: brokerLogo('tridentpro'),
+    pinned: true,
+    pinRank: 90,
+    allowCustomServer: true,
+    servers: live(['TridentproFuture-Live', 'TridentproFuture-Global']),
+    serversMt4: [],
+  },
+  {
+    id: 'pplink',
+    name: 'PP Link Securities',
+    region: 'Cambodia',
+    logo: brokerLogo('pplink'),
+    pinned: true,
+    pinRank: 100,
+    allowCustomServer: true,
+    servers: live(['PPLinkSecurities-Live']),
+    serversMt4: [],
+  },
+  {
+    id: 'yai',
+    name: 'YAI Trading',
+    region: 'Cambodia',
+    logo: brokerLogo('yai'),
+    pinned: true,
+    pinRank: 110,
+    allowCustomServer: true,
+    servers: live(['YAITrading-Live', 'YAITrading-Live3', 'YAITradingCoLtd-Real']),
+    serversMt4: [],
+  },
+
+  // --- Global ---
   {
     id: 'exness',
     name: 'Exness',
     region: 'Global',
     logo: brokerLogo('exness'),
     pinned: true,
+    pinRank: 200,
     allowCustomServer: true,
-    servers: [
-      { name: 'Exness-MT5Real', type: 'live' },
-      ...Array.from({ length: 40 }, (_, i) => ({
-        name: `Exness-MT5Real${i + 1}`,
-        type: 'live',
-      })),
-      { name: 'Exness-MT5Trial', type: 'demo' },
-      { name: 'Exness-MT5Trial2', type: 'demo' },
-      { name: 'Exness-MT5Trial3', type: 'demo' },
-      { name: 'Exness-MT5Trial4', type: 'demo' },
-      { name: 'Exness-MT5Trial5', type: 'demo' },
-      { name: 'Exness-MT5Trial6', type: 'demo' },
-      { name: 'Exness-MT5Trial7', type: 'demo' },
-      { name: 'Exness-MT5Trial8', type: 'demo' },
-    ],
+    servers: exnessMt5Servers(),
+    serversMt4: exnessMt4Servers(),
   },
   {
     id: 'xm',
@@ -70,14 +246,10 @@ export const MT5_BROKERS = [
     region: 'Global',
     logo: brokerLogo('xm'),
     pinned: true,
+    pinRank: 210,
     allowCustomServer: true,
-    servers: [
-      { name: 'XMGlobal-MT5', type: 'live' },
-      { name: 'XMGlobal-MT5 2', type: 'live' },
-      { name: 'XMGlobal-MT5 3', type: 'live' },
-      { name: 'XM-MT5', type: 'live' },
-      { name: 'XMGlobal-Demo', type: 'demo' },
-    ],
+    servers: xmMt5Servers(),
+    serversMt4: xmMt4Servers(),
   },
   {
     id: 'icmarkets',
@@ -85,16 +257,49 @@ export const MT5_BROKERS = [
     region: 'Global',
     logo: brokerLogo('icmarkets'),
     pinned: true,
+    pinRank: 220,
     allowCustomServer: true,
     servers: [
-      { name: 'ICMarketsSC-MT5', type: 'live' },
-      { name: 'ICMarketsSC-MT5-2', type: 'live' },
-      { name: 'ICMarketsSC-MT5-4', type: 'live' },
-      { name: 'ICMarketsSC-Demo', type: 'demo' },
-      { name: 'ICMarketsSC-Demo03', type: 'demo' },
-      { name: 'ICMarketsEU-MT5', type: 'live' },
-      { name: 'ICMarketsEU-MT5-2', type: 'live' },
-      { name: 'ICMarketsEU-Demo', type: 'demo' },
+      ...live([
+        'ICMarketsSC-MT5',
+        'ICMarketsSC-MT5-2',
+        'ICMarketsSC-MT5-4',
+        'ICMarketsSC-MT5-6',
+        'ICMarketsEU-MT5',
+        'ICMarketsEU-MT5-2',
+        'ICMarketsEU-MT5-4',
+        'ICMarketsEU-MT5-5',
+        'ICMarketsInternational-MT5',
+        'ICMarketsInternational-MT5-2',
+        'ICMarketsGRP-MT5',
+      ]),
+      ...demo([
+        'ICMarketsSC-Demo',
+        'ICMarketsSC-Demo03',
+        'ICMarketsEU-Demo',
+        'ICMarketsEU-Demo01',
+        'ICMarketsEU-Demo02',
+        'ICMarketsEU-Demo03',
+      ]),
+    ],
+    serversMt4: [
+      ...live([
+        'ICMarketsSC-Live',
+        'ICMarketsSC-Live01',
+        'ICMarketsSC-Live02',
+        'ICMarketsSC-Live03',
+        'ICMarketsEU-Live28',
+        'ICMarketsInternational-Live29',
+        'ICMarketsGRP-Live01',
+        'ICMarketsGRP-Live35',
+      ]),
+      ...demo([
+        'ICMarketsSC-Demo',
+        'ICMarketsSC-Demo01',
+        'ICMarketsEU-Demo01',
+        'ICMarketsInternational-Demo05',
+        'ICMarketsGRP-Demo01',
+      ]),
     ],
   },
   {
@@ -103,10 +308,37 @@ export const MT5_BROKERS = [
     region: 'Global',
     logo: brokerLogo('pepperstone'),
     allowCustomServer: true,
+    // Company directory nodes are EdgeNN (not "Pepperstone-Live" / "Pepperstone-MT5-Live").
     servers: [
-      { name: 'Pepperstone-MT5-Live', type: 'live' },
-      { name: 'Pepperstone-MT5-Live01', type: 'live' },
-      { name: 'Pepperstone-Demo', type: 'demo' },
+      ...live([
+        'Pepperstone-Edge01',
+        'Pepperstone-Edge02',
+        'Pepperstone-Edge03',
+        'Pepperstone-Edge04',
+        'Pepperstone-Edge05',
+        'Pepperstone-Edge06',
+        'Pepperstone-Edge08',
+        'Pepperstone-Edge09',
+        'Pepperstone-Edge12',
+        'Pepperstone-Edge14',
+        'mt5-1.pepperstone.com',
+      ]),
+      ...demo(['Pepperstone-Demo01', 'mt5-demo01.pepperstone.com']),
+    ],
+    serversMt4: [
+      ...live([
+        'Pepperstone-Edge01',
+        'Pepperstone-Edge02',
+        'Pepperstone-Edge03',
+        'Pepperstone-Edge04',
+        'Pepperstone-Edge05',
+        'Pepperstone-Edge06',
+        'Pepperstone-Edge08',
+        'Pepperstone-Edge09',
+        'Pepperstone-Edge12',
+        'Pepperstone-Edge14',
+      ]),
+      ...demo(['Pepperstone-Demo01', 'Pepperstone-Demo02']),
     ],
   },
   {
@@ -117,6 +349,12 @@ export const MT5_BROKERS = [
     allowCustomServer: true,
     servers: [
       { name: 'FBS-Real', type: 'live' },
+      ...Array.from({ length: 12 }, (_, i) => ({ name: `FBS-Real-${i + 1}`, type: 'live' })),
+      { name: 'FBS-Demo', type: 'demo' },
+    ],
+    serversMt4: [
+      { name: 'FBS-Real', type: 'live' },
+      ...Array.from({ length: 12 }, (_, i) => ({ name: `FBS-Real-${i + 1}`, type: 'live' })),
       { name: 'FBS-Demo', type: 'demo' },
     ],
   },
@@ -127,8 +365,50 @@ export const MT5_BROKERS = [
     logo: brokerLogo('roboforex'),
     allowCustomServer: true,
     servers: [
-      { name: 'RoboForex-ECN', type: 'live' },
-      { name: 'RoboForex-Pro', type: 'live' },
+      ...live([
+        'RoboForex-ECN',
+        'RoboForex-ECN-2',
+        'RoboForex-ECN-3',
+        'RoboForex-Pro',
+        'RoboForex-Pro-2',
+        'RoboForex-Pro-3',
+        'RoboForex-Pro-4',
+        'RoboForex-Pro-5',
+        'RoboForex-Pro-6',
+        'RoboForex-Prime',
+        'RoboForex-ProCent',
+        'RoboForex-ProCent-2',
+        'RoboForex-ProCent-3',
+        'RoboForex-ProCent-4',
+        'RoboForex-ProCent-5',
+        'RoboForex-ProCent-6',
+        'RoboForex-ProCent-7',
+        'RoboForex-ProCent-8',
+      ]),
+      ...demo(['RoboForex-Demo', 'RoboForex-DemoPro']),
+    ],
+    serversMt4: [
+      ...live([
+        'RoboForex-ECN',
+        'RoboForex-ECN-2',
+        'RoboForex-ECN-3',
+        'RoboForex-Pro',
+        'RoboForex-Pro-2',
+        'RoboForex-Pro-3',
+        'RoboForex-Pro-4',
+        'RoboForex-Pro-5',
+        'RoboForex-Pro-6',
+        'RoboForex-Prime',
+        'RoboForex-ProCent',
+        'RoboForex-ProCent-2',
+        'RoboForex-ProCent-3',
+        'RoboForex-ProCent-4',
+        'RoboForex-ProCent-5',
+        'RoboForex-ProCent-6',
+        'RoboForex-ProCent-7',
+        'RoboForex-ProCent-8',
+      ]),
+      ...demo(['RoboForex-Demo', 'RoboForex-DemoPro']),
     ],
   },
   {
@@ -138,11 +418,36 @@ export const MT5_BROKERS = [
     logo: brokerLogo('tickmill'),
     allowCustomServer: true,
     servers: [
-      { name: 'Tickmill-Demo', type: 'demo' },
-      { name: 'TickmillUK-Live', type: 'live' },
-      { name: 'TickmillUK-Demo', type: 'demo' },
-      { name: 'TickmillEU-Live', type: 'live' },
-      { name: 'TickmillEU-Demo', type: 'demo' },
+      ...live([
+        'Tickmill-Live',
+        'Tickmill-Live02',
+        'Tickmill-Live04',
+        'Tickmill-Live05',
+        'Tickmill-Live06',
+        'Tickmill-Live08',
+        'Tickmill-Live09',
+        'Tickmill-Live10',
+        'TickmillUK-Live',
+        'TickmillUK-Live03',
+        'TickmillEU-Live',
+      ]),
+      ...demo(['Tickmill-Demo', 'Tickmill-DemoUK', 'TickmillUK-Demo', 'TickmillEU-Demo']),
+    ],
+    serversMt4: [
+      ...live([
+        'Tickmill-Live',
+        'Tickmill-Live02',
+        'Tickmill-Live04',
+        'Tickmill-Live05',
+        'Tickmill-Live06',
+        'Tickmill-Live08',
+        'Tickmill-Live09',
+        'Tickmill-Live10',
+        'TickmillUK-Live',
+        'TickmillUK-Live03',
+        'TickmillEU-Live',
+      ]),
+      ...demo(['Tickmill-Demo', 'Tickmill-DemoUK', 'TickmillUK-Demo', 'TickmillEU-Demo']),
     ],
   },
   {
@@ -152,9 +457,27 @@ export const MT5_BROKERS = [
     logo: brokerLogo('fxpro'),
     allowCustomServer: true,
     servers: [
-      { name: 'FxPro-MT5', type: 'live' },
-      { name: 'FxPro-MT5 Live02', type: 'live' },
-      { name: 'FxPro-MT5 Demo', type: 'demo' },
+      ...live([
+        'FxPro-MT5',
+        'FxPro-MT5 Live02',
+        'FxPro-MT5 Live03',
+        'FxPro.Global-MT5 Live02',
+      ]),
+      ...demo(['FxPro-MT5 Demo']),
+    ],
+    serversMt4: [
+      ...live([
+        'FxPro.com-Real01',
+        'FxPro.com-Real02',
+        'FxPro.com-Real03',
+        'FxPro.com-Real04',
+        'FxPro.com-Real05',
+        'FxPro.com-Real06',
+        'FxPro.com-Real07',
+        'FxPro.com-Real08',
+        'FxPro.com-Real09',
+      ]),
+      ...demo(['FxPro.com-Demo01', 'FxPro.com-Demo05', 'FxPro.com-Demo06']),
     ],
   },
   {
@@ -163,9 +486,10 @@ export const MT5_BROKERS = [
     region: 'Global',
     logo: brokerLogo('fusionmarkets'),
     allowCustomServer: true,
-    servers: [
-      { name: 'FusionMarkets-Live', type: 'live' },
-      { name: 'FusionMarkets-Demo', type: 'demo' },
+    servers: live(['FusionMarketsAU-Live', 'GlobalPrime-Live', 'GlobalPrime-Trade']),
+    serversMt4: [
+      ...live(['FusionMarkets-Live', 'FusionMarkets-Live 2', 'FusionMarkets-Live 3']),
+      ...demo(['FusionMarkets-Demo']),
     ],
   },
   {
@@ -175,8 +499,34 @@ export const MT5_BROKERS = [
     logo: brokerLogo('litefinance'),
     allowCustomServer: true,
     servers: [
-      { name: 'LiteFinance-MT5-Live', type: 'live' },
-      { name: 'LiteFinance-MT5-Demo', type: 'demo' },
+      ...live([
+        'LiteFinanceVC-Live-02',
+        'LiteFinanceVC-Live-03',
+        'LiteFinanceVC-Live-04',
+        'LiteFinanceVC-Live-05',
+        'LiteFinanceVC-Live-06',
+        'LiteFinanceVC-Live-07',
+        'LiteFinanceVC-Live-08',
+        'LiteFinanceVC-Live-09',
+        'LiteFinanceMU-Live-10',
+        'LiteFinanceMU-Live-11',
+      ]),
+      ...demo(['LiteFinanceVC-Demo', 'LiteFinanceMU-Demo']),
+    ],
+    serversMt4: [
+      ...live([
+        'LiteFinanceVC-Live-02',
+        'LiteFinanceVC-Live-03',
+        'LiteFinanceVC-Live-04',
+        'LiteFinanceVC-Live-05',
+        'LiteFinanceVC-Live-06',
+        'LiteFinanceVC-Live-07',
+        'LiteFinanceVC-Live-08',
+        'LiteFinanceVC-Live-09',
+        'LiteFinanceMU-Live-10',
+        'LiteFinanceMU-Live-11',
+      ]),
+      ...demo(['LiteFinanceVC-Demo', 'LiteFinanceMU-Demo']),
     ],
   },
   {
@@ -186,8 +536,20 @@ export const MT5_BROKERS = [
     logo: brokerLogo('alpari'),
     allowCustomServer: true,
     servers: [
-      { name: 'Alpari-MT5', type: 'live' },
-      { name: 'Alpari-MT5-Demo', type: 'demo' },
+      ...live(['Alpari-MT5']),
+      ...demo(['Alpari-MT5-Demo']),
+    ],
+    serversMt4: [
+      ...live([
+        'Alpari-ECN1',
+        'Alpari-Pro.ECN',
+        'Alpari-Pro.ECN2',
+        'Alpari-Pro.ECN3',
+        'Alpari-Standard1',
+        'Alpari-Standard2',
+        'Alpari-Standard3',
+      ]),
+      ...demo(['Alpari-Demo', 'Alpari-ECN-Demo', 'Alpari-Pro.ECN-Demo']),
     ],
   },
   {
@@ -197,11 +559,56 @@ export const MT5_BROKERS = [
     logo: brokerLogo('forextime'),
     allowCustomServer: true,
     servers: [
-      { name: 'ForexTime-Live01', type: 'live' },
-      { name: 'ForexTime-Live02', type: 'live' },
-      { name: 'ForexTime-Demo01', type: 'demo' },
-      { name: 'ForexTimeFXTM-Live01', type: 'live' },
-      { name: 'ForexTimeFXTM-Demo01', type: 'demo' },
+      ...live([
+        'ForexTime-Standard',
+        'ForexTime-Cent',
+        'ForexTime-Cent2',
+        'ForexTime-ECN',
+        'ForexTime-ECN2',
+        'ForexTime-ECN-Zero',
+        'ForexTimeFXTM-Standard',
+        'ForexTimeFXTM-Cent',
+        'ForexTimeFXTM-Cent2',
+        'ForexTimeFXTM-ECN',
+        'ForexTimeFXTM-ECN2',
+        'ForexTimeFXTM-ECN-Zero',
+      ]),
+      ...demo([
+        'ForexTime-Standard-demo',
+        'ForexTime-Cent-demo',
+        'ForexTime-ECN-demo',
+        'ForexTime-ECN-Zero-demo',
+        'ForexTimeFXTM-Standard-demo',
+        'ForexTimeFXTM-Cent-demo',
+        'ForexTimeFXTM-ECN-demo',
+        'ForexTimeFXTM-ECN-Zero-demo',
+      ]),
+    ],
+    serversMt4: [
+      ...live([
+        'ForexTime-Standard',
+        'ForexTime-Cent',
+        'ForexTime-Cent2',
+        'ForexTime-ECN',
+        'ForexTime-ECN2',
+        'ForexTime-ECN-Zero',
+        'ForexTimeFXTM-Standard',
+        'ForexTimeFXTM-Cent',
+        'ForexTimeFXTM-Cent2',
+        'ForexTimeFXTM-ECN',
+        'ForexTimeFXTM-ECN2',
+        'ForexTimeFXTM-ECN-Zero',
+      ]),
+      ...demo([
+        'ForexTime-Standard-demo',
+        'ForexTime-Cent-demo',
+        'ForexTime-ECN-demo',
+        'ForexTime-ECN-Zero-demo',
+        'ForexTimeFXTM-Standard-demo',
+        'ForexTimeFXTM-Cent-demo',
+        'ForexTimeFXTM-ECN-demo',
+        'ForexTimeFXTM-ECN-Zero-demo',
+      ]),
     ],
   },
   {
@@ -211,6 +618,7 @@ export const MT5_BROKERS = [
     logo: brokerLogo('other'),
     allowCustomServer: true,
     servers: [],
+    serversMt4: [],
   },
 ];
 
@@ -223,6 +631,9 @@ export function listMt5BrokersSorted() {
     if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
     if (a.id === OTHER_BROKER_ID) return 1;
     if (b.id === OTHER_BROKER_ID) return -1;
+    const ar = Number.isFinite(a.pinRank) ? a.pinRank : 500;
+    const br = Number.isFinite(b.pinRank) ? b.pinRank : 500;
+    if (ar !== br) return ar - br;
     return a.name.localeCompare(b.name);
   });
 }
@@ -243,20 +654,28 @@ export function brokerLogoSrc(brokerId) {
   return getMt5Broker(brokerId)?.logo || '';
 }
 
-export function serverSelectOptions(brokerId) {
+function serversForPlatform(broker, platform = 'mt5') {
+  const isMt4 = String(platform || 'mt5').toLowerCase() === 'mt4';
+  // Explicit empty array means "no known nodes for this platform" → custom only.
+  if (isMt4 && broker.serversMt4 != null) return broker.serversMt4;
+  return broker.servers || [];
+}
+
+export function serverSelectOptions(brokerId, platform = 'mt5') {
   const broker = getMt5Broker(brokerId);
   if (!broker) return [{ value: CUSTOM_SERVER_VALUE, label: 'Type exact server…' }];
-  const opts = broker.servers.map((s) => ({
+  const servers = serversForPlatform(broker, platform);
+  const opts = servers.map((s) => ({
     value: s.name,
     label: s.type === 'demo' ? `${s.name} (demo)` : s.name,
   }));
-  if (broker.allowCustomServer || broker.servers.length === 0) {
+  if (broker.allowCustomServer || servers.length === 0) {
     opts.push({ value: CUSTOM_SERVER_VALUE, label: 'Type exact server…' });
   }
   return opts;
 }
 
-/** Resolve the exact MT5 server string to send to the bridge. */
+/** Resolve the exact MetaTrader server string to send to the bridge. */
 export function resolveMt5Server(brokerId, serverChoice, customServer) {
   if (!serverChoice || serverChoice === CUSTOM_SERVER_VALUE) {
     return (customServer || '').trim();

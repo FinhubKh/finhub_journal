@@ -402,7 +402,7 @@ export default function AccountDetailPage() {
           )}
         >
           <p className="mb-3 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Read-only MT5 login. We pull closed trades for you — no EA install required.
+            Read-only MetaTrader login. We pull closed trades for you — no EA install on your PC.
           </p>
           <div className="-mx-4 -mb-4 border-t border-zinc-100 dark:border-zinc-800 md:-mx-5 md:-mb-5">
             <InvestorSyncPanel

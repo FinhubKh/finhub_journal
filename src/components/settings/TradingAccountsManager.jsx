@@ -230,7 +230,7 @@ function SyncModeStep({ form, setField }) {
         />
         <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Investor password</p>
         <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Read-only login. We pull closed trades for you — no EA install.
+          Read-only MetaTrader login. We pull closed trades for you — no EA install on your PC.
         </p>
       </label>
     </div>

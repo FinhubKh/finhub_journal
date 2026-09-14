@@ -13,7 +13,7 @@ const METHODS = [
   {
     id: 'investor',
     title: 'Investor password',
-    desc: 'Read-only login. We pull closed trades for you — no EA install required.',
+    desc: 'Read-only MetaTrader login. We pull closed trades for you — no EA install on your PC.',
     meta: 'Cloud sync',
     badge: 'Easiest',
   },
