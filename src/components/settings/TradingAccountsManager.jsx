@@ -6,6 +6,7 @@ import {
   setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
   listInvestorCredentialsStatus,
   connectAndVerifyInvestorCredentials,
+  refreshAccountRiskEligibility,
 } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
@@ -14,6 +15,7 @@ import {
   ACCOUNT_TYPES,
   PNL_DENOMINATIONS,
   PLATFORMS,
+  RISK_TRACKS,
   ACCOUNT_COLORS,
   accountTypeLabel,
   pnlDenominationLabel,
@@ -22,6 +24,8 @@ import {
   normalizeSlug,
   normalizePnlDenomination,
   normalizePlatform,
+  normalizeRiskTrack,
+  riskTrackLabel,
 } from '../../lib/accounts';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
@@ -35,11 +39,17 @@ import BrokerServerFields from './BrokerServerFields';
 /** Form dropdowns should match text inputs, not toolbar pills. */
 const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 text-left font-normal`;
 
+const RISK_TRACK_OPTIONS = [
+  { value: '', label: 'Not set' },
+  ...RISK_TRACKS,
+];
+
 const EMPTY_FORM = {
   name: '',
   accountType: 'live',
   pnlDenomination: 'usd',
   platform: 'mt5',
+  riskTrack: '',
   syncMode: 'ea',
   brokerId: '',
   serverChoice: '',
@@ -56,6 +66,7 @@ function accountToForm(account) {
     accountType: account.account_type || 'live',
     pnlDenomination: normalizePnlDenomination(account.pnl_denomination),
     platform: normalizePlatform(account.platform),
+    riskTrack: normalizeRiskTrack(account.risk_track) || '',
   };
 }
 
@@ -151,6 +162,22 @@ function AccountFormFields({ form, setField }) {
         </div>
       </div>
       {CENT_HELPER}
+      <div>
+        <label className={label}>Risk track (optional)</label>
+        <CustomDropdown
+          className="w-full"
+          menuClassName="w-full"
+          buttonClassName={formSelectBtn}
+          value={form.riskTrack || ''}
+          onChange={(v) => setField('riskTrack', v)}
+          options={RISK_TRACK_OPTIONS}
+          placeholder="Not set"
+          ariaLabel="Risk track"
+        />
+        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+          Master or EA eligibility is auto-checked from journal history. You can change this later.
+        </p>
+      </div>
     </div>
   );
 }
@@ -286,6 +313,10 @@ function ReviewStep({ form }) {
       <div className={row}>
         <dt className={dt}>Currency</dt>
         <dd className={dd}>{pnlDenominationLabel(form.pnlDenomination)}</dd>
+      </div>
+      <div className={row}>
+        <dt className={dt}>Risk track</dt>
+        <dd className={dd}>{riskTrackLabel(form.riskTrack)}</dd>
       </div>
       <div className={row}>
         <dt className={dt}>Sync</dt>
@@ -471,7 +502,9 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           account_type: form.accountType,
           platform: normalizePlatform(form.platform),
           pnl_denomination: newDenom,
+          risk_track: normalizeRiskTrack(form.riskTrack),
         });
+        await refreshAccountRiskEligibility([account.id]).catch(() => {});
         await onSaved();
         onClose();
         if (adjusted > 0) {
@@ -488,6 +521,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           account_type: form.accountType,
           platform: normalizePlatform(form.platform),
           pnl_denomination: form.pnlDenomination,
+          risk_track: normalizeRiskTrack(form.riskTrack),
           color,
           is_default: tradingAccounts.length === 0,
           connection_status: effectiveSyncMode === 'investor' ? 'investor' : 'ea',
@@ -497,6 +531,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
         });
         const row = Array.isArray(created) ? created[0] : created;
         if (!row?.id) throw new Error('Account was created but no id was returned.');
+        await refreshAccountRiskEligibility([row.id]).catch(() => {});
 
         if (effectiveSyncMode === 'investor') {
           try {
@@ -623,6 +658,22 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                     </div>
                   </div>
                   {CENT_HELPER}
+                  <div>
+                    <label className={label}>Risk track (optional)</label>
+                    <CustomDropdown
+                      className="w-full"
+                      menuClassName="w-full"
+                      buttonClassName={formSelectBtn}
+                      value={form.riskTrack || ''}
+                      onChange={(v) => setField('riskTrack', v)}
+                      options={RISK_TRACK_OPTIONS}
+                      placeholder="Not set"
+                      ariaLabel="Risk track"
+                    />
+                    <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      Master or EA eligibility is auto-checked from journal history. You can change this later.
+                    </p>
+                  </div>
                 </div>
               ) : null}
               {step?.id === 'sync' ? <SyncModeStep form={form} setField={setField} /> : null}
