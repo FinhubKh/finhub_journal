@@ -1,5 +1,5 @@
 // src/components/settings/InvestorSyncPanel.jsx
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { connectAndVerifyInvestorCredentials, runInvestorSyncAndWait, removeInvestorCredentials, updateTradingAccount } from '../../api';
 import { useDialog } from '../../context/DialogContext';
 import { toast } from 'react-toastify';
@@ -59,6 +59,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
   const [syncing, setSyncing] = useState(false);
   const [syncStage, setSyncStage] = useState(null);
   const [msg, setMsg] = useState(null);
+  const verifyAbortRef = useRef(null);
   const plat = platformLabel(form.platform);
 
   function setField(key, value) {
@@ -86,6 +87,9 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
     }
     setBusy(true);
     setMsg(null);
+    const abort = new AbortController();
+    verifyAbortRef.current?.abort();
+    verifyAbortRef.current = abort;
     try {
       const platform = normalizePlatform(form.platform);
       // Persist MT4/MT5 before verify so the bridge routes to the right terminal.
@@ -97,16 +101,29 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
         brokerServer: form.brokerServer.trim(),
         login: form.login.trim(),
         investorPassword: form.investorPassword,
-      });
+      }, { signal: abort.signal });
       setForm({ ...EMPTY_CONNECT, platform });
       setFormOpen(false);
       await onChanged();
       toast.success('Investor password connected');
     } catch (err) {
-      setMsg(err.message || 'Could not verify investor credentials.');
+      if (abort.signal.aborted || err?.message === 'Verification cancelled.') {
+        setMsg(null);
+      } else {
+        setMsg(err.message || 'Could not verify investor credentials.');
+      }
     } finally {
+      if (verifyAbortRef.current === abort) verifyAbortRef.current = null;
       setBusy(false);
     }
+  }
+
+  function handleCancelVerify() {
+    verifyAbortRef.current?.abort();
+    verifyAbortRef.current = null;
+    setBusy(false);
+    setMsg(null);
+    setFormOpen(false);
   }
 
   async function handleSyncNow() {
@@ -257,10 +274,16 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
               autoComplete="new-password"
             />
           </div>
+          {busy ? (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Checking login with the cloud bridge
+              {normalizePlatform(form.platform) === 'mt4' ? ' — MT4 can take up to 2 minutes' : ''}…
+            </p>
+          ) : null}
           {msg && <p className={msgError}>{msg}</p>}
           <div className="flex flex-wrap gap-2 pt-1">
             <button className={btnPrimary} type="submit" disabled={busy}>{busy ? 'Verifying...' : 'Connect'}</button>
-            <button className={btnGhost} type="button" disabled={busy} onClick={() => setFormOpen(false)}>Cancel</button>
+            <button className={btnGhost} type="button" onClick={busy ? handleCancelVerify : () => setFormOpen(false)}>Cancel</button>
           </div>
         </form>
       ) : (

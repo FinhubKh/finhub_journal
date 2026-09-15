@@ -164,7 +164,7 @@ export default function BrokerServerFields({
             className={input}
             placeholder={
               platShort === 'MT4'
-                ? 'e.g. Blackwellglobal2-Live3 or Exness-Real'
+                ? 'e.g. BlackwellGlobal2-Live3 or Exness-Real'
                 : 'e.g. STMarket-Live or Exness-MT5Real36'
             }
             value={customServer}

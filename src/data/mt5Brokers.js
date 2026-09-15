@@ -99,9 +99,9 @@ export const MT5_BROKERS = [
       ...demo(['BlackwellGlobalInvestments-Demo_Server']),
     ],
     serversMt4: [
-      // Exact company node name inside the .srv (capital G)
+      // Exact company node name inside the .srv (capital G). Do not offer the
+      // lowercase-g alias — MT4 matches the .srv server string case-sensitively.
       { name: 'BlackwellGlobal2-Live3', type: 'live' },
-      { name: 'Blackwellglobal2-Live3', type: 'live' },
       { name: 'BlackwellGlobal-Live', type: 'live' },
       { name: 'BlackwellGlobal1-Live5', type: 'live' },
       { name: 'BGPreciousMetals-Live', type: 'live' },

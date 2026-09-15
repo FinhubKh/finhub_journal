@@ -112,7 +112,9 @@ export default function SyncLoadingModal({ open, accountName, stage, platform })
           </ol>
 
           <p className="mt-6 text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            Please wait — do not close this page
+            {platformShort(platform) === 'MT4'
+              ? 'MT4 can take up to a few minutes — do not close this page'
+              : 'Please wait — do not close this page'}
           </p>
         </div>
       </div>

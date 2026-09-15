@@ -11,8 +11,11 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase();
 
-const VERIFY_POLL_MS = 400;
-const VERIFY_POLL_ATTEMPTS = 75; // ~30s after the first immediate check
+const VERIFY_POLL_MS = 500;
+// MT4 investor login can take up to ~150s on the bridge (EA wait + terminal
+// start). Poll long enough to surface the real broker error instead of a
+// premature "bridge busy" timeout while the UI sits on Verifying...
+const VERIFY_POLL_ATTEMPTS = 360; // ~3 minutes after the first immediate check
 
 async function parseJson(res) {
   let body = null;
@@ -86,7 +89,7 @@ export async function getInvestorVerifyStatus({ jobId, tradingAccountId }) {
  * Connect investor credentials and wait until MT5 login verify finishes.
  * Throws with a user-facing message on failure / timeout.
  */
-export async function connectAndVerifyInvestorCredentials(params) {
+export async function connectAndVerifyInvestorCredentials(params, { signal } = {}) {
   const started = await connectInvestorCredentials(params);
   const jobId = started.job_id;
   const tradingAccountId = params.tradingAccountId;
@@ -95,8 +98,14 @@ export async function connectAndVerifyInvestorCredentials(params) {
   // from the bridge — a network hiccup here is transient, so we just
   // surface the error and leave the saved credentials alone.
   for (let i = 0; i < VERIFY_POLL_ATTEMPTS; i += 1) {
+    if (signal?.aborted) {
+      throw new Error('Verification cancelled.');
+    }
     // Check immediately on the first loop — don't burn time before looking.
     if (i > 0) await sleep(VERIFY_POLL_MS);
+    if (signal?.aborted) {
+      throw new Error('Verification cancelled.');
+    }
     const status = await getInvestorVerifyStatus({ jobId, tradingAccountId });
     if (status.status === 'pending') continue;
     if (status.status === 'ok') return { ok: true, ...started };
@@ -128,7 +137,10 @@ export async function triggerInvestorSync(tradingAccountId) {
 }
 
 const SYNC_POLL_MS = 500;
-const SYNC_POLL_ATTEMPTS = 240; // ~2 minutes after the first immediate check
+// MT4 login+history can take 3–4 minutes when the terminal cold-starts.
+// Keep polling long enough to surface the real bridge error instead of a
+// premature timeout while the modal sits on "Connecting to MT4".
+const SYNC_POLL_ATTEMPTS = 600; // ~5 minutes after the first immediate check
 
 /**
  * Queue investor sync and keep polling until trades land or the worker records an error.
