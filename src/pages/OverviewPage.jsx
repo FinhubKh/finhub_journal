@@ -369,20 +369,11 @@ export default function OverviewPage() {
                   />
                 )}
 
-                {activeSection === 'summary' && !hasActivity && showEligibility && (
-                  <EligibilitySection
-                    account={activeAccount}
-                    daily={journalDaily}
-                    maxDd={stats?.maxDD || 0}
-                    onChanged={refreshTradingAccounts}
-                  />
-                )}
-
-                {activeSection === 'risk' && (
+                {activeSection === 'risk' && hasActivity && (
                   <RiskSection stats={stats} showAccounts={showAccounts} denomination={denomination} />
                 )}
 
-                {activeSection === 'breakdown' && (
+                {activeSection === 'breakdown' && hasActivity && (
                   <section aria-label="Breakdown" role="tabpanel" className="flex h-full min-h-0 w-full flex-col">
                     <BreakdownCard breakdown={journalBreakdown} denomination={denomination} fill />
                   </section>
