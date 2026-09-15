@@ -99,12 +99,20 @@ export async function refreshAccountRiskEligibility(accountIds) {
 }
 
 export async function updateTradingAccount(id, fields) {
+  // Computed by refresh_account_risk_eligibility — never accept client writes.
+  const {
+    risk_eligible: _re,
+    risk_failed_rules: _rfr,
+    risk_metrics: _rm,
+    risk_checked_at: _rca,
+    ...safeFields
+  } = fields || {};
   const res = await authFetch(
     `${SUPABASE_URL}/rest/v1/trading_accounts?id=eq.${id}&user_id=eq.${getUserId()}`,
     {
       method: 'PATCH',
       headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
-      body: JSON.stringify(fields),
+      body: JSON.stringify(safeFields),
     },
   );
   if (!res.ok) throw new Error(await res.text());

@@ -43,6 +43,10 @@ declare
   trade_count int;
   owner_id uuid;
 begin
+  -- Allow this SECURITY DEFINER function to write computed risk columns
+  -- (client PATCH is blocked by protect_risk_eligibility_columns trigger).
+  perform set_config('finhubkh.allow_risk_refresh', 'on', true);
+
   if p_account_ids is null or array_length(p_account_ids, 1) is null then
     return;
   end if;
@@ -488,3 +492,28 @@ $$;
 
 revoke all on function public.get_published_trading_account(text, int) from public, anon;
 grant execute on function public.get_published_trading_account(text, int) to anon, authenticated;
+
+-- Prevent clients from PATCHing computed risk eligibility columns.
+-- refresh_account_risk_eligibility sets finhubkh.allow_risk_refresh=on (transaction-local)
+-- so its UPDATEs are allowed; all other writers keep OLD values.
+create or replace function public.protect_risk_eligibility_columns()
+returns trigger
+language plpgsql
+as $$
+begin
+  if current_setting('finhubkh.allow_risk_refresh', true) = 'on' then
+    return new;
+  end if;
+  new.risk_eligible := old.risk_eligible;
+  new.risk_failed_rules := old.risk_failed_rules;
+  new.risk_metrics := old.risk_metrics;
+  new.risk_checked_at := old.risk_checked_at;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_protect_risk_eligibility on public.trading_accounts;
+create trigger trg_protect_risk_eligibility
+  before update on public.trading_accounts
+  for each row
+  execute function public.protect_risk_eligibility_columns();
