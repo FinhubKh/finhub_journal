@@ -3,11 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   equityBase,
   historyDays,
-  maxDailyLossPct,
-  maxOverallLossPct,
-  maxDrawdownPct,
-  riskPerTradeBreaches,
-  hasLosingStreakOf,
   evaluateRiskEligibility,
 } from './riskEligibility.js';
 
