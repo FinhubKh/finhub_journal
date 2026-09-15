@@ -1,5 +1,5 @@
 // src/components/settings/RiskEligibilityPanel.jsx
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { refreshAccountRiskEligibility, updateTradingAccount } from '../../api';
 import CustomDropdown from '../common/CustomDropdown';
@@ -130,14 +130,26 @@ function rulesFromPersisted(account, track) {
   return rules;
 }
 
-function resolveStatus(account, evaluation) {
-  const track = normalizeRiskTrack(account?.risk_track) || evaluation.track;
+function hasPersistedRiskSnapshot(account) {
+  if (account?.risk_checked_at) return true;
+  const metrics = account?.risk_metrics;
+  return Boolean(metrics && typeof metrics === 'object' && Object.keys(metrics).length > 0);
+}
+
+function needsRiskRefresh(account) {
+  const track = normalizeRiskTrack(account?.risk_track);
+  if (!track || !account?.id) return false;
+  if (account.risk_checked_at == null) return true;
+  const metrics = account.risk_metrics;
+  return !metrics || typeof metrics !== 'object' || Object.keys(metrics).length === 0;
+}
+
+function resolveStatus(account) {
+  const track = normalizeRiskTrack(account?.risk_track);
   if (!track) return 'unconfigured';
   if (account?.risk_eligible === true) return 'eligible';
   const failed = asFailedList(account?.risk_failed_rules);
-  if (failed.includes(RISK_RULE_IDS.HISTORY) || evaluation.status === 'needs_history') {
-    return 'needs_history';
-  }
+  if (failed.includes(RISK_RULE_IDS.HISTORY)) return 'needs_history';
   return 'not_eligible';
 }
 
@@ -159,29 +171,66 @@ export default function RiskEligibilityPanel({
   onChanged,
 }) {
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [msg, setMsg] = useState(null);
 
   const trackValue = normalizeRiskTrack(account?.risk_track) || '';
 
-  const { status, rules } = useMemo(() => {
+  useEffect(() => {
+    if (!needsRiskRefresh(account)) return undefined;
+
+    let cancelled = false;
+    setRefreshing(true);
+
+    (async () => {
+      try {
+        await refreshAccountRiskEligibility([account.id]);
+        if (!cancelled) await onChanged?.();
+      } catch (err) {
+        if (!cancelled) {
+          setMsg(err.message || 'Could not refresh eligibility.');
+        }
+      } finally {
+        if (!cancelled) setRefreshing(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [account?.id, account?.risk_track]);
+
+  const { status, rules, awaitingMetrics } = useMemo(() => {
+    const track = normalizeRiskTrack(account?.risk_track);
+    const tradesEmpty = !trades?.length;
+
+    if (!track) {
+      return { status: 'unconfigured', rules: [], awaitingMetrics: false };
+    }
+
+    const status = resolveStatus(account);
+
+    if (tradesEmpty) {
+      if (hasPersistedRiskSnapshot(account)) {
+        return {
+          status,
+          rules: rulesFromPersisted(account, track),
+          awaitingMetrics: false,
+        };
+      }
+      return { status, rules: [], awaitingMetrics: true };
+    }
+
     const evaluation = evaluateRiskEligibility({
       account,
       trades,
       daily,
       maxDd,
     });
-    const track = normalizeRiskTrack(account?.risk_track) || evaluation.track;
-    const usePersistedRules = track
-      && (!trades || trades.length === 0)
-      && account?.risk_metrics
-      && typeof account.risk_metrics === 'object'
-      && Object.keys(account.risk_metrics).length > 0;
-
     return {
-      status: resolveStatus(account, evaluation),
-      rules: usePersistedRules
-        ? rulesFromPersisted(account, track)
-        : evaluation.rules,
+      status,
+      rules: evaluation.rules,
+      awaitingMetrics: false,
     };
   }, [account, trades, daily, maxDd]);
 
@@ -235,6 +284,10 @@ export default function RiskEligibilityPanel({
       {status === 'unconfigured' ? (
         <p className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
           Choose Master or EA to auto-check eligibility from this account&apos;s journal history.
+        </p>
+      ) : awaitingMetrics || refreshing ? (
+        <p className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+          Refreshing…
         </p>
       ) : rules.length ? (
         <ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
