@@ -71,10 +71,10 @@ function formatRuleActual(id, actual) {
     return n === 0 ? '0 breaches' : `${n} breach${n === 1 ? '' : 'es'}`;
   }
   if (id === RISK_RULE_IDS.STREAK) {
-    return Number(actual) ? 'Failed' : 'Pass';
+    return Number(actual) ? '3+ streak found' : 'No 3+ streak';
   }
   if (id === RISK_RULE_IDS.PERF) {
-    return Number(actual) ? 'Ready' : 'Not ready';
+    return Number(actual) ? 'Available' : 'Unavailable';
   }
   if (id === RISK_RULE_IDS.EQUITY) return 'Missing';
   return String(actual);
@@ -290,26 +290,47 @@ export default function RiskEligibilityPanel({
           Refreshing…
         </p>
       ) : rules.length ? (
-        <ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
+        <ul className="mt-4 space-y-1" role="list" aria-label="Eligibility checklist">
           {rules.map((rule) => {
-            const pass = rule.pass === true;
+            const checked = rule.pass === true;
+            const title = RULE_COPY[rule.id] || rule.id;
             return (
               <li
                 key={rule.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md px-1 py-2 text-sm"
               >
-                <div className="min-w-0 flex items-center gap-2">
+                <div className="min-w-0 flex items-center gap-2.5">
                   <span
-                    className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                      pass
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
+                    className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                      checked
+                        ? 'border-emerald-500 bg-emerald-500 text-white dark:border-emerald-400 dark:bg-emerald-400 dark:text-emerald-950'
+                        : 'border-zinc-300 bg-transparent dark:border-zinc-600'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {checked ? (
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path
+                          d="M2.5 6.2L4.8 8.5L9.5 3.5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+                  <span
+                    className={`font-medium ${
+                      checked
+                        ? 'text-zinc-800 dark:text-zinc-200'
+                        : 'text-zinc-500 dark:text-zinc-400'
                     }`}
                   >
-                    {pass ? 'Pass' : 'Fail'}
-                  </span>
-                  <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                    {RULE_COPY[rule.id] || rule.id}
+                    {title}
+                    <span className="sr-only">
+                      {checked ? ' — met' : ' — not met'}
+                    </span>
                   </span>
                 </div>
                 <span className="tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
