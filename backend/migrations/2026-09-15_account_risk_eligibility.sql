@@ -41,6 +41,7 @@ declare
   metrics jsonb;
   eligible boolean;
   trade_count int;
+  owner_id uuid;
 begin
   if p_account_ids is null or array_length(p_account_ids, 1) is null then
     return;
@@ -51,12 +52,20 @@ begin
       continue;
     end if;
 
-    select ta.risk_track, coalesce(ta.starting_balance, 0)
-      into track, start_bal
+    select ta.risk_track, coalesce(ta.starting_balance, 0), ta.user_id
+      into track, start_bal, owner_id
     from public.trading_accounts ta
     where ta.id = aid;
 
     if not found then
+      continue;
+    end if;
+
+    -- Authenticated callers may only refresh their own accounts.
+    -- Triggers / service_role typically have null auth.uid() and may refresh any id.
+    if auth.uid() is not null
+       and current_user is distinct from 'service_role'
+       and owner_id is distinct from auth.uid() then
       continue;
     end if;
 
