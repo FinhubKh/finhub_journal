@@ -5,7 +5,9 @@ import {
   normalizePnlDenomination,
 } from '../../lib/accounts';
 import { fmtPnlStrict } from '../../lib/format';
+import { resolveSiacStatus } from '../../lib/siacEligibilityUi';
 import { card, cardBody, cardHd, cardTitle } from '../../lib/ui';
+import { SiacStatusPill } from '../settings/SiacChecklist';
 
 export default function PortfolioBreakdown({ fill = false }) {
   const { journalAccounts, tradingAccounts, setActiveAccountId } = useAppData();
@@ -62,7 +64,10 @@ export default function PortfolioBreakdown({ fill = false }) {
                   style={{ backgroundColor: account.color || '#a1a1aa' }}
                 />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{account.name}</div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{account.name}</div>
+                    <SiacStatusPill status={resolveSiacStatus(account)} />
+                  </div>
                   <div className="text-xs text-zinc-400 dark:text-zinc-500">{accountTypeLabel(account.account_type)}</div>
                 </div>
               </div>

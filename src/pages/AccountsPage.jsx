@@ -5,7 +5,9 @@ import { deleteTradingAccount } from '../api';
 import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
 import { accountTypeLabel, pnlDenominationLabel } from '../lib/accounts';
+import { resolveSiacStatus } from '../lib/siacEligibilityUi';
 import { AccountFormModal } from '../components/settings/TradingAccountsManager';
+import { SiacStatusPill } from '../components/settings/SiacChecklist';
 import {
   btnOutline, btnPrimary, card, dashboardPageWideFull, emptyState,
 } from '../lib/ui';
@@ -68,6 +70,8 @@ function ChevronIcon() {
 }
 
 function AccountListCard({ account, onOpen, onEdit, onDelete, busy }) {
+  const siacStatus = resolveSiacStatus(account);
+
   return (
     <div
       className={`${card} group relative w-full overflow-hidden transition duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md dark:hover:border-violet-600`}
@@ -83,9 +87,12 @@ function AccountListCard({ account, onOpen, onEdit, onDelete, busy }) {
           onClick={onOpen}
           className="min-w-0 flex-1 text-left"
         >
-          <h3 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {account.name}
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {account.name}
+            </h3>
+            <SiacStatusPill status={siacStatus} />
+          </div>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {accountTypeLabel(account.account_type)}
             {' · '}
@@ -164,9 +171,6 @@ export default function AccountsPage() {
               Trading Accounts
             </h1>
           </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Manage your accounts, connect MetaTrader with an EA sync key or investor password, and set up your trading journal.
-          </p>
         </div>
         <button className={btnPrimary} type="button" onClick={() => setModal({ mode: 'add' })}>
           + Add Account

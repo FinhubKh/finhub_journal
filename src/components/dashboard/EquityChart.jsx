@@ -139,7 +139,6 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
         <div className={`${cardHd} shrink-0`}>
           <div>
             <h3 className={cardTitle}>Equity curve</h3>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cumulative performance over time</p>
           </div>
           <div className="flex items-center gap-2">
             {action}

@@ -10,6 +10,7 @@ import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
+import SiacSummaryCard from '../components/dashboard/SiacSummaryCard';
 import SyncNowButton from '../components/common/SyncNowButton';
 import RiskStatusPill from '../components/common/RiskStatusPill';
 import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
@@ -155,14 +156,23 @@ function EmptyOverview({ onOpenSetup }) {
   );
 }
 
-function SummarySection({ stats, pfPositive, daily, denomination }) {
+function SummarySection({
+  stats,
+  pfPositive,
+  daily,
+  denomination,
+  showSiac,
+  account,
+  onManageSiac,
+  onSiacChanged,
+}) {
   const initialDeposit = startingEquityFromStats(stats);
 
   return (
     <section
       aria-labelledby="overview-summary-heading"
       role="tabpanel"
-      className="flex h-full min-h-0 w-full flex-col gap-4"
+      className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto"
     >
       <div className="shrink-0">
         <h2 id="overview-summary-heading" className={`${sectionLabel} mb-3`}>Summary</h2>
@@ -202,10 +212,27 @@ function SummarySection({ stats, pfPositive, daily, denomination }) {
           />
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <h2 className={`${sectionLabel} mb-3 shrink-0`}>Equity</h2>
-        <div className="min-h-0 flex-1">
-          <EquityChart daily={daily} denomination={denomination} initialDeposit={initialDeposit} fill />
+
+      <div
+        className={`grid min-h-0 flex-1 gap-4 ${
+          showSiac && account ? 'lg:grid-cols-2' : 'grid-cols-1'
+        }`}
+      >
+        {showSiac && account ? (
+          <div className="flex min-h-88 flex-col lg:min-h-0">
+            <SiacSummaryCard
+              account={account}
+              onManage={onManageSiac}
+              onChanged={onSiacChanged}
+              fill
+            />
+          </div>
+        ) : null}
+
+        <div className="flex min-h-88 flex-col lg:min-h-0">
+          <div className="min-h-0 flex-1">
+            <EquityChart daily={daily} denomination={denomination} initialDeposit={initialDeposit} fill />
+          </div>
         </div>
       </div>
     </section>
@@ -366,6 +393,10 @@ export default function OverviewPage() {
                     pfPositive={pfPositive}
                     daily={journalDaily}
                     denomination={denomination}
+                    showSiac={showEligibility}
+                    account={activeAccount}
+                    onManageSiac={() => setActiveSection('eligibility')}
+                    onSiacChanged={refreshTradingAccounts}
                   />
                 )}
 

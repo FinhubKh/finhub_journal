@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../../context/AppDataContext';
 import { accountTypeLabel } from '../../lib/accounts';
+import { resolveSiacStatus } from '../../lib/siacEligibilityUi';
+import { SiacStatusPill } from '../settings/SiacChecklist';
 
 function Chevron({ open }) {
   return (
@@ -59,7 +61,7 @@ function AccountSwatch({ color, name, selected }) {
   );
 }
 
-function OptionRow({ selected, onClick, leading, title, subtitle }) {
+function OptionRow({ selected, onClick, leading, title, subtitle, trailing }) {
   return (
     <button
       type="button"
@@ -83,6 +85,7 @@ function OptionRow({ selected, onClick, leading, title, subtitle }) {
           </span>
         ) : null}
       </span>
+      {trailing ? <span className="shrink-0">{trailing}</span> : null}
       <span className="flex h-4 w-4 shrink-0 items-center justify-center">
         {selected ? <CheckIcon /> : null}
       </span>
@@ -194,6 +197,7 @@ export default function AccountViewDropdown({ variant = 'header' }) {
               <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
                 {tradingAccounts.map((a) => {
                   const selected = !isPortfolio && activeAccountId === a.id;
+                  const siacStatus = resolveSiacStatus(a);
                   return (
                     <OptionRow
                       key={a.id}
@@ -202,6 +206,7 @@ export default function AccountViewDropdown({ variant = 'header' }) {
                       leading={<AccountSwatch color={a.color} name={a.name} selected={selected} />}
                       title={a.name}
                       subtitle={accountTypeLabel(a.account_type)}
+                      trailing={<SiacStatusPill status={siacStatus} />}
                     />
                   );
                 })}

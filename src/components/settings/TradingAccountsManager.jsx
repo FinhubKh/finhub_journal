@@ -35,6 +35,8 @@ import CustomDropdown from '../common/CustomDropdown';
 import PasswordInput from '../common/PasswordInput';
 import InvestorSyncPanel from './InvestorSyncPanel';
 import BrokerServerFields from './BrokerServerFields';
+import { SiacStatusPill } from './SiacChecklist';
+import { resolveSiacStatus } from '../../lib/siacEligibilityUi';
 
 /** Form dropdowns should match text inputs, not toolbar pills. */
 const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 text-left font-normal`;
@@ -836,6 +838,7 @@ export function SyncKeyModal({ account, syncKey, onClose }) {
 function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit, onSetDefault, onUpdated, onKeysChanged, onInvestorChanged }) {
   const isMt4 = normalizePlatform(account.platform) === 'mt4';
   const plat = platformShort(account.platform);
+  const siacStatus = resolveSiacStatus(account);
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [revealedKey, setRevealedKey] = useState(null);
@@ -1001,6 +1004,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
               <h4 className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{account.name}</h4>
               <Badge tone="muted">{isMt4 ? 'MT4' : 'MT5'}</Badge>
               {account.is_default ? <Badge tone="accent">Default</Badge> : null}
+              <SiacStatusPill status={siacStatus} />
             </div>
             <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
               {accountTypeLabel(account.account_type)}
