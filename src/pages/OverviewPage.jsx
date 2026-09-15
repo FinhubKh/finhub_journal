@@ -12,6 +12,7 @@ import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 import SyncNowButton from '../components/common/SyncNowButton';
 import RiskStatusPill from '../components/common/RiskStatusPill';
+import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
 import { startingEquityFromStats } from '../lib/equityChart';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
@@ -33,7 +34,7 @@ function StatTile({ label, value, hint, tone = 'neutral' }) {
   );
 }
 
-function OverviewHeader() {
+function OverviewHeader({ onOpenEligibility }) {
   return (
     <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
       <div>
@@ -43,11 +44,51 @@ function OverviewHeader() {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <RiskStatusPill />
+        <RiskStatusPill onClick={onOpenEligibility} />
         <SyncNowButton />
         <AccountViewDropdown variant="header" />
       </div>
     </header>
+  );
+}
+
+function EligibilitySection({ account, daily, maxDd, onChanged }) {
+  if (!account) {
+    return (
+      <div className={`${card} px-5 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400`}>
+        Switch to a single account to check Master / EA eligibility.
+      </div>
+    );
+  }
+
+  return (
+    <section
+      aria-labelledby="overview-eligibility-heading"
+      role="tabpanel"
+      className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto"
+    >
+      <div className={`${card} px-4 py-4 md:px-5`}>
+        <div className="mb-4 border-b border-zinc-100 pb-3 dark:border-zinc-800">
+          <p className={sectionLabel}>Master / EA</p>
+          <h2
+            id="overview-eligibility-heading"
+            className="mt-1 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+          >
+            Eligibility checklist
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Auto-checked from this account&apos;s journal history. Capital protection first.
+          </p>
+        </div>
+        <RiskEligibilityPanel
+          account={account}
+          trades={[]}
+          daily={daily}
+          maxDd={maxDd}
+          onChanged={onChanged}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -251,36 +292,54 @@ function RiskSection({ stats, showAccounts, denomination }) {
 
 export default function OverviewPage() {
   const navigate = useNavigate();
-  const { journalStats: stats, journalDaily, journalBreakdown, viewMode, activeAccount, dataLoading } = useAppData();
+  const {
+    journalStats: stats,
+    journalDaily,
+    journalBreakdown,
+    viewMode,
+    activeAccount,
+    dataLoading,
+    refreshTradingAccounts,
+  } = useAppData();
   const denomination = useMemo(() => viewPnlDenomination(viewMode, activeAccount), [viewMode, activeAccount]);
   const hasTrades = (stats?.total || 0) > 0;
   const hasCashflow = (stats?.deposits || 0) > 0 || (stats?.withdrawals || 0) > 0;
   const hasActivity = hasTrades || hasCashflow;
   const showAccounts = viewMode === 'portfolio';
+  const showEligibility = viewMode === 'account' && Boolean(activeAccount);
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const next = [
       { id: 'summary', label: 'Summary' },
       { id: 'risk', label: showAccounts ? 'Risk & Accounts' : 'Risk' },
       { id: 'breakdown', label: 'Breakdown' },
-    ],
-    [showAccounts],
-  );
+    ];
+    if (showEligibility) {
+      next.push({ id: 'eligibility', label: 'Eligibility' });
+    }
+    return next;
+  }, [showAccounts, showEligibility]);
 
   const [activeSection, setActiveSection] = useState('summary');
 
   useEffect(() => {
     if (!tabs.some((t) => t.id === activeSection)) {
-      setActiveSection('summary');
+      setActiveSection(showEligibility && !hasActivity ? 'eligibility' : 'summary');
     }
-  }, [tabs, activeSection]);
+  }, [tabs, activeSection, showEligibility, hasActivity]);
+
+  useEffect(() => {
+    if (!hasActivity && showEligibility && activeSection === 'summary') {
+      setActiveSection('eligibility');
+    }
+  }, [hasActivity, showEligibility, activeSection]);
 
   const pfNum = stats ? parseFloat(stats.pf) : NaN;
   const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || stats.pf === '∞');
 
   return (
     <div className={dashboardPageWideFull}>
-      <OverviewHeader />
+      <OverviewHeader onOpenEligibility={() => setActiveSection('eligibility')} />
 
       {dataLoading ? (
         <OverviewLoading />
@@ -292,7 +351,7 @@ export default function OverviewPage() {
             </div>
           )}
 
-          {hasActivity && (
+          {(hasActivity || showEligibility) && (
             <>
               <OverviewSectionNav
                 tabs={tabs}
@@ -301,12 +360,21 @@ export default function OverviewPage() {
               />
 
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {activeSection === 'summary' && (
+                {activeSection === 'summary' && hasActivity && (
                   <SummarySection
                     stats={stats}
                     pfPositive={pfPositive}
                     daily={journalDaily}
                     denomination={denomination}
+                  />
+                )}
+
+                {activeSection === 'summary' && !hasActivity && showEligibility && (
+                  <EligibilitySection
+                    account={activeAccount}
+                    daily={journalDaily}
+                    maxDd={stats?.maxDD || 0}
+                    onChanged={refreshTradingAccounts}
                   />
                 )}
 
@@ -318,6 +386,15 @@ export default function OverviewPage() {
                   <section aria-label="Breakdown" role="tabpanel" className="flex h-full min-h-0 w-full flex-col">
                     <BreakdownCard breakdown={journalBreakdown} denomination={denomination} fill />
                   </section>
+                )}
+
+                {activeSection === 'eligibility' && showEligibility && (
+                  <EligibilitySection
+                    account={activeAccount}
+                    daily={journalDaily}
+                    maxDd={stats?.maxDD || 0}
+                    onChanged={refreshTradingAccounts}
+                  />
                 )}
               </div>
             </>

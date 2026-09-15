@@ -3,6 +3,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { normalizeRiskTrack } from '../../lib/accounts';
 import { RISK_RULE_IDS } from '../../lib/riskEligibility';
 
+
 const PILL_STYLES = {
   eligible: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60',
   not_eligible: 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60',
@@ -40,7 +41,7 @@ export function riskStatusPillLabel(account) {
  * Compact risk eligibility chip for single-account overview.
  * Hidden in portfolio view.
  */
-export default function RiskStatusPill({ className = '' }) {
+export default function RiskStatusPill({ className = '', onClick }) {
   const navigate = useNavigate();
   const { viewMode, activeAccount } = useAppData();
 
@@ -53,7 +54,13 @@ export default function RiskStatusPill({ className = '' }) {
       type="button"
       className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold tracking-wide transition active:scale-[0.98] ${PILL_STYLES[tone] || PILL_STYLES.unconfigured} ${className}`.trim()}
       title="View risk eligibility checklist"
-      onClick={() => navigate(`/dashboard/accounts/${activeAccount.id}`)}
+      onClick={() => {
+        if (typeof onClick === 'function') {
+          onClick();
+          return;
+        }
+        navigate(`/dashboard/accounts/${activeAccount.id}`);
+      }}
     >
       {text}
     </button>
