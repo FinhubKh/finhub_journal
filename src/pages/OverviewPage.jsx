@@ -11,6 +11,7 @@ import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 import SyncNowButton from '../components/common/SyncNowButton';
+import RiskStatusPill from '../components/common/RiskStatusPill';
 import { startingEquityFromStats } from '../lib/equityChart';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
@@ -42,6 +43,7 @@ function OverviewHeader() {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <RiskStatusPill />
         <SyncNowButton />
         <AccountViewDropdown variant="header" />
       </div>
