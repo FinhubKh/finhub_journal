@@ -14,6 +14,7 @@ import {
 } from '../api';
 import BackButton from '../components/common/BackButton';
 import InvestorSyncPanel from '../components/settings/InvestorSyncPanel';
+import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
 import {
   AccountFormModal,
   SyncKeyModal,
@@ -82,6 +83,9 @@ export default function AccountDetailPage() {
     tradingAccounts,
     refreshTradingAccounts,
     refreshTrades,
+    journalStats,
+    journalDaily,
+    activeAccountId,
   } = useAppData();
 
   const account = tradingAccounts.find((a) => a.id === accountId) || null;
@@ -427,6 +431,18 @@ export default function AccountDetailPage() {
               compact
             />
           </div>
+        </Panel>
+      </div>
+
+      <div className="mb-6">
+        <Panel eyebrow="Eligibility" title="Master / EA eligibility">
+          <RiskEligibilityPanel
+            account={account}
+            trades={[]}
+            daily={activeAccountId === account.id ? journalDaily : undefined}
+            maxDd={activeAccountId === account.id ? (journalStats?.maxDD || 0) : 0}
+            onChanged={refreshAll}
+          />
         </Panel>
       </div>
 
