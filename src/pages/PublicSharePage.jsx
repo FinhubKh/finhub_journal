@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchPublishedTradingAccount } from '../api/share';
 import { getSession, subscribeAuth } from '../api/auth';
-import { accountTypeLabel, pnlDenominationLabel, normalizePnlDenomination } from '../lib/accounts';
+import { accountTypeLabel, pnlDenominationLabel, normalizePnlDenomination, normalizeRiskTrack } from '../lib/accounts';
 import { fmtPnlStrict, fmtLot, fmtTradeR } from '../lib/format';
 import {
   btnOutline,
@@ -26,6 +26,18 @@ import PublicCalendar from '../components/share/PublicCalendar';
 import { startingEquityFromStats } from '../lib/equityChart';
 
 const PAGE_SIZE = 20;
+
+function PublicRiskBadge({ account }) {
+  if (!account?.risk_eligible) return null;
+  const track = normalizeRiskTrack(account.risk_track);
+  if (!track) return null;
+  const label = track === 'ea' ? 'EA Safe' : 'Master';
+  return (
+    <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+      {label}
+    </span>
+  );
+}
 
 /* --- Tabs ---------------------------------------------------------- */
 const TABS = [
@@ -398,7 +410,10 @@ export default function PublicSharePage() {
         {/* Account identity */}
         <div className="mb-6">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-violet-600 dark:text-emerald-400">Shared trading account</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">{account.name}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">{account.name}</h1>
+            <PublicRiskBadge account={account} />
+          </div>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
             Shared by <span className="font-medium text-zinc-800 dark:text-zinc-200">{owner.display_name}</span>
             {' · '}{accountTypeLabel(account.account_type)}
