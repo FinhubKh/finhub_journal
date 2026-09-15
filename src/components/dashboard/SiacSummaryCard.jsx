@@ -87,14 +87,6 @@ export default function SiacSummaryCard({ account, onManage, onChanged, fill = f
           <SiacChecklist rules={rules} />
         )}
       </div>
-
-      {typeof onManage === 'function' ? (
-        <div className="mt-4 shrink-0">
-          <button type="button" className={btnOutline} onClick={onManage}>
-            Manage SIAC
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }
