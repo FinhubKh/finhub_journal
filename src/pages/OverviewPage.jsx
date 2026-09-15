@@ -74,7 +74,7 @@ function EligibilitySection({ account, daily, maxDd, onChanged }) {
             id="overview-eligibility-heading"
             className="mt-1 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
           >
-            Eligibility checklist
+            SIAC Eligibility
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Auto-checked from this account&apos;s journal history. Capital protection first.
@@ -315,7 +315,7 @@ export default function OverviewPage() {
       { id: 'breakdown', label: 'Breakdown' },
     ];
     if (showEligibility) {
-      next.push({ id: 'eligibility', label: 'Eligibility' });
+      next.push({ id: 'eligibility', label: 'SIAC Eligibility' });
     }
     return next;
   }, [showAccounts, showEligibility]);

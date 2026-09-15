@@ -53,7 +53,7 @@ export default function RiskStatusPill({ className = '', onClick }) {
     <button
       type="button"
       className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold tracking-wide transition active:scale-[0.98] ${PILL_STYLES[tone] || PILL_STYLES.unconfigured} ${className}`.trim()}
-      title="View risk eligibility checklist"
+      title="View SIAC Eligibility checklist"
       onClick={() => {
         if (typeof onClick === 'function') {
           onClick();

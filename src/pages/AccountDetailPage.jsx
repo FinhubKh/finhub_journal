@@ -435,7 +435,7 @@ export default function AccountDetailPage() {
       </div>
 
       <div className="mb-6">
-        <Panel eyebrow="Eligibility" title="Master / EA eligibility">
+        <Panel eyebrow="SIAC Eligibility" title="Master / EA eligibility">
           <RiskEligibilityPanel
             account={account}
             trades={[]}

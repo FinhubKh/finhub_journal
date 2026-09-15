@@ -290,7 +290,7 @@ export default function RiskEligibilityPanel({
           Refreshing…
         </p>
       ) : rules.length ? (
-        <ul className="mt-4 space-y-1" role="list" aria-label="Eligibility checklist">
+        <ul className="mt-4 space-y-1" role="list" aria-label="SIAC Eligibility checklist">
           {rules.map((rule) => {
             const checked = rule.pass === true;
             const title = RULE_COPY[rule.id] || rule.id;
