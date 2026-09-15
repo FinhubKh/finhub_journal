@@ -18,6 +18,11 @@ export const PLATFORMS = [
   { value: 'mt4', label: 'MetaTrader 4' },
 ];
 
+export const RISK_TRACKS = [
+  { value: 'master', label: 'Master' },
+  { value: 'ea', label: 'EA / ATS' },
+];
+
 export function normalizePlatform(value) {
   const v = String(value || '').trim().toLowerCase();
   return v === 'mt4' ? 'mt4' : 'mt5';
@@ -30,6 +35,18 @@ export function platformLabel(value) {
 /** Short label for badges and sync copy: MT4 | MT5 */
 export function platformShort(value) {
   return normalizePlatform(value) === 'mt4' ? 'MT4' : 'MT5';
+}
+
+export function normalizeRiskTrack(value) {
+  const v = String(value || '').trim().toLowerCase();
+  return v === 'master' || v === 'ea' ? v : null;
+}
+
+export function riskTrackLabel(value) {
+  const v = normalizeRiskTrack(value);
+  if (v === 'master') return 'Master';
+  if (v === 'ea') return 'EA / ATS';
+  return 'Not set';
 }
 
 /** Active view denomination: cent only when drilling into a cent account. Portfolio stays USD. */

@@ -41,6 +41,11 @@ export const TRADING_ACCOUNT_SELECT = [
   'is_public',
   'share_token',
   'published_at',
+  'risk_track',
+  'risk_eligible',
+  'risk_failed_rules',
+  'risk_metrics',
+  'risk_checked_at',
   'created_at',
 ].join(',');
 
@@ -79,6 +84,18 @@ export async function insertTradingAccount(account) {
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+/** Recompute persisted Master / EA eligibility for one or more accounts. */
+export async function refreshAccountRiskEligibility(accountIds) {
+  const ids = (accountIds || []).filter(Boolean);
+  if (!ids.length) return;
+  const res = await authFetch(`${SUPABASE_URL}/rest/v1/rpc/refresh_account_risk_eligibility`, {
+    method: 'POST',
+    headers: authHeaders(getToken()),
+    body: JSON.stringify({ p_account_ids: ids }),
+  });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 export async function updateTradingAccount(id, fields) {

@@ -61,6 +61,13 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
   const data = await res.json();
   if (!data || !data.account) return null;
 
+  const rawAccount = data.account;
+  const account = {
+    ...rawAccount,
+    risk_track: rawAccount.risk_track ?? null,
+    risk_eligible: Boolean(rawAccount.risk_eligible),
+  };
+
   const trades = Array.isArray(data.trades) ? data.trades : [];
   const tradeCount = Number.isFinite(data.trade_count) ? data.trade_count : trades.length;
   const daily = Array.isArray(data.daily) ? data.daily : [];
@@ -81,7 +88,7 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
   } : null;
 
   return {
-    account: data.account,
+    account,
     owner: data.owner || { display_name: 'Trader' },
     trades,
     daily,
@@ -89,7 +96,7 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
     tradeCount,
     tradesReturned: Number.isFinite(data.trades_returned) ? data.trades_returned : trades.length,
     tradesCapped: Boolean(data.trades_capped),
-    shareUrl: shareUrlForToken(data.account.share_token),
+    shareUrl: shareUrlForToken(account.share_token),
   };
 }
 
