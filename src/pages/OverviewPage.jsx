@@ -162,11 +162,15 @@ function SummarySection({
   daily,
   denomination,
   showSiac,
+  isPortfolio,
   account,
+  accounts,
   onManageSiac,
+  onSelectAccount,
   onSiacChanged,
 }) {
   const initialDeposit = startingEquityFromStats(stats);
+  const siacReady = showSiac && (isPortfolio ? accounts?.length > 0 : Boolean(account));
 
   return (
     <section
@@ -215,14 +219,16 @@ function SummarySection({
 
       <div
         className={`grid min-h-0 flex-1 gap-4 ${
-          showSiac && account ? 'lg:grid-cols-2' : 'grid-cols-1'
+          siacReady ? 'lg:grid-cols-2' : 'grid-cols-1'
         }`}
       >
-        {showSiac && account ? (
+        {siacReady ? (
           <div className="flex min-h-88 flex-col lg:min-h-0">
             <SiacSummaryCard
-              account={account}
+              account={isPortfolio ? undefined : account}
+              accounts={isPortfolio ? accounts : undefined}
               onManage={onManageSiac}
+              onSelectAccount={onSelectAccount}
               onChanged={onSiacChanged}
               fill
             />
@@ -325,6 +331,8 @@ export default function OverviewPage() {
     journalBreakdown,
     viewMode,
     activeAccount,
+    tradingAccounts,
+    setActiveAccountId,
     dataLoading,
     refreshTradingAccounts,
   } = useAppData();
@@ -334,6 +342,7 @@ export default function OverviewPage() {
   const hasActivity = hasTrades || hasCashflow;
   const showAccounts = viewMode === 'portfolio';
   const showEligibility = viewMode === 'account' && Boolean(activeAccount);
+  const showSiacOnSummary = showEligibility || (showAccounts && tradingAccounts.length > 0);
 
   const tabs = useMemo(() => {
     const next = [
@@ -393,9 +402,21 @@ export default function OverviewPage() {
                     pfPositive={pfPositive}
                     daily={journalDaily}
                     denomination={denomination}
-                    showSiac={showEligibility}
+                    showSiac={showSiacOnSummary}
+                    isPortfolio={showAccounts}
                     account={activeAccount}
-                    onManageSiac={() => setActiveSection('eligibility')}
+                    accounts={tradingAccounts}
+                    onManageSiac={() => {
+                      if (showEligibility) {
+                        setActiveSection('eligibility');
+                        return;
+                      }
+                      navigate('/dashboard/accounts');
+                    }}
+                    onSelectAccount={(accountId) => {
+                      setActiveAccountId(accountId);
+                      setActiveSection('eligibility');
+                    }}
                     onSiacChanged={refreshTradingAccounts}
                   />
                 )}

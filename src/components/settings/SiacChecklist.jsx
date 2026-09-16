@@ -17,7 +17,7 @@ export function SiacStatusPill({ status }) {
 }
 
 /**
- * Read-only SIAC rule checklist with tick / empty checkbox rows.
+ * Read-only SIAC rule checklist with pass / fail markers.
  */
 export default function SiacChecklist({ rules = [], ariaLabel = 'SIAC Eligibility checklist' }) {
   if (!rules.length) return null;
@@ -32,12 +32,12 @@ export default function SiacChecklist({ rules = [], ariaLabel = 'SIAC Eligibilit
             key={rule.id}
             className="flex flex-wrap items-center justify-between gap-2 rounded-md px-1 py-2 text-sm"
           >
-            <div className="min-w-0 flex items-center gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
               <span
                 className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
                   checked
                     ? 'border-emerald-500 bg-emerald-500 text-white dark:border-emerald-400 dark:bg-emerald-400 dark:text-emerald-950'
-                    : 'border-zinc-300 bg-transparent dark:border-zinc-600'
+                    : 'border-rose-500 bg-rose-500 text-white dark:border-rose-400 dark:bg-rose-400 dark:text-rose-950'
                 }`}
                 aria-hidden="true"
               >
@@ -51,15 +51,13 @@ export default function SiacChecklist({ rules = [], ariaLabel = 'SIAC Eligibilit
                       strokeLinejoin="round"
                     />
                   </svg>
-                ) : null}
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path d="M3.5 3.5l5 5M8.5 3.5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                )}
               </span>
-              <span
-                className={`font-medium ${
-                  checked
-                    ? 'text-zinc-800 dark:text-zinc-200'
-                    : 'text-zinc-500 dark:text-zinc-400'
-                }`}
-              >
+              <span className="font-medium text-zinc-800 dark:text-zinc-100">
                 {title}
                 <span className="sr-only">
                   {checked ? ' — met' : ' — not met'}

@@ -11,9 +11,37 @@ const NAV_LINKS = [
   { href: '#platform', label: 'Platform' },
   { href: '#leaderboard', label: 'Leaderboard' },
   { href: '#features', label: 'Features' },
+  { href: '#siac', label: 'SIAC' },
   { href: '#how-it-works', label: 'How it works' },
   { href: '#install', label: 'Install' },
   { href: '#faq', label: 'FAQ' },
+];
+
+const SIAC_STEPS = [
+  {
+    n: '01',
+    title: 'Know SIAC',
+    desc: 'Cambodia’s securities investors association — education and representation for trading, including forex and digital assets.',
+  },
+  {
+    n: '02',
+    title: 'Track Master or EA',
+    desc: 'Pick a track on each journal account. Shared capital rules; one extra check per track.',
+  },
+  {
+    n: '03',
+    title: 'Auto-check from history',
+    desc: 'Trades and equity feed the checklist. Status: Eligible, Not eligible, or Needs history.',
+  },
+];
+
+const SIAC_MOCK_RULES = [
+  { label: 'Trading history ≥ 6 months', pass: true, actual: '214 days', limit: '182 days' },
+  { label: 'Max daily loss ≤ 1%', pass: true, actual: '0.62%', limit: '1.00%' },
+  { label: 'Max overall loss ≤ 10%', pass: true, actual: '4.10%', limit: '10.00%' },
+  { label: 'Max drawdown ≤ 10%', pass: true, actual: '7.40%', limit: '10.00%' },
+  { label: 'Risk per trade ≤ 1%', pass: true, actual: '0 breaches', limit: '0 breaches' },
+  { label: 'Losing streak control (no 3+)', pass: false, actual: '3+ streak found', limit: 'No 3+ streak' },
 ];
 
 const PLATFORM_TOOLS = [
@@ -103,6 +131,8 @@ const EA_DOWNLOAD_URL = '/FinhubJournal_TradeSync.ex5';
 
 const FAQS = [
   { q: 'Is FinhubKH Journal free?', a: 'Yes. Create an account and start journaling at no cost. Your data is private to your account.' },
+  { q: 'What is SIAC?', a: 'SIAC is the Securities Investors Association of Cambodia — an association focused on securities trading education (including forex and digital assets), member representation, and collaboration with regulators such as SERC. Learn more at siac.org.kh.' },
+  { q: 'What is SIAC Eligibility in the journal?', a: 'FinhubKH Journal auto-checks Master or EA capital-protection rules from your trade history — history length, daily and overall loss, drawdown, risk per trade, plus streak control (Master) or a performance report (EA). Status shows Eligible, Not eligible, or Needs history.' },
   { q: 'How does MT5 sync work?', a: 'Generate a sync key per trading account in Settings, paste it into the FinhubKH EA on that MT5 terminal, and closed trades import on startup.' },
   { q: 'Can I use multiple accounts?', a: 'Yes. Each journal account has its own sync key. Use a different key on each MT5 terminal and filter the journal by account.' },
   { q: 'Is my data shared publicly?', a: 'By default, no — trades and stats are private. If you publish a trading account in Settings, anyone with the share link can view that account’s stats and trade history (notes stay private), and it may appear on the public leaderboard. You can unpublish or regenerate the link anytime.' },
@@ -245,6 +275,71 @@ function FeatureMock({ type }) {
   return null;
 }
 
+function MockSiacCard({ compact = false }) {
+  return (
+    <div
+      className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-violet-900/20 ${
+        compact ? 'h-full' : ''
+      }`}
+    >
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/80">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Master / EA</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">SIAC Eligibility</p>
+        </div>
+        <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+          Not eligible
+        </span>
+      </div>
+      <ul
+        className={`grid min-h-0 grid-cols-1 px-2 py-1 ${compact ? 'flex-1' : ''}`}
+        style={compact ? { gridTemplateRows: `repeat(${SIAC_MOCK_RULES.length}, minmax(0, 1fr))` } : undefined}
+        role="list"
+        aria-label="Sample SIAC rules"
+      >
+        {SIAC_MOCK_RULES.map((rule) => (
+          <li
+            key={rule.label}
+            className="flex items-center justify-between gap-3 border-b border-zinc-100 px-2 text-sm last:border-b-0 dark:border-zinc-800"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span
+                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                  rule.pass
+                    ? 'border-emerald-500 bg-emerald-500 text-white dark:border-emerald-400 dark:bg-emerald-400 dark:text-emerald-950'
+                    : 'border-rose-500 bg-rose-500 text-white dark:border-rose-400 dark:bg-rose-400 dark:text-rose-950'
+                }`}
+                aria-hidden
+              >
+                {rule.pass ? (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                    <path d="M2.5 6.2L4.8 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                    <path d="M3.5 3.5l5 5M8.5 3.5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                )}
+              </span>
+              <span className="truncate font-medium text-zinc-800 dark:text-zinc-100">
+                {rule.label}
+              </span>
+            </div>
+            <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="inline-block min-w-[4.5rem] text-right">{rule.actual}</span>
+              <span className="mx-1 text-zinc-300 dark:text-zinc-600">/</span>
+              <span className="inline-block min-w-[4.5rem] text-left">{rule.limit}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="shrink-0 border-t border-zinc-100 px-4 py-2.5 text-xs leading-relaxed text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+        Sample Master track. EA swaps streak control for a performance-report check.
+      </p>
+    </div>
+  );
+}
+
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
@@ -274,7 +369,7 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const TICKER_ITEMS = ['MT5 auto-sync', 'Pre-trade checklist', 'Equity analytics', 'Multi-account', 'CSV export'];
+  const TICKER_ITEMS = ['MT5 auto-sync', 'SIAC Cambodia', 'Pre-trade checklist', 'Equity analytics', 'Multi-account', 'CSV export'];
 
   return (
     <div className={pageShell}>
@@ -409,6 +504,61 @@ export default function LandingPage() {
                 </ScrollReveal>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="siac"
+        className="flex h-dvh min-h-dvh flex-col overflow-hidden border-b border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+      >
+        <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 overflow-y-auto px-5 py-8 sm:px-8 lg:gap-6 lg:overflow-hidden lg:py-10">
+          <ScrollReveal className="mx-auto max-w-3xl shrink-0 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400 sm:text-sm">
+              Securities Investors Association of Cambodia
+            </p>
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl lg:text-4xl">
+              About SIAC — and eligibility in your journal
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base">
+              SIAC leads securities trading education in Cambodia, including digital assets.
+              FinhubKH Journal auto-checks Master / EA capital-protection rules from your trade history.
+            </p>
+          </ScrollReveal>
+
+          <div className="grid min-h-0 flex-1 items-stretch gap-4 lg:grid-cols-2 lg:gap-10">
+            <ScrollReveal direction="left" className="flex min-h-0 flex-col justify-center">
+              <div className="space-y-3">
+                {SIAC_STEPS.map((s) => (
+                  <article
+                    key={s.n}
+                    className="rounded-xl border border-zinc-200 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/60"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-[11px] font-bold text-white">
+                        {s.n}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{s.title}</h3>
+                        <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-sm">{s.desc}</p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+                <a
+                  href="https://www.siac.org.kh/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex pt-1 text-sm font-semibold text-violet-600 transition hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
+                >
+                  Visit siac.org.kh →
+                </a>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal direction="right" delay={120} className="flex min-h-72 flex-col lg:min-h-0">
+              <MockSiacCard compact />
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -606,6 +756,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap gap-5 text-sm text-zinc-500 dark:text-zinc-400">
             <a href="#platform" className="hover:text-violet-600 dark:hover:text-violet-400">Platform</a>
             <a href="#features" className="hover:text-violet-600 dark:hover:text-violet-400">Features</a>
+            <a href="#siac" className="hover:text-violet-600 dark:hover:text-violet-400">SIAC</a>
             <a href="#install" className="hover:text-violet-600 dark:hover:text-violet-400">Install</a>
             <a href="#faq" className="hover:text-violet-600 dark:hover:text-violet-400">FAQ</a>
             <Link to="/login" className="hover:text-violet-600 dark:hover:text-violet-400">Sign in</Link>
