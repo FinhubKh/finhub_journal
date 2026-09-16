@@ -63,5 +63,24 @@ describe('handleTriggerInvestorSync', () => {
     const req = makeReq('good-token', { trading_account_id: 'acct-1' });
     const result = await handleTriggerInvestorSync(req, DEPS);
     expect(result.status).toBe(502);
+    expect(result.body.error).toMatch(/temporarily offline/i);
+  });
+
+  it('maps Cloudflare 522 responses to an offline message', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'user-1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => [{ trading_account_id: 'acct-1' }] })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 522,
+        text: async () => 'error code: 522',
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const req = makeReq('good-token', { trading_account_id: 'acct-1' });
+    const result = await handleTriggerInvestorSync(req, DEPS);
+    expect(result.status).toBe(502);
+    expect(result.body.error).toMatch(/temporarily offline/i);
+    expect(result.body.error).not.toMatch(/rejected/i);
   });
 });

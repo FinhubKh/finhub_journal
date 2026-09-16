@@ -2,9 +2,33 @@
 import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 
+const BRIDGE_OFFLINE_MSG =
+  'MetaTrader bridge is temporarily offline. Please try Sync again in a few minutes.';
+const BRIDGE_AUTH_MSG =
+  'Could not authorize the MetaTrader bridge. Please contact support if this keeps happening.';
+const BRIDGE_BUSY_MSG =
+  'MetaTrader bridge is busy right now. Please try Sync again shortly.';
+
 function bearerToken(req) {
   const header = req.headers.authorization || req.headers.Authorization || '';
   return header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+}
+
+function bridgeErrorMessage(status, detailText) {
+  const detail = String(detailText || '');
+  // Cloudflare origin failures often return HTML like "error code: 522".
+  if (
+    status === 521
+    || status === 522
+    || status === 523
+    || status === 524
+    || /\berror code:\s*52[1-4]\b/i.test(detail)
+  ) {
+    return BRIDGE_OFFLINE_MSG;
+  }
+  if (status === 401 || status === 403) return BRIDGE_AUTH_MSG;
+  if (status === 429 || status === 503) return BRIDGE_BUSY_MSG;
+  return BRIDGE_OFFLINE_MSG;
 }
 
 export async function handleTriggerInvestorSync(req, {
@@ -13,6 +37,10 @@ export async function handleTriggerInvestorSync(req, {
   const auth = await verifySupabaseUser({ supabaseUrl, anonKey, accessToken: bearerToken(req) });
   if (!auth.ok) {
     return { status: auth.status, body: { error: auth.error } };
+  }
+
+  if (!bridgeUrl || !bridgeServiceToken) {
+    return { status: 503, body: { error: BRIDGE_OFFLINE_MSG } };
   }
 
   let body;
@@ -51,9 +79,10 @@ export async function handleTriggerInvestorSync(req, {
       body: JSON.stringify({
         trading_account_id: tradingAccountId,
       }),
+      signal: AbortSignal.timeout(15000),
     });
   } catch {
-    return { status: 502, body: { error: 'Bridge service is unreachable' } };
+    return { status: 502, body: { error: BRIDGE_OFFLINE_MSG } };
   }
 
   if (!bridgeRes.ok) {
@@ -61,7 +90,7 @@ export async function handleTriggerInvestorSync(req, {
     return {
       status: 502,
       body: {
-        error: 'Bridge service rejected the sync job',
+        error: bridgeErrorMessage(bridgeRes.status, detail),
         bridge_status: bridgeRes.status,
         bridge_detail: String(detail || '').slice(0, 300) || null,
       },
