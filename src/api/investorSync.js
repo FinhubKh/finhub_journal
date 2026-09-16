@@ -136,16 +136,18 @@ export async function triggerInvestorSync(tradingAccountId) {
   return parseJson(res);
 }
 
-const SYNC_POLL_MS = 500;
+const SYNC_POLL_MS_START = 500;
+const SYNC_POLL_MS_BACKOFF = 1500;
 // MT4 login+history can take 3–4 minutes when the terminal cold-starts.
 // Keep polling long enough to surface the real bridge error instead of a
 // premature timeout while the modal sits on "Connecting to MT4".
-const SYNC_POLL_ATTEMPTS = 600; // ~5 minutes after the first immediate check
+const SYNC_POLL_ATTEMPTS = 600; // ~5 minutes with mixed 0.5s/1.5s intervals
 
 /**
  * Queue investor sync and keep polling until trades land or the worker records an error.
+ * Pass `signal` to stop waiting (does not cancel the bridge job).
  */
-export async function runInvestorSyncAndWait(tradingAccountId, { onStatus } = {}) {
+export async function runInvestorSyncAndWait(tradingAccountId, { onStatus, signal } = {}) {
   const rowsBefore = await listInvestorCredentialsStatus();
   const baseline = rowsBefore.find((r) => r.trading_account_id === tradingAccountId) || null;
   if (!baseline) {
@@ -158,8 +160,18 @@ export async function runInvestorSyncAndWait(tradingAccountId, { onStatus } = {}
 
   await triggerInvestorSync(tradingAccountId);
 
+  let sawStage = Boolean(baseline.sync_stage);
+
   for (let i = 0; i < SYNC_POLL_ATTEMPTS; i += 1) {
-    if (i > 0) await sleep(SYNC_POLL_MS);
+    if (signal?.aborted) {
+      throw new Error('Sync wait dismissed');
+    }
+    if (i > 0) {
+      await sleep(sawStage ? SYNC_POLL_MS_BACKOFF : SYNC_POLL_MS_START);
+    }
+    if (signal?.aborted) {
+      throw new Error('Sync wait dismissed');
+    }
 
     let rows;
     try {
@@ -169,6 +181,7 @@ export async function runInvestorSyncAndWait(tradingAccountId, { onStatus } = {}
     }
     const row = rows.find((r) => r.trading_account_id === tradingAccountId) || null;
     if (!row) continue;
+    if (row.sync_stage) sawStage = true;
     if (typeof onStatus === 'function') onStatus(row);
 
     if (row.last_synced_at && row.last_synced_at !== baselineSynced) {
@@ -180,6 +193,10 @@ export async function runInvestorSyncAndWait(tradingAccountId, { onStatus } = {}
     if (row.last_sync_error && (updatedChanged || errorChanged)) {
       return { ok: false, row, error: row.last_sync_error };
     }
+  }
+
+  if (signal?.aborted) {
+    throw new Error('Sync wait dismissed');
   }
 
   const rowsAfter = await listInvestorCredentialsStatus().catch(() => []);

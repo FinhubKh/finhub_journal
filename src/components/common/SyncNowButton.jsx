@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { listInvestorCredentialsStatus, listAccountSyncKeys, runInvestorSyncAndWait } from '../../api';
@@ -6,7 +6,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { platformShort } from '../../lib/accounts';
 import { btnOutline, btnSm } from '../../lib/ui';
-import SyncLoadingModal from './SyncLoadingModal';
+import SyncLoadingModal, { syncStageLabel } from './SyncLoadingModal';
 
 function formatSyncTime(iso) {
   if (!iso) return null;
@@ -26,16 +26,18 @@ function findStatus(rows, accountId) {
 
 /**
  * Sync data for the selected account via investor-password bridge.
- * Shows a blocking loading modal until trades land or the worker records an error.
+ * Shows a loading modal that can be dismissed while sync continues in the background.
  */
 export default function SyncNowButton({ size = 'md', className = '' }) {
   const navigate = useNavigate();
   const { alert } = useDialog();
   const { viewMode, activeAccount, refreshTrades } = useAppData();
   const [busy, setBusy] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [investorStatus, setInvestorStatus] = useState(null);
   const [eaSyncMeta, setEaSyncMeta] = useState(null);
+  const syncAbortRef = useRef(null);
 
   const singleAccount = viewMode === 'account' && activeAccount;
   const hasInvestor = Boolean(investorStatus);
@@ -83,6 +85,10 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
     };
   }, [reloadStatus]);
 
+  useEffect(() => () => {
+    syncAbortRef.current?.abort();
+  }, []);
+
   async function handleClick() {
     if (busy) return;
 
@@ -120,13 +126,17 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
       return;
     }
 
+    const abort = new AbortController();
+    syncAbortRef.current?.abort();
+    syncAbortRef.current = abort;
     setBusy(true);
+    setModalOpen(true);
     try {
       const result = await runInvestorSyncAndWait(activeAccount.id, {
+        signal: abort.signal,
         onStatus: setInvestorStatus,
       });
       await refreshTrades();
-      setBusy(false);
       if (result.ok) {
         toast.success('Trades updated');
       } else {
@@ -136,16 +146,28 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
         });
       }
     } catch (err) {
-      await refreshTrades().catch(() => {});
-      setBusy(false);
-      await alert({
-        title: 'Sync failed',
-        message: err.message || 'Could not sync. Check bridge and investor credentials.',
-      });
+      if (err?.message === 'Sync wait dismissed' || abort.signal.aborted) {
+        // Background waiter was dismissed; a follow-up poll may still finish.
+        // Keep busy until we detect completion via reload below, or stop if aborted only for unmount.
+      } else {
+        await refreshTrades().catch(() => {});
+        await alert({
+          title: 'Sync failed',
+          message: err.message || 'Could not sync. Check bridge and investor credentials.',
+        });
+      }
     } finally {
+      if (syncAbortRef.current === abort) syncAbortRef.current = null;
+      setModalOpen(false);
       setBusy(false);
       await reloadStatus();
     }
+  }
+
+  function handleBackground() {
+    setModalOpen(false);
+    toast.info('Sync continues in the background');
+    // Keep waiting — do not abort. User can navigate while polling continues.
   }
 
   const btnClass = size === 'sm' ? btnSm : btnOutline;
@@ -159,7 +181,11 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   let statusLine = null;
   if (singleAccount && hasInvestor) {
     if (busy) {
-      statusLine = <span className="text-violet-600 dark:text-violet-400">Sync in progress…</span>;
+      statusLine = (
+        <span className="text-violet-600 dark:text-violet-400">
+          {syncStageLabel(investorStatus?.sync_stage, activeAccount?.platform)}
+        </span>
+      );
     } else if (investorStatus?.last_sync_error) {
       statusLine = (
         <span className="text-rose-600 dark:text-rose-400" title={investorStatus.last_sync_error}>
@@ -200,17 +226,18 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
           aria-busy={busy || loadingStatus}
           onClick={() => void handleClick()}
         >
-          Sync data
+          {busy ? 'Syncing…' : 'Sync data'}
         </button>
         {statusLine ? (
           <p className="max-w-[16rem] truncate text-[11px] leading-tight">{statusLine}</p>
         ) : null}
       </div>
       <SyncLoadingModal
-        open={busy}
+        open={modalOpen}
         accountName={activeAccount?.name}
         stage={investorStatus?.sync_stage}
         platform={activeAccount?.platform}
+        onBackground={handleBackground}
       />
     </>
   );

@@ -13,6 +13,8 @@ create table if not exists investor_credentials (
   encrypted_password  text not null,
   last_synced_at      timestamptz,
   last_sync_error     text,
+  sync_stage          text,
+  cashflow_backfill_done_at timestamptz,
   created_at          timestamptz default now(),
   updated_at          timestamptz default now()
 );

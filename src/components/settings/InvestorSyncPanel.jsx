@@ -56,7 +56,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
     platform: normalizePlatform(account?.platform),
   }));
   const [busy, setBusy] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncStage, setSyncStage] = useState(null);
   const [msg, setMsg] = useState(null);
   const verifyAbortRef = useRef(null);
@@ -128,7 +128,7 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
 
   async function handleSyncNow() {
     setBusy(true);
-    setSyncing(true);
+    setSyncModalOpen(true);
     setSyncStage(null);
     setMsg(null);
     try {
@@ -139,7 +139,6 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
         },
       });
       await onChanged();
-      setSyncing(false);
       if (result.ok) {
         toast.success('Trades updated');
       } else {
@@ -150,13 +149,12 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
       }
     } catch (err) {
       await onChanged();
-      setSyncing(false);
       await alert({
         title: 'Sync failed',
         message: err.message || 'Could not sync.',
       });
     } finally {
-      setSyncing(false);
+      setSyncModalOpen(false);
       setSyncStage(null);
       setBusy(false);
     }
@@ -183,7 +181,16 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
 
   return (
     <div className={`${compact ? 'bg-transparent px-4 py-4 md:px-5' : 'border-t border-zinc-100 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900 md:px-5'}`}>
-      <SyncLoadingModal open={syncing} accountName={account?.name} stage={syncStage} platform={account?.platform || form.platform} />
+      <SyncLoadingModal
+        open={syncModalOpen}
+        accountName={account?.name}
+        stage={syncStage}
+        platform={account?.platform || form.platform}
+        onBackground={() => {
+          setSyncModalOpen(false);
+          toast.info('Sync continues in the background');
+        }}
+      />
       {!compact ? (
         <div className="mb-3 flex items-center justify-between gap-2">
           <p className={sectionLabel}>Investor password sync</p>

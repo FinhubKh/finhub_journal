@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { platformLabel, platformShort } from '../../lib/accounts';
-import { card } from '../../lib/ui';
+import { btnGhost, card } from '../../lib/ui';
 
 function stepStatus(stepIndex, currentIndex) {
   if (currentIndex === -1) return stepIndex === 0 ? 'active' : 'pending';
@@ -36,11 +36,20 @@ function StepIcon({ status }) {
   );
 }
 
+export function syncStageLabel(stage, platform) {
+  const short = platformShort(platform);
+  if (stage === 'fetching_history') return 'Fetching history…';
+  if (stage === 'saving_trades') return 'Saving trades…';
+  if (stage === 'connecting') return `Connecting to ${short}…`;
+  return `Syncing ${short}…`;
+}
+
 /**
- * Blocking loading overlay shown while investor MetaTrader sync is in progress.
+ * Loading overlay shown while investor MetaTrader sync is in progress.
  * `stage` mirrors investor_credentials.sync_stage, patched live by the bridge worker.
+ * Pass `onBackground` to allow dismissing the overlay while sync continues.
  */
-export default function SyncLoadingModal({ open, accountName, stage, platform }) {
+export default function SyncLoadingModal({ open, accountName, stage, platform, onBackground }) {
   const short = platformShort(platform);
   const full = platformLabel(platform);
   const steps = useMemo(
@@ -113,9 +122,19 @@ export default function SyncLoadingModal({ open, accountName, stage, platform })
 
           <p className="mt-6 text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
             {platformShort(platform) === 'MT4'
-              ? 'MT4 can take up to a few minutes — do not close this page'
-              : 'Please wait — do not close this page'}
+              ? 'MT4 can take up to a few minutes'
+              : 'Usually finishes in under a minute'}
           </p>
+
+          {typeof onBackground === 'function' ? (
+            <button
+              type="button"
+              className={`${btnGhost} mt-4 text-sm`}
+              onClick={onBackground}
+            >
+              Continue in background
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
