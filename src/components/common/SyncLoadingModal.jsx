@@ -36,11 +36,30 @@ function StepIcon({ status }) {
   );
 }
 
+/** Parse bridge sync_stage values like `queued:3` or `connecting`. */
+export function parseSyncStage(stage) {
+  if (!stage || typeof stage !== 'string') {
+    return { name: null, queueAhead: null };
+  }
+  if (stage === 'queued' || stage.startsWith('queued:')) {
+    const raw = stage.includes(':') ? Number(stage.split(':')[1]) : null;
+    const queueAhead = Number.isFinite(raw) ? raw : null;
+    return { name: 'queued', queueAhead };
+  }
+  return { name: stage, queueAhead: null };
+}
+
 export function syncStageLabel(stage, platform) {
   const short = platformShort(platform);
-  if (stage === 'fetching_history') return 'Fetching history…';
-  if (stage === 'saving_trades') return 'Saving trades…';
-  if (stage === 'connecting') return `Connecting to ${short}…`;
+  const { name, queueAhead } = parseSyncStage(stage);
+  if (name === 'queued') {
+    if (queueAhead === 0) return 'Next in line for a free terminal…';
+    if (queueAhead != null) return `Waiting for a free terminal — about ${queueAhead} ahead`;
+    return 'Waiting for a free terminal…';
+  }
+  if (name === 'fetching_history') return 'Fetching history…';
+  if (name === 'saving_trades') return 'Saving trades…';
+  if (name === 'connecting') return `Connecting to ${short}…`;
   return `Syncing ${short}…`;
 }
 
@@ -52,13 +71,22 @@ export function syncStageLabel(stage, platform) {
 export default function SyncLoadingModal({ open, accountName, stage, platform, onBackground }) {
   const short = platformShort(platform);
   const full = platformLabel(platform);
+  const { name: stageName, queueAhead } = parseSyncStage(stage);
+  const queueLabel =
+    queueAhead === 0
+      ? 'Waiting for free terminal (next up)'
+      : queueAhead != null
+        ? `Waiting for free terminal (${queueAhead} ahead)`
+        : 'Waiting for free terminal';
+
   const steps = useMemo(
     () => [
+      { stage: 'queued', label: queueLabel },
       { stage: 'connecting', label: `Connecting to ${short}` },
       { stage: 'fetching_history', label: 'Fetching trade history' },
       { stage: 'saving_trades', label: 'Saving trades' },
     ],
-    [short],
+    [short, queueLabel],
   );
 
   useEffect(() => {
@@ -72,7 +100,9 @@ export default function SyncLoadingModal({ open, accountName, stage, platform, o
 
   if (!open) return null;
 
-  const currentIndex = steps.findIndex((s) => s.stage === stage);
+  const currentIndex = stageName
+    ? steps.findIndex((s) => s.stage === stageName)
+    : -1;
 
   return (
     <div
@@ -121,9 +151,11 @@ export default function SyncLoadingModal({ open, accountName, stage, platform, o
           </ol>
 
           <p className="mt-6 text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            {platformShort(platform) === 'MT4'
-              ? 'MT4 can take up to a few minutes'
-              : 'Usually finishes in under a minute'}
+            {stageName === 'queued'
+              ? 'You can leave — sync continues in the background'
+              : platformShort(platform) === 'MT4'
+                ? 'MT4 can take up to a few minutes'
+                : 'Usually finishes in under a minute'}
           </p>
 
           {typeof onBackground === 'function' ? (
