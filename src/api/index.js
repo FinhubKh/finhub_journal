@@ -1,5 +1,6 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, getUserId, authFetch } from './auth';
 import { deleteAllTradeImages } from './tradeImages';
+import { MAX_TRADING_ACCOUNTS } from '../lib/accounts';
 
 /** Columns used across journal UI — avoid select=*. */
 export const TRADE_SELECT = [
@@ -77,12 +78,22 @@ export async function fetchTradingAccounts() {
 }
 
 export async function insertTradingAccount(account) {
+  const existing = await fetchTradingAccounts();
+  if (existing.length >= MAX_TRADING_ACCOUNTS) {
+    throw new Error(`You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts.`);
+  }
   const res = await authFetch(`${SUPABASE_URL}/rest/v1/trading_accounts`, {
     method: 'POST',
     headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
     body: JSON.stringify({ ...account, user_id: getUserId() }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    if (/account limit reached/i.test(text)) {
+      throw new Error(`You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts.`);
+    }
+    throw new Error(text);
+  }
   return res.json();
 }
 

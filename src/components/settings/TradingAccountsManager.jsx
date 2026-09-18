@@ -26,6 +26,7 @@ import {
   normalizePlatform,
   normalizeRiskTrack,
   riskTrackLabel,
+  MAX_TRADING_ACCOUNTS,
 } from '../../lib/accounts';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
@@ -516,6 +517,9 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           });
         }
       } else {
+        if (tradingAccounts.length >= MAX_TRADING_ACCOUNTS) {
+          throw new Error(`You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts.`);
+        }
         const color = ACCOUNT_COLORS[tradingAccounts.length % ACCOUNT_COLORS.length];
         const created = await insertTradingAccount({
           name,
@@ -1166,18 +1170,32 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
     await refreshInvestorStatus();
   }
 
+  const atAccountLimit = tradingAccounts.length >= MAX_TRADING_ACCOUNTS;
+
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-zinc-500">
           {tradingAccounts.length === 0
             ? 'Add an account and choose EA sync or investor password.'
-            : `${tradingAccounts.length} account${tradingAccounts.length === 1 ? '' : 's'} · sync, share, and set your default`}
+            : `${tradingAccounts.length} of ${MAX_TRADING_ACCOUNTS} accounts · sync, share, and set your default`}
         </p>
-        <button className={btnPrimary} type="button" onClick={() => setModal({ mode: 'add' })}>
+        <button
+          className={btnPrimary}
+          type="button"
+          disabled={atAccountLimit}
+          title={atAccountLimit ? `Limit is ${MAX_TRADING_ACCOUNTS} accounts per user` : 'Add a trading account'}
+          onClick={() => setModal({ mode: 'add' })}
+        >
           Add account
         </button>
       </div>
+
+      {atAccountLimit ? (
+        <p className="mt-2 text-xs text-zinc-500">
+          Account limit reached ({MAX_TRADING_ACCOUNTS}). Delete an account to add another.
+        </p>
+      ) : null}
 
       {tradingAccounts.length === 0 ? (
         <div className={`${card} ${emptyState} mt-3`}>

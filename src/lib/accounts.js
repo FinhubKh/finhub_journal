@@ -23,6 +23,9 @@ export const RISK_TRACKS = [
   { value: 'ea', label: 'EA / ATS' },
 ];
 
+/** Max trading accounts a single user may create. */
+export const MAX_TRADING_ACCOUNTS = 2;
+
 export function normalizePlatform(value) {
   const v = String(value || '').trim().toLowerCase();
   return v === 'mt4' ? 'mt4' : 'mt5';
