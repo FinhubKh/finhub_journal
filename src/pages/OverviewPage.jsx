@@ -282,7 +282,7 @@ function StrategyOverviewSection({
         <StatTile
           label="Current balance"
           value={fmtBalance(currentBalance, denomination)}
-          hint="Net deposits + trade PnL"
+          hint="Deposits − withdrawals + trade PnL"
         />
         <StatTile
           label="Trade PnL"
@@ -291,12 +291,12 @@ function StrategyOverviewSection({
           tone={totalPnl >= 0 ? 'positive' : 'negative'}
         />
         <StatTile
-          label="Net deposits"
-          value={fmtBalance(netDeposits || equityStart, denomination)}
+          label="Deposits"
+          value={fmtBalance(deposits || (withdrawals > 0 ? 0 : equityStart), denomination)}
           hint={
-            deposits > 0 || withdrawals > 0
-              ? `${fmtBalance(deposits, denomination)} in − ${fmtBalance(withdrawals, denomination)} out`
-              : 'Cash in − cash out'
+            withdrawals > 0
+              ? `Withdrawn ${fmtBalance(withdrawals, denomination)}`
+              : 'Cash transferred in'
           }
         />
         <StatTile
