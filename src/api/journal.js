@@ -1,4 +1,5 @@
 import { SUPABASE_URL, getToken, getUserId, authHeaders, authFetch } from './auth';
+import { toUsdPnl, normalizePnlDenomination } from '../lib/format';
 
 /** Keep in sync with TRADE_SELECT in index.js — avoid a circular import. */
 const TRADE_SELECT = [
@@ -153,4 +154,58 @@ export async function fetchCashflows({ accountId, from, to, opType, page, pageSi
   const cashflows = Array.isArray(rows) ? rows : [];
   const total = parseContentRangeTotal(res) ?? cashflows.length;
   return { cashflows, total };
+}
+
+export async function fetchTradeExtremes(accountId, { accounts = [] } = {}) {
+  const uid = getUserId();
+  if (!uid) return { bestTrade: 0, worstTrade: 0 };
+
+  const base = `${SUPABASE_URL}/rest/v1/trades?select=pnl_usd,account_id&user_id=eq.${uid}`;
+  const acct = accountId ? `&account_id=eq.${accountId}` : '';
+  // Portfolio may mix $ / ¢ accounts — pull a window then normalize to USD.
+  const limit = accountId ? 1 : 50;
+
+  try {
+    const [bestRes, worstRes] = await Promise.all([
+      authFetch(`${base}${acct}&order=pnl_usd.desc.nullslast&limit=${limit}`, {
+        headers: authHeaders(getToken()),
+      }),
+      authFetch(`${base}${acct}&order=pnl_usd.asc.nullslast&limit=${limit}`, {
+        headers: authHeaders(getToken()),
+      }),
+    ]);
+    const bestRows = bestRes.ok ? await bestRes.json() : [];
+    const worstRows = worstRes.ok ? await worstRes.json() : [];
+    if (!Array.isArray(bestRows) && !Array.isArray(worstRows)) {
+      return { bestTrade: 0, worstTrade: 0 };
+    }
+
+    const denomByAccount = new Map(
+      (accounts || []).map((a) => [a.id, normalizePnlDenomination(a.pnl_denomination)]),
+    );
+
+    const toView = (row) => {
+      const raw = Number(row?.pnl_usd);
+      if (!Number.isFinite(raw)) return null;
+      // Single-account view: values are already in that account's units.
+      if (accountId) return raw;
+      const denom = denomByAccount.get(row.account_id) || 'usd';
+      return toUsdPnl(raw, denom);
+    };
+
+    let bestTrade = 0;
+    for (const row of bestRows || []) {
+      const v = toView(row);
+      if (v != null && v > bestTrade) bestTrade = v;
+    }
+    let worstTrade = 0;
+    for (const row of worstRows || []) {
+      const v = toView(row);
+      if (v != null && v < worstTrade) worstTrade = v;
+    }
+
+    return { bestTrade, worstTrade };
+  } catch {
+    return { bestTrade: 0, worstTrade: 0 };
+  }
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
-import { viewPnlDenomination } from '../lib/accounts';
-import { fmtPnlStrict, fmtBalance } from '../lib/format';
+import { viewPnlDenomination, platformShort } from '../lib/accounts';
+import { fmtPnlStrict } from '../lib/format';
 import {
   btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, sectionLabel,
 } from '../lib/ui';
@@ -10,11 +10,15 @@ import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import EquityChart from '../components/dashboard/EquityChart';
 import BreakdownCard from '../components/dashboard/BreakdownCard';
 import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
-import SiacSummaryCard from '../components/dashboard/SiacSummaryCard';
+import WinRateGauge from '../components/dashboard/WinRateGauge';
+import RiskCard from '../components/dashboard/RiskCard';
+import HighlightsCard from '../components/dashboard/HighlightsCard';
+import HeatmapView from '../components/calendar/HeatmapView';
 import SyncNowButton from '../components/common/SyncNowButton';
 import RiskStatusPill from '../components/common/RiskStatusPill';
 import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
 import { startingEquityFromStats } from '../lib/equityChart';
+import { fetchTradeExtremes } from '../api/journal';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
   const valueCls =
@@ -23,25 +27,34 @@ function StatTile({ label, value, hint, tone = 'neutral' }) {
         : 'text-zinc-900 dark:text-zinc-100';
 
   return (
-    <div className={`${card} flex h-full flex-col justify-between p-4`}>
+    <div className={`${card} flex h-full min-h-0 flex-col justify-between p-3.5`}>
       <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
         {label}
       </span>
-      <div className={`mt-2 text-xl font-bold tracking-tight tabular-nums sm:text-2xl ${valueCls}`}>
+      <div className={`mt-1.5 truncate text-lg font-bold tracking-tight tabular-nums sm:text-xl ${valueCls}`}>
         {value}
       </div>
-      {hint ? <span className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
+      {hint ? <span className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
     </div>
   );
 }
 
-function OverviewHeader({ onOpenEligibility }) {
+function formatPf(value, infinite) {
+  if (infinite || value === '∞') return '∞';
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  return n.toFixed(2);
+}
+
+function OverviewHeader({ activeAccount, viewMode, onOpenEligibility }) {
   return (
     <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Overview</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Performance snapshot for your current view.
+          {viewMode === 'account' && activeAccount
+            ? `${activeAccount.name}${activeAccount.broker ? ` · ${activeAccount.broker}` : ''} · ${platformShort(activeAccount.platform)}`
+            : 'All accounts · Portfolio view'}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -156,169 +169,177 @@ function EmptyOverview({ onOpenSetup }) {
   );
 }
 
-function SummarySection({
+function StrategyOverviewSection({
   stats,
-  pfPositive,
   daily,
+  breakdown,
   denomination,
-  showSiac,
-  isPortfolio,
-  account,
-  accounts,
-  onManageSiac,
-  onSelectAccount,
-  onSiacChanged,
+  activeAccount,
+  viewMode,
+  tradeExtremes,
 }) {
-  const initialDeposit = startingEquityFromStats(stats);
-  const siacReady = showSiac && (isPortfolio ? accounts?.length > 0 : Boolean(account));
+  const isAccountView = viewMode === 'account' && Boolean(activeAccount);
+  const initialDeposit = startingEquityFromStats(stats)
+    || (isAccountView ? Number(activeAccount?.starting_balance) || 0 : 0);
+  const totalPnl = Number(stats?.totalPnl) || 0;
+  const endingBalance = stats?.balance != null ? Number(stats.balance) : (initialDeposit + totalPnl);
+  const trades = Number(stats?.total) || 0;
+  const wins = Number(stats?.wins) || 0;
+  const losses = Number(stats?.losses) || 0;
+  const wr = Number(stats?.wr) || 0;
+  const pf = stats?.pf;
+  const pfInfinite = pf === '∞';
+  const pfNum = parseFloat(pf);
+  const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || pfInfinite);
+
+  const trueMaxDd = Number(stats?.maxDD) || 0;
+  const trueMaxDdPercent = initialDeposit > 0 && trueMaxDd > 0
+    ? Number(((trueMaxDd / initialDeposit) * 100).toFixed(1))
+    : 0;
+  const recovery = totalPnl > 0 && trueMaxDd > 0
+    ? Number((totalPnl / trueMaxDd).toFixed(2))
+    : 0;
+
+  // Annualized Sharpe from daily PnL (only when we have enough trading days).
+  let sharpe = null;
+  if (daily && daily.length > 1) {
+    const pnls = daily.map((d) => Number(d.pnl) || 0);
+    const mean = pnls.reduce((a, b) => a + b, 0) / pnls.length;
+    const variance = pnls.reduce((sum, val) => sum + (val - mean) ** 2, 0) / (pnls.length - 1);
+    const stdDev = Math.sqrt(variance);
+    if (stdDev > 0) {
+      sharpe = Number(((mean / stdDev) * Math.sqrt(252)).toFixed(2));
+    }
+  }
+
+  const overview = useMemo(() => ({
+    name: isAccountView ? activeAccount.name : 'Portfolio',
+    symbol: isAccountView
+      ? (activeAccount.broker || activeAccount.name)
+      : 'All Accounts',
+    currency: denomination,
+    totalPnl,
+    tradeCount: trades,
+    wins,
+    losses,
+    beCount: Math.max(0, trades - wins - losses),
+    wr,
+    profitFactor: pf,
+    profitFactorInfinite: pfInfinite,
+    maxDD: trueMaxDd,
+    bestStreak: Number(stats?.bestStreak) || 0,
+    worstStreak: Number(stats?.worstStreak) || 0,
+    bestTrade: Number(tradeExtremes?.bestTrade) || 0,
+    worstTrade: Number(tradeExtremes?.worstTrade) || 0,
+    breakdown: {
+      symbol: breakdown?.symbol || [],
+      session: breakdown?.session || [],
+      initialDeposit,
+      maxDdAmount: trueMaxDd,
+      maxDdPercent: trueMaxDdPercent,
+      sharpeRatio: sharpe,
+      recoveryFactor: recovery,
+      maxTradeProfit: Number(tradeExtremes?.bestTrade) || 0,
+      largestLoss: Number(tradeExtremes?.worstTrade) || 0,
+      maxConsWins: Number(stats?.bestStreak) || 0,
+      maxConsLosses: Number(stats?.worstStreak) || 0,
+    },
+  }), [
+    isAccountView,
+    activeAccount,
+    denomination,
+    totalPnl,
+    trades,
+    wins,
+    losses,
+    wr,
+    pf,
+    pfInfinite,
+    trueMaxDd,
+    trueMaxDdPercent,
+    sharpe,
+    recovery,
+    stats,
+    tradeExtremes,
+    breakdown,
+    initialDeposit,
+  ]);
 
   return (
     <section
-      aria-labelledby="overview-summary-heading"
+      aria-label="Overview"
       role="tabpanel"
-      className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto"
+      className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
     >
-      <div className="shrink-0">
-        <h2 id="overview-summary-heading" className={`${sectionLabel} mb-3`}>Summary</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
-          <StatTile
-            label="Balance"
-            value={stats?.balance == null ? '—' : fmtBalance(stats.balance, denomination)}
-            hint={
-              stats && (stats.deposits > 0 || stats.withdrawals > 0)
-                ? `${fmtPnlStrict(stats.deposits, denomination)} in · ${fmtPnlStrict(-stats.withdrawals, denomination)} out`
-                : 'Deposits + PnL − withdrawals'
-            }
-            tone={stats && Number(stats.balance) >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
-          />
-          <StatTile
-            label="Net result"
-            value={fmtPnlStrict(stats?.totalPnl, denomination)}
-            hint={`${stats?.total || 0} closed trade${stats?.total !== 1 ? 's' : ''}`}
-            tone={stats ? (stats.totalPnl >= 0 ? 'positive' : 'negative') : 'neutral'}
-          />
-          <StatTile
-            label="Win rate"
-            value={stats ? `${stats.wr}%` : '—'}
-            hint={stats ? `${stats.wins}W · ${stats.losses}L` : undefined}
-            tone={stats && stats.wr >= 50 ? 'positive' : stats ? 'negative' : 'neutral'}
-          />
-          <StatTile
-            label="Profit factor"
-            value={stats ? stats.pf : '—'}
-            hint="Gross wins ÷ gross losses"
-            tone={pfPositive ? 'positive' : stats ? 'negative' : 'neutral'}
-          />
-          <StatTile
-            label="Total trades"
-            value={stats ? String(stats.total) : '—'}
-            hint={stats ? `Avg ${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R per trade` : undefined}
-          />
-        </div>
+      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+        <StatTile
+          label="Starting balance"
+          value={fmtPnlStrict(initialDeposit, denomination)}
+          hint="Initial deposit"
+        />
+        <StatTile
+          label="Ending balance"
+          value={fmtPnlStrict(endingBalance, denomination)}
+          hint="Final account balance"
+        />
+        <StatTile
+          label="Total PnL"
+          value={fmtPnlStrict(totalPnl, denomination)}
+          hint={`${wins}W · ${losses}L`}
+          tone={totalPnl >= 0 ? 'positive' : 'negative'}
+        />
+        <StatTile
+          label="Profit factor"
+          value={formatPf(pf, pfInfinite)}
+          hint="Gross wins ÷ gross losses"
+          tone={pfPositive ? 'positive' : 'negative'}
+        />
+        <StatTile
+          label="Win rate"
+          value={trades > 0 ? `${wr}%` : '—'}
+          hint={trades > 0 ? `${trades} closed` : 'No closed trades'}
+          tone={trades > 0 ? (wr >= 50 ? 'positive' : 'negative') : 'neutral'}
+        />
+        <StatTile
+          label="Trades"
+          value={trades || '—'}
+          hint={`${daily?.length || 0} trading days`}
+        />
+        <StatTile
+          label="Currency"
+          value={denomination.toUpperCase()}
+          hint={isAccountView ? (activeAccount.broker || activeAccount.name) : 'Portfolio (USD)'}
+        />
       </div>
 
-      <div
-        className={`grid min-h-0 flex-1 gap-4 ${
-          siacReady ? 'lg:grid-cols-2' : 'grid-cols-1'
-        }`}
-      >
-        {siacReady ? (
-          <div className="flex min-h-88 flex-col lg:min-h-0">
-            <SiacSummaryCard
-              account={isPortfolio ? undefined : account}
-              accounts={isPortfolio ? accounts : undefined}
-              onManage={onManageSiac}
-              onSelectAccount={onSelectAccount}
-              onChanged={onSiacChanged}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:min-h-0">
+          <div className="min-h-[240px] flex-1 lg:min-h-0">
+            <EquityChart
+              daily={daily}
+              denomination={denomination}
+              initialDeposit={initialDeposit}
               fill
             />
           </div>
-        ) : null}
-
-        <div className="flex min-h-88 flex-col lg:min-h-0">
+          <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
+            <RiskCard overview={overview} daily={daily} denomination={denomination} />
+            <HighlightsCard overview={overview} daily={daily} denomination={denomination} />
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 lg:h-full lg:w-[min(22rem,38%)]">
+          <div className="shrink-0">
+            <WinRateGauge wins={wins} losses={losses} fill />
+          </div>
           <div className="min-h-0 flex-1">
-            <EquityChart daily={daily} denomination={denomination} initialDeposit={initialDeposit} fill />
+            <BreakdownCard
+              breakdown={breakdown || { symbol: [], session: [] }}
+              denomination={denomination}
+              fill
+            />
           </div>
         </div>
       </div>
-    </section>
-  );
-}
-
-function RiskSection({ stats, showAccounts, denomination }) {
-  return (
-    <section
-      aria-labelledby="overview-risk-heading"
-      role="tabpanel"
-      className="flex h-full min-h-0 w-full flex-col gap-4"
-    >
-      <div className="shrink-0">
-        <h2 id="overview-risk-heading" className={`${sectionLabel} mb-3`}>Risk & expectancy</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <StatTile
-            label="Expectancy"
-            value={stats && !Number.isNaN(stats.expectancy) ? fmtPnlStrict(stats.expectancy, denomination) : '—'}
-            hint="Per trade"
-            tone={stats && stats.expectancy >= 0 ? 'positive' : stats ? 'negative' : 'neutral'}
-          />
-          <StatTile
-            label="Risk:Reward"
-            value={stats ? `${stats.rrRatio}:1` : '—'}
-            hint="Avg win ÷ Avg loss"
-            tone={stats && parseFloat(stats.rrRatio) >= 1 ? 'positive' : stats ? 'neutral' : 'neutral'}
-          />
-          <StatTile
-            label="Avg R"
-            value={stats ? `${stats.avgR >= 0 ? '+' : ''}${stats.avgR.toFixed(2)}R` : '—'}
-            hint="Mean R-multiple"
-            tone={stats && stats.avgR >= 0 ? 'positive' : 'negative'}
-          />
-          <StatTile
-            label="Max drawdown"
-            value={stats && stats.maxDD > 0 ? fmtPnlStrict(-stats.maxDD, denomination) : '—'}
-            hint="Peak to trough"
-            tone="negative"
-          />
-          <StatTile
-            label="Avg win"
-            value={stats && stats.avgWin > 0 ? fmtPnlStrict(stats.avgWin, denomination) : '—'}
-            tone="positive"
-          />
-          <StatTile
-            label="Avg loss"
-            value={stats && stats.avgLoss > 0 ? fmtPnlStrict(-stats.avgLoss, denomination) : '—'}
-            tone="negative"
-          />
-          <div className={`${card} flex h-full flex-col justify-between p-4`}>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              Streaks
-            </span>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <div className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-2xl">
-                  {stats && stats.bestStreak > 0 ? `${stats.bestStreak}W` : '—'}
-                </div>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Best win</span>
-              </div>
-              <div>
-                <div className="text-xl font-bold tabular-nums text-rose-600 dark:text-rose-400 sm:text-2xl">
-                  {stats && stats.worstStreak > 0 ? `${stats.worstStreak}L` : '—'}
-                </div>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Worst loss</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {showAccounts && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <h2 className={`${sectionLabel} mb-3 shrink-0`}>Accounts</h2>
-          <div className="min-h-0 flex-1">
-            <PortfolioBreakdown fill />
-          </div>
-        </div>
-      )}
-      {!showAccounts && <div className="min-h-0 flex-1" aria-hidden />}
     </section>
   );
 }
@@ -330,52 +351,68 @@ export default function OverviewPage() {
     journalDaily,
     journalBreakdown,
     viewMode,
+    activeAccountId,
     activeAccount,
     tradingAccounts,
-    setActiveAccountId,
     dataLoading,
     refreshTradingAccounts,
+    tradesEpoch,
   } = useAppData();
+
   const denomination = useMemo(() => viewPnlDenomination(viewMode, activeAccount), [viewMode, activeAccount]);
   const hasTrades = (stats?.total || 0) > 0;
   const hasCashflow = (stats?.deposits || 0) > 0 || (stats?.withdrawals || 0) > 0;
   const hasActivity = hasTrades || hasCashflow;
   const showAccounts = viewMode === 'portfolio';
   const showEligibility = viewMode === 'account' && Boolean(activeAccount);
-  const showSiacOnSummary = showEligibility || (showAccounts && tradingAccounts.length > 0);
+
+  const [activeSection, setActiveSection] = useState('overview');
+  const [tradeExtremes, setTradeExtremes] = useState({ bestTrade: 0, worstTrade: 0 });
+
+  const scopedAccountId = viewMode === 'account' && activeAccountId ? activeAccountId : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const extremes = await fetchTradeExtremes(scopedAccountId, { accounts: tradingAccounts });
+        if (!cancelled) setTradeExtremes(extremes);
+      } catch {
+        if (!cancelled) setTradeExtremes({ bestTrade: 0, worstTrade: 0 });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scopedAccountId, tradesEpoch, tradingAccounts]);
 
   const tabs = useMemo(() => {
     const next = [
-      { id: 'summary', label: 'Summary' },
-      { id: 'risk', label: showAccounts ? 'Risk & Accounts' : 'Risk' },
-      { id: 'breakdown', label: 'Breakdown' },
+      { id: 'overview', label: 'Overview' },
+      { id: 'heatmap', label: 'Heatmap' },
     ];
+    if (showAccounts) {
+      next.push({ id: 'accounts', label: 'Accounts' });
+    }
     if (showEligibility) {
       next.push({ id: 'eligibility', label: 'SIAC Eligibility' });
     }
     return next;
   }, [showAccounts, showEligibility]);
 
-  const [activeSection, setActiveSection] = useState('summary');
-
   useEffect(() => {
     if (!tabs.some((t) => t.id === activeSection)) {
-      setActiveSection(showEligibility && !hasActivity ? 'eligibility' : 'summary');
+      setActiveSection('overview');
     }
-  }, [tabs, activeSection, showEligibility, hasActivity]);
-
-  useEffect(() => {
-    if (!hasActivity && showEligibility && activeSection === 'summary') {
-      setActiveSection('eligibility');
-    }
-  }, [hasActivity, showEligibility, activeSection]);
-
-  const pfNum = stats ? parseFloat(stats.pf) : NaN;
-  const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || stats.pf === '∞');
+  }, [tabs, activeSection]);
 
   return (
     <div className={dashboardPageWideFull}>
-      <OverviewHeader onOpenEligibility={() => setActiveSection('eligibility')} />
+      <OverviewHeader
+        activeAccount={activeAccount}
+        viewMode={viewMode}
+        onOpenEligibility={() => setActiveSection('eligibility')}
+      />
 
       {dataLoading ? (
         <OverviewLoading />
@@ -396,38 +433,27 @@ export default function OverviewPage() {
               />
 
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {activeSection === 'summary' && hasActivity && (
-                  <SummarySection
+                {activeSection === 'overview' && hasActivity && (
+                  <StrategyOverviewSection
                     stats={stats}
-                    pfPositive={pfPositive}
                     daily={journalDaily}
+                    breakdown={journalBreakdown}
                     denomination={denomination}
-                    showSiac={showSiacOnSummary}
-                    isPortfolio={showAccounts}
-                    account={activeAccount}
-                    accounts={tradingAccounts}
-                    onManageSiac={() => {
-                      if (showEligibility) {
-                        setActiveSection('eligibility');
-                        return;
-                      }
-                      navigate('/dashboard/accounts');
-                    }}
-                    onSelectAccount={(accountId) => {
-                      setActiveAccountId(accountId);
-                      setActiveSection('eligibility');
-                    }}
-                    onSiacChanged={refreshTradingAccounts}
+                    activeAccount={activeAccount}
+                    viewMode={viewMode}
+                    tradeExtremes={tradeExtremes}
                   />
                 )}
 
-                {activeSection === 'risk' && hasActivity && (
-                  <RiskSection stats={stats} showAccounts={showAccounts} denomination={denomination} />
+                {activeSection === 'heatmap' && hasActivity && (
+                  <section aria-label="Heatmap" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+                    <HeatmapView daily={journalDaily} denomination={denomination} fill />
+                  </section>
                 )}
 
-                {activeSection === 'breakdown' && hasActivity && (
-                  <section aria-label="Breakdown" role="tabpanel" className="flex h-full min-h-0 w-full flex-col">
-                    <BreakdownCard breakdown={journalBreakdown} denomination={denomination} fill />
+                {activeSection === 'accounts' && showAccounts && (
+                  <section aria-label="Accounts" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+                    <PortfolioBreakdown fill />
                   </section>
                 )}
 

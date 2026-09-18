@@ -6,7 +6,7 @@ const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'F
 
 export default function HighlightsCard({ overview, daily, denomination = 'usd', fill = false }) {
   const { bestDay, bestSession, bestTrade, worstTrade, winStreak, lossStreak, bestYear, bestMonth } = useMemo(() => {
-    let maxTrade = overview?.breakdown?.maxTradeProfit || 0;
+    let maxTrade = overview?.breakdown?.maxTradeProfit || Number(overview?.bestTrade) || 0;
     
     // Best session
     let bSessionName = '—';
@@ -71,9 +71,9 @@ export default function HighlightsCard({ overview, daily, denomination = 'usd', 
       bestDay: bDayName,
       bestSession: bSessionName,
       bestTrade: maxTrade,
-      worstTrade: overview?.breakdown?.largestLoss || 0,
-      winStreak: overview?.breakdown?.maxConsWins || 0,
-      lossStreak: overview?.breakdown?.maxConsLosses || 0,
+      worstTrade: overview?.breakdown?.largestLoss || Number(overview?.worstTrade) || 0,
+      winStreak: overview?.breakdown?.maxConsWins || Number(overview?.bestStreak) || 0,
+      lossStreak: overview?.breakdown?.maxConsLosses || Number(overview?.worstStreak) || 0,
       bestYear: bYearName,
       bestMonth: bMonthName,
     };

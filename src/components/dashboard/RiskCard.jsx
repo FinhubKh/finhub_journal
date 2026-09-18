@@ -21,15 +21,18 @@ export default function RiskCard({ overview, daily, denomination = 'usd', fill =
   const totalPnl = Number(overview?.total_pnl ?? overview?.totalPnl) || 0;
   const expectancy = trades > 0 ? totalPnl / trades : 0;
   
-  const pf = Number(overview?.profit_factor ?? overview?.profitFactor);
-  const pfStr = !Number.isFinite(pf) ? '—' : pf > 999 ? '∞' : pf.toFixed(2);
+  const rawPf = overview?.profit_factor ?? overview?.profitFactor;
+  const pf = Number(rawPf);
+  const pfStr = rawPf === '∞' || overview?.profitFactorInfinite ? '∞' : (!Number.isFinite(pf) ? '—' : pf > 999 ? '∞' : pf.toFixed(2));
 
   const beCount = Number(overview?.be_count ?? overview?.beCount) || 0;
   
-  const trueMaxDd = Number(overview?.breakdown?.maxDdAmount) || 0;
-  const trueMaxDdPercent = Number(overview?.breakdown?.maxDdPercent) || 0;
-  const sharpe = Number(overview?.breakdown?.sharpeRatio) || 0;
-  const recovery = Number(overview?.breakdown?.recoveryFactor) || 0;
+  const trueMaxDd = Number(overview?.breakdown?.maxDdAmount ?? overview?.maxDd ?? overview?.maxDD ?? maxDD) || 0;
+  const deposit = Number(overview?.breakdown?.initialDeposit ?? overview?.initialDeposit) || 0;
+  const trueMaxDdPercent = Number(overview?.breakdown?.maxDdPercent) || (deposit > 0 && trueMaxDd > 0 ? Number(((trueMaxDd / deposit) * 100).toFixed(1)) : 0);
+  const sharpe = overview?.breakdown?.sharpeRatio ?? overview?.sharpe;
+  const sharpeNum = Number(sharpe);
+  const recovery = Number(overview?.breakdown?.recoveryFactor ?? overview?.recovery) || (totalPnl > 0 && trueMaxDd > 0 ? Number((totalPnl / trueMaxDd).toFixed(2)) : 0);
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
@@ -51,7 +54,7 @@ export default function RiskCard({ overview, daily, denomination = 'usd', fill =
           <div>
             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Sharpe ratio</p>
             <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
-              {sharpe > 0 ? sharpe.toFixed(2) : '—'}
+              {Number.isFinite(sharpeNum) ? sharpeNum.toFixed(2) : '—'}
             </p>
           </div>
           <div>
