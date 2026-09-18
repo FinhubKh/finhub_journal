@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { viewPnlDenomination, platformShort } from '../lib/accounts';
-import { fmtPnlStrict } from '../lib/format';
+import { fmtPnlStrict, fmtBalance } from '../lib/format';
 import {
   btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, sectionLabel,
 } from '../lib/ui';
@@ -179,10 +179,17 @@ function StrategyOverviewSection({
   tradeExtremes,
 }) {
   const isAccountView = viewMode === 'account' && Boolean(activeAccount);
-  const initialDeposit = startingEquityFromStats(stats)
-    || (isAccountView ? Number(activeAccount?.starting_balance) || 0 : 0);
   const totalPnl = Number(stats?.totalPnl) || 0;
-  const endingBalance = stats?.balance != null ? Number(stats.balance) : (initialDeposit + totalPnl);
+  const deposits = Number(stats?.deposits) || 0;
+  const withdrawals = Number(stats?.withdrawals) || 0;
+  const netDeposits = deposits - withdrawals;
+  // Equity chart start = balance − trade PnL (same as net deposits when cashflows are complete).
+  const equityStart = startingEquityFromStats(stats)
+    || (isAccountView ? Number(activeAccount?.starting_balance) || 0 : 0)
+    || netDeposits;
+  const currentBalance = stats?.balance != null
+    ? Number(stats.balance)
+    : equityStart + totalPnl;
   const trades = Number(stats?.total) || 0;
   const wins = Number(stats?.wins) || 0;
   const losses = Number(stats?.losses) || 0;
@@ -193,8 +200,8 @@ function StrategyOverviewSection({
   const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || pfInfinite);
 
   const trueMaxDd = Number(stats?.maxDD) || 0;
-  const trueMaxDdPercent = initialDeposit > 0 && trueMaxDd > 0
-    ? Number(((trueMaxDd / initialDeposit) * 100).toFixed(1))
+  const trueMaxDdPercent = equityStart > 0 && trueMaxDd > 0
+    ? Number(((trueMaxDd / equityStart) * 100).toFixed(1))
     : 0;
   const recovery = totalPnl > 0 && trueMaxDd > 0
     ? Number((totalPnl / trueMaxDd).toFixed(2))
@@ -234,7 +241,7 @@ function StrategyOverviewSection({
     breakdown: {
       symbol: breakdown?.symbol || [],
       session: breakdown?.session || [],
-      initialDeposit,
+      initialDeposit: equityStart,
       maxDdAmount: trueMaxDd,
       maxDdPercent: trueMaxDdPercent,
       sharpeRatio: sharpe,
@@ -262,7 +269,7 @@ function StrategyOverviewSection({
     stats,
     tradeExtremes,
     breakdown,
-    initialDeposit,
+    equityStart,
   ]);
 
   return (
@@ -273,20 +280,24 @@ function StrategyOverviewSection({
     >
       <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
         <StatTile
-          label="Starting balance"
-          value={fmtPnlStrict(initialDeposit, denomination)}
-          hint="Initial deposit"
+          label="Current balance"
+          value={fmtBalance(currentBalance, denomination)}
+          hint="Net deposits + trade PnL"
         />
         <StatTile
-          label="Ending balance"
-          value={fmtPnlStrict(endingBalance, denomination)}
-          hint="Final account balance"
-        />
-        <StatTile
-          label="Total PnL"
+          label="Trade PnL"
           value={fmtPnlStrict(totalPnl, denomination)}
-          hint={`${wins}W · ${losses}L`}
+          hint={`${wins}W · ${losses}L closed`}
           tone={totalPnl >= 0 ? 'positive' : 'negative'}
+        />
+        <StatTile
+          label="Net deposits"
+          value={fmtBalance(netDeposits || equityStart, denomination)}
+          hint={
+            deposits > 0 || withdrawals > 0
+              ? `${fmtBalance(deposits, denomination)} in − ${fmtBalance(withdrawals, denomination)} out`
+              : 'Cash in − cash out'
+          }
         />
         <StatTile
           label="Profit factor"
@@ -318,7 +329,7 @@ function StrategyOverviewSection({
             <EquityChart
               daily={daily}
               denomination={denomination}
-              initialDeposit={initialDeposit}
+              initialDeposit={equityStart}
               fill
             />
           </div>
