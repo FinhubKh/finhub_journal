@@ -1,13 +1,8 @@
--- ============================================================
--- FinhubKH Journal — Public leaderboard (published accounts)
--- Run this entire file in Supabase SQL Editor
--- Replaces the old all-users get_leaderboard()
--- ============================================================
+-- Public leaderboard: expose SIAC eligibility + optional eligible-only filter.
+-- Rankings for SIAC mode = published + risk_eligible, ordered by net PnL.
 
-drop function if exists public.get_leaderboard();
 drop function if exists public.get_public_leaderboard(int, int);
 drop function if exists public.get_public_leaderboard(int, int, boolean);
-drop function if exists public.get_public_leaderboard();
 
 create or replace function public.get_public_leaderboard(
   p_limit int default 50,
@@ -86,19 +81,5 @@ $$;
 
 revoke all on function public.get_public_leaderboard(int, int, boolean) from public;
 grant execute on function public.get_public_leaderboard(int, int, boolean) to anon, authenticated;
-
--- Legacy name used by older scripts — same published-account leaderboard
-create or replace function public.get_leaderboard()
-returns jsonb
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select public.get_public_leaderboard(50, 5, false);
-$$;
-
-revoke all on function public.get_leaderboard() from public;
-grant execute on function public.get_leaderboard() to anon, authenticated;
 
 notify pgrst, 'reload schema';

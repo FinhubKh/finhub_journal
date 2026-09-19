@@ -4,13 +4,6 @@ import { getCachedPublicLeaderboard } from '../../lib/leaderboardCache';
 import { fmtPnlStrict } from '../../lib/format';
 import { btnPrimary, card, cardHd, cardTitle, sectionLabel } from '../../lib/ui';
 
-function initials(name) {
-  const parts = String(name || 'T').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'T';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-}
-
 function RankMark({ rank }) {
   const tone =
     rank === 1
@@ -23,19 +16,6 @@ function RankMark({ rank }) {
   return (
     <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${tone}`}>
       {rank}
-    </span>
-  );
-}
-
-function Avatar({ name, color, size = 'md' }) {
-  const sizeCls = size === 'lg' ? 'h-14 w-14 text-base' : 'h-10 w-10 text-sm';
-  return (
-    <span
-      className={`inline-flex ${sizeCls} shrink-0 items-center justify-center rounded-2xl font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900`}
-      style={{ backgroundColor: color || '#7c3aed' }}
-      aria-hidden
-    >
-      {initials(name)}
     </span>
   );
 }
@@ -154,14 +134,11 @@ function LandingLeaderboardTable({ entries }) {
                         </Link>
                       </td>
                       <td className="px-4 py-3.5 sm:px-5">
-                        <Link to={`/share/${e.shareToken}`} className="flex min-w-0 items-center gap-3">
-                          <Avatar name={e.displayName} color={e.color} />
-                          <div className="min-w-0">
-                            <div className="truncate font-semibold text-zinc-900 group-hover:text-violet-700 dark:text-zinc-100 dark:group-hover:text-violet-300">
-                              {e.displayName}
-                            </div>
-                            <div className="truncate text-xs text-zinc-400 dark:text-zinc-500">{e.accountName}</div>
+                        <Link to={`/share/${e.shareToken}`} className="block min-w-0">
+                          <div className="truncate font-semibold text-zinc-900 group-hover:text-violet-700 dark:text-zinc-100 dark:group-hover:text-violet-300">
+                            {e.displayName}
                           </div>
+                          <div className="truncate text-xs text-zinc-400 dark:text-zinc-500">{e.accountName}</div>
                         </Link>
                       </td>
                       <td className="hidden px-4 py-3.5 sm:table-cell sm:px-5">

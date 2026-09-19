@@ -5,7 +5,7 @@ import { listInvestorCredentialsStatus, listAccountSyncKeys, runInvestorSyncAndW
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { platformShort } from '../../lib/accounts';
-import { btnOutline, btnSm } from '../../lib/ui';
+import { btnOutline } from '../../lib/ui';
 import SyncLoadingModal, { syncStageLabel } from './SyncLoadingModal';
 
 function formatSyncTime(iso) {
@@ -20,6 +20,23 @@ function formatSyncTime(iso) {
   });
 }
 
+function formatSyncTimeShort(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  if (diffMs >= 0 && diffMs < 60_000) return 'Just now';
+  if (diffMs >= 0 && diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
+  if (diffMs >= 0 && diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}h ago`;
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function findStatus(rows, accountId) {
   return rows.find((r) => r.trading_account_id === accountId) || null;
 }
@@ -28,7 +45,7 @@ function findStatus(rows, accountId) {
  * Sync data for the selected account via investor-password bridge.
  * Shows a loading modal that can be dismissed while sync continues in the background.
  */
-export default function SyncNowButton({ size = 'md', className = '' }) {
+export default function SyncNowButton({ size = 'md', className = '', variant = 'default' }) {
   const navigate = useNavigate();
   const { alert } = useDialog();
   const { viewMode, activeAccount, refreshTrades } = useAppData();
@@ -170,7 +187,14 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
     // Keep waiting — do not abort. User can navigate while polling continues.
   }
 
-  const btnClass = size === 'sm' ? btnSm : btnOutline;
+  const toolbar = variant === 'toolbar';
+  const compact = size === 'sm' || toolbar;
+  const btnClass = toolbar
+    ? 'inline-flex h-10 items-center gap-1.5 rounded-full border border-zinc-200/90 bg-white/90 px-4 text-[12px] shadow-sm shadow-zinc-900/5 backdrop-blur-sm transition hover:bg-zinc-50 disabled:opacity-45 dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-black/30 dark:hover:bg-zinc-800/80'
+    : compact
+      ? 'inline-flex items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-700 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 active:scale-[0.98] disabled:opacity-45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-violet-600 dark:hover:bg-violet-950/40 dark:hover:text-violet-300'
+      : btnOutline;
+
   let title = `Sync ${platShort} trades for this account`;
   if (!singleAccount) title = 'Switch to a single account to sync';
   else if (!loadingStatus && !hasInvestor && isEaAccount) title = 'EA accounts sync from MetaTrader — attach the EA on a chart';
@@ -179,6 +203,7 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
   else if (busy) title = `Waiting for ${platShort} sync to finish…`;
 
   let statusLine = null;
+  let syncMetaShort = null;
   if (singleAccount && hasInvestor) {
     if (busy) {
       statusLine = (
@@ -186,30 +211,38 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
           {syncStageLabel(investorStatus?.sync_stage, activeAccount?.platform)}
         </span>
       );
+      syncMetaShort = syncStageLabel(investorStatus?.sync_stage, activeAccount?.platform);
     } else if (investorStatus?.last_sync_error) {
       statusLine = (
         <span className="text-rose-600 dark:text-rose-400" title={investorStatus.last_sync_error}>
           Last failed: {investorStatus.last_sync_error}
         </span>
       );
+      syncMetaShort = 'Failed';
     } else if (investorStatus?.last_synced_at) {
+      const when = formatSyncTime(investorStatus.last_synced_at);
       statusLine = (
         <span className="text-zinc-500 dark:text-zinc-400">
-          Last synced: {formatSyncTime(investorStatus.last_synced_at)}
+          Last synced: {when}
         </span>
       );
+      syncMetaShort = formatSyncTimeShort(investorStatus.last_synced_at) || when;
     } else {
       statusLine = <span className="text-zinc-400">Not synced yet</span>;
+      syncMetaShort = 'Never';
     }
   } else if (singleAccount && !loadingStatus && isEaAccount) {
     if (eaSyncMeta?.last_synced_at) {
+      const when = formatSyncTime(eaSyncMeta.last_synced_at);
       statusLine = (
         <span className="text-zinc-500 dark:text-zinc-400">
-          Last EA sync: {formatSyncTime(eaSyncMeta.last_synced_at)}
+          Last EA sync: {when}
         </span>
       );
+      syncMetaShort = formatSyncTimeShort(eaSyncMeta.last_synced_at) || when;
     } else {
       statusLine = <span className="text-zinc-400">EA not synced yet — attach it on a chart</span>;
+      syncMetaShort = 'Never';
     }
   } else if (singleAccount && !loadingStatus && !hasInvestor) {
     statusLine = <span className="text-zinc-400">Investor sync not connected</span>;
@@ -217,18 +250,29 @@ export default function SyncNowButton({ size = 'md', className = '' }) {
 
   return (
     <>
-      <div className={`inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 ${className}`.trim()}>
+      <div className={`${toolbar ? 'contents' : `inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 ${className}`.trim()}`}>
         <button
           type="button"
-          className={`${btnClass} min-w-[7.5rem]`.trim()}
+          className={`${btnClass} ${!compact && !toolbar ? 'min-w-[7.5rem]' : ''} ${className}`.trim()}
           disabled={busy || loadingStatus}
           title={title}
           aria-busy={busy || loadingStatus}
           onClick={() => void handleClick()}
         >
-          {busy ? 'Syncing…' : 'Sync data'}
+          {toolbar ? (
+            <>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-100">
+                {busy ? 'Syncing…' : 'Sync'}
+              </span>
+              {syncMetaShort && !busy ? (
+                <span className="font-normal text-zinc-400 dark:text-zinc-500">{syncMetaShort}</span>
+              ) : null}
+            </>
+          ) : (
+            busy ? 'Syncing…' : 'Sync data'
+          )}
         </button>
-        {statusLine ? (
+        {!toolbar && statusLine ? (
           <p className="max-w-[16rem] truncate text-[11px] leading-tight">{statusLine}</p>
         ) : null}
       </div>

@@ -14,7 +14,7 @@ const ACCOUNT_KEY = 'nxuu_active_account_id';
 const EMPTY_JOURNAL = {
   stats: null,
   daily: [],
-  breakdown: { symbol: [], session: [] },
+  breakdown: { symbol: [], session: [], direction: [], outcome: [] },
   accounts: [],
 };
 
@@ -82,6 +82,8 @@ export function AppDataProvider({ children }) {
         breakdown: {
           symbol: Array.isArray(data?.breakdown?.symbol) ? data.breakdown.symbol : [],
           session: Array.isArray(data?.breakdown?.session) ? data.breakdown.session : [],
+          direction: Array.isArray(data?.breakdown?.direction) ? data.breakdown.direction : [],
+          outcome: Array.isArray(data?.breakdown?.outcome) ? data.breakdown.outcome : [],
         },
         accounts: Array.isArray(data?.accounts) ? data.accounts : [],
       });

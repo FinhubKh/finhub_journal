@@ -102,11 +102,12 @@ export async function fetchPublishedTradingAccount(token, opts = {}) {
 
 /**
  * Ranked list of published trading accounts (anon-safe).
- * @param {{ limit?: number, minTrades?: number }} [opts]
+ * @param {{ limit?: number, minTrades?: number, eligibleOnly?: boolean }} [opts]
  */
 export async function fetchPublicLeaderboard(opts = {}) {
   const limit = Number.isFinite(opts.limit) ? opts.limit : 50;
   const minTrades = Number.isFinite(opts.minTrades) ? opts.minTrades : 5;
+  const eligibleOnly = Boolean(opts.eligibleOnly);
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_public_leaderboard`, {
     method: 'POST',
@@ -115,7 +116,11 @@ export async function fetchPublicLeaderboard(opts = {}) {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ p_limit: limit, p_min_trades: minTrades }),
+    body: JSON.stringify({
+      p_limit: limit,
+      p_min_trades: minTrades,
+      p_eligible_only: eligibleOnly,
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
@@ -138,6 +143,8 @@ export async function fetchPublicLeaderboard(opts = {}) {
       totalPnl: Number(e.total_pnl) || 0,
       winRate: Number(e.win_rate) || 0,
       profitFactor: e.profit_factor_infinite ? Infinity : (e.profit_factor == null ? null : Number(e.profit_factor)),
+      riskTrack: e.risk_track || null,
+      riskEligible: Boolean(e.risk_eligible),
   }));
   mapped.sort(
     (a, b) => toUsdPnl(b.totalPnl, b.pnlDenomination) - toUsdPnl(a.totalPnl, a.pnlDenomination)
@@ -148,5 +155,6 @@ export async function fetchPublicLeaderboard(opts = {}) {
     entries: mapped.map((e, i) => ({ ...e, rank: i + 1 })),
     minTrades: data?.min_trades ?? minTrades,
     limit: data?.limit ?? limit,
+    eligibleOnly: Boolean(data?.eligible_only ?? eligibleOnly),
   };
 }

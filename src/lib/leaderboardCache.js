@@ -8,7 +8,8 @@ const cache = new Map();
 function cacheKey(opts = {}) {
   const limit = Number.isFinite(opts.limit) ? opts.limit : 50;
   const minTrades = Number.isFinite(opts.minTrades) ? opts.minTrades : 5;
-  return `${limit}:${minTrades}`;
+  const eligibleOnly = opts.eligibleOnly ? '1' : '0';
+  return `${limit}:${minTrades}:${eligibleOnly}`;
 }
 
 export function invalidateLeaderboardCache() {

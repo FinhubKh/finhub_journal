@@ -16,15 +16,15 @@ export const RULE_COPY = {
 
 export const SIAC_STATUS_STYLES = {
   eligible: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-  not_eligible: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
-  needs_history: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+  not_eligible: 'bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-800/80 dark:text-zinc-300 dark:ring-zinc-700',
+  needs_history: 'bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-800/80 dark:text-zinc-300 dark:ring-zinc-700',
   unconfigured: 'bg-zinc-50 text-zinc-500 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700',
 };
 
 export const SIAC_STATUS_LABELS = {
   eligible: 'Eligible',
-  not_eligible: 'Not eligible',
-  needs_history: 'Needs history',
+  not_eligible: 'Open items',
+  needs_history: 'Building history',
   unconfigured: 'Not set',
 };
 

@@ -52,7 +52,12 @@ export async function fetchJournalBundle(accountId) {
   });
   if (!res.ok) throw new Error(await readError(res));
   const data = await res.json();
-  return data || { stats: null, daily: [], breakdown: { symbol: [], session: [] }, accounts: [] };
+  return data || {
+    stats: null,
+    daily: [],
+    breakdown: { symbol: [], session: [], direction: [], outcome: [] },
+    accounts: [],
+  };
 }
 
 export async function fetchTradesPage({

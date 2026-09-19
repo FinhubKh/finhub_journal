@@ -74,7 +74,7 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
-      <div className={`${cardHd} shrink-0 block overflow-x-auto hide-scrollbar py-3`}>
+      <div className={`${cardHd} shrink-0 block overflow-x-auto hide-scrollbar !py-2.5`}>
         <div className={`flex w-full min-w-max justify-center`}>
           <div className={pillToggle}>
             {KINDS.map((k) => (
@@ -86,11 +86,11 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
         </div>
       </div>
 
-      <div className={`relative flex items-center justify-center ${fill ? 'min-h-0 flex-[0.8] p-4' : 'h-[180px] p-4 md:p-5'}`}>
+      <div className={`relative flex items-center justify-center ${fill ? 'min-h-0 flex-[0.9] p-3' : 'h-[180px] p-4 md:p-5'}`}>
         {groups.length === 0 ? (
           <div className={emptyState}>No breakdown data yet.</div>
         ) : (
-          <div className="relative h-full w-full max-h-[160px] max-w-[160px]">
+          <div className={`relative h-full w-full ${fill ? 'max-h-none max-w-[140px]' : 'max-h-[160px] max-w-[160px]'}`}>
             <canvas ref={canvasRef} />
           </div>
         )}
@@ -99,7 +99,7 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
       {entries.length > 0 && (
         <div
           className={`border-t border-zinc-100 dark:border-zinc-800 ${
-            fill ? 'min-h-0 flex-[1.2] overflow-y-auto' : 'max-h-[220px] overflow-y-auto'
+            fill ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-[220px] overflow-y-auto'
           }`}
         >
           {entries.map((d) => {
@@ -108,7 +108,7 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
             const pnl = Number(d.pnl) || 0;
             return (
               <div
-                className="flex items-center justify-between gap-3 border-b border-zinc-50 px-4 py-3 last:border-0 dark:border-zinc-900 md:px-5"
+                className="flex items-center justify-between gap-3 border-b border-zinc-50 px-3 py-2 last:border-0 dark:border-zinc-900 md:px-4"
                 key={d.name}
               >
                 <div className="min-w-0 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{capitalize(d.name)}</div>

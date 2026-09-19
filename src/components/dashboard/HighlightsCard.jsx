@@ -81,61 +81,61 @@ export default function HighlightsCard({ overview, daily, denomination = 'usd', 
 
   return (
     <div className={`${card} overflow-hidden ${fill ? 'flex h-full min-h-0 flex-col' : ''}`}>
-      <div className={`${cardHd} shrink-0`}>
+      <div className={`${cardHd} shrink-0 !py-2.5`}>
         <div>
           <h3 className={cardTitle}>Highlights & Streaks</h3>
-          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Extremes and most profitable segments</p>
+          <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">Extremes and most profitable segments</p>
         </div>
       </div>
-      <div className={`${cardBody} flex-1 overflow-y-auto`}>
-        <div className="grid grid-cols-2 gap-4">
+      <div className={`${cardBody} ${fill ? 'min-h-0 flex-1 overflow-y-auto !py-3' : ''}`}>
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Best trade</p>
-            <p className="mt-1 text-lg font-bold text-violet-600 dark:text-emerald-400">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Best trade</p>
+            <p className="mt-0.5 text-base font-bold text-violet-600 dark:text-emerald-400">
               {bestTrade > 0 ? fmtPnlStrict(bestTrade, denomination) : '—'}
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Worst trade</p>
-            <p className="mt-1 text-lg font-bold text-rose-600 dark:text-rose-400">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Worst trade</p>
+            <p className="mt-0.5 text-base font-bold text-rose-600 dark:text-rose-400">
               {worstTrade < 0 ? fmtPnlStrict(worstTrade, denomination) : '—'}
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Win streak</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Win streak</p>
+            <p className="mt-0.5 text-base font-bold text-zinc-900 dark:text-white">
               {winStreak > 0 ? winStreak : '—'}
             </p>
             <p className="mt-0.5 text-[10px] font-medium text-zinc-400">Consecutive wins</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Loss streak</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Loss streak</p>
+            <p className="mt-0.5 text-base font-bold text-zinc-900 dark:text-white">
               {lossStreak > 0 ? lossStreak : '—'}
             </p>
             <p className="mt-0.5 text-[10px] font-medium text-zinc-400">Consecutive losses</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Best day</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Best day</p>
+            <p className="mt-0.5 text-base font-bold text-zinc-900 dark:text-white">
               {bestDay}
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Best session</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Best session</p>
+            <p className="mt-0.5 text-base font-bold text-zinc-900 dark:text-white">
               {bestSession}
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Best year</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Best year</p>
+            <p className="mt-0.5 text-base font-bold text-zinc-900 dark:text-white">
               {bestYear}
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Best month</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">
+            <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Best month</p>
+            <p className="mt-0.5 text-base font-bold text-zinc-900 dark:text-white">
               {bestMonth}
             </p>
           </div>

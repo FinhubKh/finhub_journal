@@ -9,6 +9,7 @@ import {
 } from '../../lib/siacEligibilityUi';
 import { card } from '../../lib/ui';
 import SiacChecklist, { SiacStatusPill } from '../settings/SiacChecklist';
+import SiacLogo from '../common/SiacLogo';
 
 /**
  * Compact SIAC eligibility card for Overview (Home) Summary.
@@ -19,7 +20,6 @@ import SiacChecklist, { SiacStatusPill } from '../settings/SiacChecklist';
 export default function SiacSummaryCard({
   account,
   accounts,
-  onManage,
   onSelectAccount,
   onChanged,
   fill = false,
@@ -93,26 +93,21 @@ export default function SiacSummaryCard({
 
   return (
     <section
-      aria-labelledby="summary-siac-heading"
-      className={`${card} px-4 py-4 md:px-5 ${
+      aria-label="SIAC Eligibility"
+      className={`${card} px-3 py-3 md:px-4 ${
         fill ? 'flex h-full min-h-0 flex-col' : 'shrink-0'
       }`}
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <div>
-          <h2
-            id="summary-siac-heading"
-            className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
-          >
+      <div className="mb-2.5 flex shrink-0 items-center gap-2.5">
+        <SiacLogo size={28} />
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             SIAC Eligibility
           </h2>
-          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-            {isPortfolio
-              ? 'Status across your accounts'
-              : 'Auto-checked from this account’s journal history'}
+          <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+            {isPortfolio ? 'Status across your accounts' : 'Checked from this account’s history'}
           </p>
         </div>
-        {!isPortfolio ? <SiacStatusPill status={status} /> : null}
       </div>
 
       <div className={fill ? 'min-h-0 flex-1 overflow-y-auto' : undefined}>
@@ -165,18 +160,6 @@ export default function SiacSummaryCard({
           <SiacChecklist rules={rules} />
         )}
       </div>
-
-      {typeof onManage === 'function' ? (
-        <div className="mt-3 shrink-0 border-t border-zinc-100 pt-3 dark:border-zinc-800">
-          <button
-            type="button"
-            className="text-xs font-semibold text-violet-600 transition hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
-            onClick={onManage}
-          >
-            {isPortfolio ? 'Manage accounts' : 'Manage SIAC rules'}
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

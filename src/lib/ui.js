@@ -57,7 +57,7 @@ export const dashboardPage = 'w-full min-w-0 px-4 pb-8 pt-4 md:px-6 md:pt-6';
 export const dashboardPageWide = 'w-full min-w-0 px-4 pb-8 pt-4 md:px-6 md:pt-6';
 
 export const dashboardPageWideFull =
-  'flex h-full min-h-0 w-full min-w-0 flex-col px-4 pb-6 pt-4 md:px-6 md:pt-6';
+  'flex h-full min-h-0 w-full min-w-0 flex-col px-3 pb-3 pt-3 md:px-5 md:pb-4 md:pt-4';
 
 export const dashboardPageFull =
   'flex h-full min-h-0 w-full min-w-0 flex-col px-4 pb-6 pt-4 md:px-6 md:pt-6';

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { LuGlobe, LuHandshake, LuMoon, LuShield, LuSun, LuUsers } from 'react-icons/lu';
 import { getCachedPublicLeaderboard } from '../lib/leaderboardCache';
 import { fetchTeamsLeaderboard, fetchMyTeam, leaveTeam, updateTeamAccount } from '../api/teams';
-import { accountTypeLabel } from '../lib/accounts';
+import { accountTypeLabel, riskTrackLabel } from '../lib/accounts';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
 import { useTheme } from '../context/ThemeContext';
@@ -61,13 +61,19 @@ function RankBadge({ rank }) {
   );
 }
 
-function GlobalLeaderboardTable({ entries, sort, embedded }) {
+function GlobalLeaderboardTable({ entries, sort, embedded, siacMode = false }) {
   if (!entries.length) {
     return (
       <div className={`${card} ${emptyState}`}>
-        <p>No published accounts qualify yet.</p>
+        <p>
+          {siacMode
+            ? 'No SIAC-eligible published accounts yet.'
+            : 'No published accounts qualify yet.'}
+        </p>
         <p className="mt-1 text-xs text-zinc-400">
-          Publish an account with enough trades to appear here.
+          {siacMode
+            ? 'Publish an account that passes the Master / EA checklist to appear here.'
+            : 'Publish an account with enough trades to appear here.'}
         </p>
         {embedded ? (
           <Link to="/dashboard/accounts" className={`${btnOutline} mt-4 inline-flex`}>
@@ -100,6 +106,7 @@ function GlobalLeaderboardTable({ entries, sort, embedded }) {
               const rowClass = isFirst
                 ? 'bg-amber-500/[0.02] dark:bg-amber-500/[0.06] hover:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.10]'
                 : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50';
+              const trackLabel = riskTrackLabel(e.riskTrack);
 
               return (
                 <tr key={e.accountId} className={`transition ${rowClass}`}>
@@ -118,7 +125,14 @@ function GlobalLeaderboardTable({ entries, sort, embedded }) {
                       />
                       <div className="min-w-0">
                         <div className="truncate font-medium text-zinc-800 dark:text-zinc-200">{e.accountName}</div>
-                        <div className="text-[11px] text-zinc-400 dark:text-zinc-500">{accountTypeLabel(e.accountType)}</div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+                          <span>{accountTypeLabel(e.accountType)}</span>
+                          {siacMode && trackLabel !== 'Not set' ? (
+                            <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              {trackLabel}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -268,7 +282,7 @@ export default function LeaderboardPage({ embedded = false }) {
   const { tradingAccounts } = useSafeAppData();
   const { isDark, toggleTheme } = useTheme();
 
-  const [mode, setMode] = useState('global'); // 'global' | 'teams'
+  const [mode, setMode] = useState('global'); // 'global' | 'siac' | 'teams'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -287,10 +301,10 @@ export default function LeaderboardPage({ embedded = false }) {
   const [leavingTeam, setLeavingTeam] = useState(false);
 
   // Load Global Leaderboard
-  const loadGlobal = useCallback(() => {
+  const loadGlobal = useCallback((eligibleOnly = false) => {
     setLoading(true);
     setError(null);
-    getCachedPublicLeaderboard({ limit: 50, minTrades: 5 })
+    getCachedPublicLeaderboard({ limit: 50, minTrades: 5, eligibleOnly })
       .then((data) => setGlobalPayload(data))
       .catch((e) => setError(e?.message || 'Could not load global leaderboard.'))
       .finally(() => setLoading(false));
@@ -314,18 +328,25 @@ export default function LeaderboardPage({ embedded = false }) {
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    if (mode === 'global') {
-      loadGlobal();
-    } else {
-      loadTeams();
-    }
-  }, [mode, loadGlobal, loadTeams]);
+  const siacMode = mode === 'siac';
 
-  // Sorted global entries
+  useEffect(() => {
+    if (mode === 'teams') {
+      loadTeams();
+    } else {
+      loadGlobal(siacMode);
+    }
+  }, [mode, siacMode, loadGlobal, loadTeams]);
+
+  // Sorted global / SIAC entries
   const sortedGlobal = useMemo(() => {
-    const list = [...(globalPayload?.entries || [])];
+    let list = [...(globalPayload?.entries || [])];
     const pnlUsd = (e) => toUsdPnl(e.totalPnl, e.pnlDenomination);
+
+    if (siacMode) {
+      list = list.filter((e) => e.riskEligible);
+    }
+
     if (sort === 'wr') {
       list.sort((a, b) => b.winRate - a.winRate || pnlUsd(b) - pnlUsd(a));
     } else if (sort === 'pf') {
@@ -334,7 +355,7 @@ export default function LeaderboardPage({ embedded = false }) {
       list.sort((a, b) => pnlUsd(b) - pnlUsd(a) || b.tradeCount - a.tradeCount);
     }
     return list.map((e, i) => ({ ...e, displayRank: i + 1 }));
-  }, [globalPayload, sort]);
+  }, [globalPayload, sort, siacMode]);
 
   const handleLeaveTeam = async () => {
     if (!window.confirm('Are you sure you want to leave your team?')) return;
@@ -369,9 +390,11 @@ export default function LeaderboardPage({ embedded = false }) {
           <p className={`${sectionLabel} !mb-1`}>Community Rankings</p>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Leaderboard</h1>
           <p className="mt-1 max-w-xl text-sm text-zinc-500">
-            {mode === 'global'
-              ? 'Rankings of published trading accounts. Open any profile to view performance stats.'
-              : 'Clan battleground! Teams ranked by combined total PnL across all team members.'}
+            {mode === 'teams'
+              ? 'Clan battleground! Teams ranked by combined total PnL across all team members.'
+              : mode === 'siac'
+                ? 'Only SIAC-eligible published accounts — ranked among traders who pass the checklist.'
+                : 'Rankings of published trading accounts. Open any profile to view performance stats.'}
           </p>
         </div>
 
@@ -393,6 +416,15 @@ export default function LeaderboardPage({ embedded = false }) {
             <button
               type="button"
               role="tab"
+              aria-selected={mode === 'siac'}
+              className={pillBtn(mode === 'siac')}
+              onClick={() => setMode('siac')}
+            >
+              SIAC
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={mode === 'teams'}
               className={pillBtn(mode === 'teams')}
               onClick={() => setMode('teams')}
@@ -404,7 +436,7 @@ export default function LeaderboardPage({ embedded = false }) {
             </button>
           </div>
 
-          {mode === 'global' && (
+          {(mode === 'global' || mode === 'siac') && (
             <div className={pillToggle} role="tablist" aria-label="Sort global leaderboard">
               {SORTS.map((s) => (
                 <button
@@ -517,7 +549,9 @@ export default function LeaderboardPage({ embedded = false }) {
 
       {/* Main Content Area */}
       {loading ? (
-        <p className="text-sm text-zinc-400">Loading {mode === 'global' ? 'traders' : 'teams'}…</p>
+        <p className="text-sm text-zinc-400">
+          Loading {mode === 'teams' ? 'teams' : mode === 'siac' ? 'SIAC rankings' : 'traders'}…
+        </p>
       ) : error ? (
         <div className={`${card} p-5`}>
           <p className="text-sm font-medium text-zinc-900">Could not load leaderboard</p>
@@ -526,8 +560,13 @@ export default function LeaderboardPage({ embedded = false }) {
             Run SQL schemas <code className="rounded bg-zinc-100 px-1 py-0.5">backend/schema_leaderboard.sql</code> and <code className="rounded bg-zinc-100 px-1 py-0.5">backend/schema_teams.sql</code> in Supabase SQL Editor.
           </p>
         </div>
-      ) : mode === 'global' ? (
-        <GlobalLeaderboardTable entries={sortedGlobal} sort={sort} embedded={embedded} />
+      ) : mode === 'global' || mode === 'siac' ? (
+        <GlobalLeaderboardTable
+          entries={sortedGlobal}
+          sort={sort}
+          embedded={embedded}
+          siacMode={siacMode}
+        />
       ) : (
         <TeamLeaderboardTable teams={teamsPayload} onSelectTeam={(id) => setSelectedTeamId(id)} />
       )}

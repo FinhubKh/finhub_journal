@@ -136,7 +136,7 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
   return (
     <>
       <div className={`${isModal ? 'flex h-full min-h-0 flex-col bg-white dark:bg-zinc-900' : card} overflow-hidden ${fill && !isModal ? 'flex h-full min-h-0 flex-col' : ''}`}>
-        <div className={`${cardHd} shrink-0`}>
+      <div className={`${cardHd} shrink-0 !py-2.5`}>
           <div>
             <h3 className={cardTitle}>Equity curve</h3>
           </div>
@@ -170,7 +170,7 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
             )}
           </div>
         </div>
-        <div className={`${cardBody} relative ${fill ? 'min-h-0 flex-1' : 'h-72 sm:h-80'}`}>
+        <div className={`${cardBody} relative ${fill ? 'min-h-0 flex-1 !py-2 md:!px-4' : 'h-72 sm:h-80'}`}>
           {empty ? (
             <div className={emptyState}>No trades to chart yet.</div>
           ) : (

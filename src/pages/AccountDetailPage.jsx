@@ -15,6 +15,7 @@ import {
 import BackButton from '../components/common/BackButton';
 import InvestorSyncPanel from '../components/settings/InvestorSyncPanel';
 import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
+import SiacLogo from '../components/common/SiacLogo';
 import {
   AccountFormModal,
   SyncKeyModal,
@@ -42,7 +43,7 @@ function formatLastSynced(iso) {
   });
 }
 
-function Panel({ eyebrow, title, badge, children, danger = false }) {
+function Panel({ eyebrow, title, badge, children, danger = false, icon = null }) {
   return (
     <section
       className={`${card} overflow-hidden ${
@@ -50,9 +51,12 @@ function Panel({ eyebrow, title, badge, children, danger = false }) {
       }`}
     >
       <div className={cardHd}>
-        <div className="min-w-0">
-          <p className={`${sectionLabel} mb-1`}>{eyebrow}</p>
-          <h2 className={cardTitle}>{title}</h2>
+        <div className="flex min-w-0 items-start gap-3">
+          {icon}
+          <div className="min-w-0">
+            <p className={`${sectionLabel} mb-1`}>{eyebrow}</p>
+            <h2 className={cardTitle}>{title}</h2>
+          </div>
         </div>
         {badge}
       </div>
@@ -435,7 +439,11 @@ export default function AccountDetailPage() {
       </div>
 
       <div className="mb-6">
-        <Panel eyebrow="SIAC Eligibility" title="Master / EA eligibility">
+        <Panel
+          eyebrow="SIAC Eligibility"
+          title="Master / EA eligibility"
+          icon={<SiacLogo size={36} className="mt-0.5" />}
+        >
           <RiskEligibilityPanel
             account={account}
             trades={[]}

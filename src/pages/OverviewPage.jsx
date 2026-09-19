@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
+import { fetchDailyPnlByYear } from '../api';
 import { viewPnlDenomination, platformShort } from '../lib/accounts';
 import { fmtPnlStrict, fmtBalance } from '../lib/format';
+import { overridesToMap } from '../lib/dailyPnl';
 import {
   btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, sectionLabel,
 } from '../lib/ui';
@@ -13,11 +15,15 @@ import PortfolioBreakdown from '../components/dashboard/PortfolioBreakdown';
 import WinRateGauge from '../components/dashboard/WinRateGauge';
 import RiskCard from '../components/dashboard/RiskCard';
 import HighlightsCard from '../components/dashboard/HighlightsCard';
-import HeatmapView from '../components/calendar/HeatmapView';
+import SiacSummaryCard from '../components/dashboard/SiacSummaryCard';
+import { YearView, MonthDetailView } from '../components/calendar/CalendarViews';
+import DailyPnlModal from '../components/modals/DailyPnlModal';
 import SyncNowButton from '../components/common/SyncNowButton';
 import RiskStatusPill from '../components/common/RiskStatusPill';
 import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
+import SiacLogo from '../components/common/SiacLogo';
 import { startingEquityFromStats } from '../lib/equityChart';
+import { bucketDailyByMonth, EMPTY_YEAR_BUCKETS, yearsFromDates } from '../lib/calendarCells';
 import { fetchTradeExtremes } from '../api/journal';
 
 function StatTile({ label, value, hint, tone = 'neutral' }) {
@@ -27,14 +33,14 @@ function StatTile({ label, value, hint, tone = 'neutral' }) {
         : 'text-zinc-900 dark:text-zinc-100';
 
   return (
-    <div className={`${card} flex h-full min-h-0 flex-col justify-between p-3.5`}>
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+    <div className={`${card} flex h-full min-h-0 flex-col justify-between p-2.5 sm:p-3`}>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
         {label}
       </span>
-      <div className={`mt-1.5 truncate text-lg font-bold tracking-tight tabular-nums sm:text-xl ${valueCls}`}>
+      <div className={`mt-1 truncate text-base font-bold tracking-tight tabular-nums sm:text-lg ${valueCls}`}>
         {value}
       </div>
-      {hint ? <span className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
+      {hint ? <span className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
     </div>
   );
 }
@@ -47,29 +53,187 @@ function formatPf(value, infinite) {
 }
 
 function OverviewHeader({ activeAccount, viewMode, onOpenEligibility }) {
+  const showSiac = viewMode === 'account' && Boolean(activeAccount);
+  const subtitle =
+    viewMode === 'account' && activeAccount
+      ? `${activeAccount.name}${activeAccount.broker ? ` · ${activeAccount.broker}` : ''} · ${platformShort(activeAccount.platform)}`
+      : 'All accounts · Portfolio view';
+
   return (
-    <header className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Overview</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {viewMode === 'account' && activeAccount
-            ? `${activeAccount.name}${activeAccount.broker ? ` · ${activeAccount.broker}` : ''} · ${platformShort(activeAccount.platform)}`
-            : 'All accounts · Portfolio view'}
-        </p>
+    <header className="relative mb-4 flex shrink-0 flex-col gap-3 sm:h-11 sm:flex-row sm:items-center sm:justify-center">
+      <div className="min-w-0 self-start sm:absolute sm:left-0 sm:top-1/2 sm:max-w-[min(34%,15rem)] sm:-translate-y-1/2 xl:max-w-[18rem]">
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Overview</h1>
+        <p className="mt-0.5 truncate text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <RiskStatusPill onClick={onOpenEligibility} />
-        <SyncNowButton />
-        <AccountViewDropdown variant="header" />
+
+      <div className="flex w-full justify-center sm:w-auto sm:max-w-[min(100%,20rem)] sm:flex-1">
+        <AccountViewDropdown variant="toolbar" />
+      </div>
+
+      <div
+        className="flex h-10 shrink-0 items-center justify-end gap-2 self-end sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 sm:self-auto"
+        role="toolbar"
+        aria-label="Overview actions"
+      >
+        {showSiac ? (
+          <RiskStatusPill variant="toolbar" onClick={onOpenEligibility} />
+        ) : null}
+        <SyncNowButton variant="toolbar" />
       </div>
     </header>
+  );
+}
+
+function OverviewCalendarSection({
+  daily,
+  denomination,
+  viewMode,
+  dataLoading,
+  onRefresh,
+}) {
+  const useOverrides = viewMode === 'portfolio';
+  const availableYears = useMemo(() => yearsFromDates(daily), [daily]);
+  const now = new Date();
+  const [screen, setScreen] = useState('year');
+  const [year, setYear] = useState(() => availableYears[availableYears.length - 1] || now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [dailyOverrides, setDailyOverrides] = useState({});
+  const [loadingOverrides, setLoadingOverrides] = useState(false);
+  const [editDay, setEditDay] = useState(null);
+
+  useEffect(() => {
+    if (!availableYears.length) return;
+    if (!availableYears.includes(year)) {
+      setYear(availableYears[availableYears.length - 1]);
+    }
+  }, [availableYears, year]);
+
+  const yearDays = useMemo(
+    () => (dataLoading ? EMPTY_YEAR_BUCKETS : bucketDailyByMonth(daily, year)),
+    [daily, year, dataLoading],
+  );
+  const monthDays = yearDays[month] || [];
+
+  useEffect(() => {
+    if (!useOverrides) {
+      setDailyOverrides({});
+      setLoadingOverrides(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoadingOverrides(true);
+    (async () => {
+      try {
+        const rows = await fetchDailyPnlByYear(year);
+        if (!cancelled) setDailyOverrides(overridesToMap(rows));
+      } catch {
+        if (!cancelled) setDailyOverrides({});
+      } finally {
+        if (!cancelled) setLoadingOverrides(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [year, useOverrides]);
+
+  const loading = dataLoading || (useOverrides && loadingOverrides);
+  const minYear = availableYears[0];
+  const maxYear = availableYears[availableYears.length - 1];
+
+  async function handleDailySaved() {
+    if (useOverrides) {
+      try {
+        const rows = await fetchDailyPnlByYear(year);
+        setDailyOverrides(overridesToMap(rows));
+      } catch {
+        setDailyOverrides({});
+      }
+    }
+    await onRefresh?.();
+  }
+
+  return (
+    <section aria-label="Calendar" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+      {screen === 'year' ? (
+        <YearView
+          year={year}
+          yearDays={yearDays}
+          overrideMap={dailyOverrides}
+          useOverrides={useOverrides}
+          denomination={denomination}
+          loading={loading}
+          onYearChange={setYear}
+          onSelectMonth={(m) => {
+            setMonth(m);
+            setScreen('detail');
+          }}
+          hint="Select a month to view daily PnL"
+          showManualLegend={useOverrides}
+          minYear={minYear}
+          maxYear={maxYear}
+          fill
+        />
+      ) : (
+        <MonthDetailView
+          year={year}
+          month={month}
+          monthDays={monthDays}
+          overrideMap={dailyOverrides}
+          useOverrides={useOverrides}
+          denomination={denomination}
+          loading={loading}
+          onBack={() => setScreen('year')}
+          onPrevMonth={() => {
+            setMonth((m) => {
+              if (m === 1) {
+                setYear((y) => y - 1);
+                return 12;
+              }
+              return m - 1;
+            });
+          }}
+          onNextMonth={() => {
+            setMonth((m) => {
+              if (m === 12) {
+                setYear((y) => y + 1);
+                return 1;
+              }
+              return m + 1;
+            });
+          }}
+          onEditDay={useOverrides ? (date, row, override) => setEditDay({
+            date,
+            tradesSum: Number(row?.pnl) || 0,
+            tradeCount: Number(row?.trades) || 0,
+            override,
+          }) : undefined}
+          showManualLegend={useOverrides}
+          fill
+        />
+      )}
+
+      {editDay && (
+        <DailyPnlModal
+          date={editDay.date}
+          tradesSum={editDay.tradesSum}
+          tradeCount={editDay.tradeCount}
+          override={editDay.override}
+          denomination={denomination}
+          onClose={() => setEditDay(null)}
+          onSaved={handleDailySaved}
+        />
+      )}
+    </section>
   );
 }
 
 function EligibilitySection({ account, daily, maxDd, onChanged }) {
   if (!account) {
     return (
-      <div className={`${card} px-5 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400`}>
+      <div className={`${card} flex h-full min-h-0 items-center justify-center px-5 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400`}>
         Switch to a single account to check Master / EA eligibility.
       </div>
     );
@@ -79,27 +243,32 @@ function EligibilitySection({ account, daily, maxDd, onChanged }) {
     <section
       aria-labelledby="overview-eligibility-heading"
       role="tabpanel"
-      className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden"
     >
-      <div className={`${card} px-4 py-4 md:px-5`}>
-        <div className="mb-4 border-b border-zinc-100 pb-3 dark:border-zinc-800">
-          <p className={sectionLabel}>Master / EA</p>
-          <h2
-            id="overview-eligibility-heading"
-            className="mt-1 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
-          >
-            SIAC Eligibility
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Auto-checked from this account&apos;s journal history. Capital protection first.
-          </p>
-        </div>
+      <div className={`${card} flex h-full min-h-0 w-full flex-col overflow-hidden px-4 py-4 md:px-5`}>
         <RiskEligibilityPanel
           account={account}
           trades={[]}
           daily={daily}
           maxDd={maxDd}
           onChanged={onChanged}
+          fill
+          header={(
+            <>
+              <SiacLogo size={40} className="mt-0.5" />
+              <div className="min-w-0">
+                <h2
+                  id="overview-eligibility-heading"
+                  className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+                >
+                  SIAC Eligibility
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Auto-checked from this account&apos;s journal history. Capital protection first.
+                </p>
+              </div>
+            </>
+          )}
         />
       </div>
     </section>
@@ -109,7 +278,7 @@ function EligibilitySection({ account, daily, maxDd, onChanged }) {
 function OverviewSectionNav({ tabs, activeId, onChange }) {
   return (
     <nav
-      className="mb-4 shrink-0 -mx-1 overflow-x-auto px-1 pb-1"
+      className="mb-2.5 shrink-0 -mx-1 overflow-x-auto px-1 pb-0.5"
       aria-label="Overview sections"
     >
       <div className={`${pillToggle} w-max min-w-full sm:min-w-0`} role="tablist">
@@ -177,6 +346,9 @@ function StrategyOverviewSection({
   activeAccount,
   viewMode,
   tradeExtremes,
+  tradingAccounts,
+  onSelectAccount,
+  onSiacChanged,
 }) {
   const isAccountView = viewMode === 'account' && Boolean(activeAccount);
   const totalPnl = Number(stats?.totalPnl) || 0;
@@ -241,6 +413,8 @@ function StrategyOverviewSection({
     breakdown: {
       symbol: breakdown?.symbol || [],
       session: breakdown?.session || [],
+      direction: breakdown?.direction || [],
+      outcome: breakdown?.outcome || [],
       initialDeposit: equityStart,
       maxDdAmount: trueMaxDd,
       maxDdPercent: trueMaxDdPercent,
@@ -276,9 +450,9 @@ function StrategyOverviewSection({
     <section
       aria-label="Overview"
       role="tabpanel"
-      className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto lg:overflow-hidden"
+      className="flex h-full min-h-0 w-full flex-col gap-2 overflow-y-auto lg:overflow-hidden"
     >
-      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
         <StatTile
           label="Current balance"
           value={fmtBalance(currentBalance, denomination)}
@@ -323,9 +497,9 @@ function StrategyOverviewSection({
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:overflow-hidden">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:min-h-0">
-          <div className="min-h-[240px] flex-1 lg:min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          <div className="min-h-[11rem] flex-[1.25] sm:min-h-[13rem] lg:min-h-0">
             <EquityChart
               daily={daily}
               denomination={denomination}
@@ -333,18 +507,33 @@ function StrategyOverviewSection({
               fill
             />
           </div>
-          <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
-            <RiskCard overview={overview} daily={daily} denomination={denomination} />
-            <HighlightsCard overview={overview} daily={daily} denomination={denomination} />
+
+          <div className="grid min-h-[16rem] flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3 xl:grid-rows-1 lg:min-h-0">
+            <div className="min-h-0 h-full">
+              <RiskCard overview={overview} daily={daily} denomination={denomination} fill />
+            </div>
+            <div className="min-h-0 h-full">
+              <HighlightsCard overview={overview} daily={daily} denomination={denomination} fill />
+            </div>
+            <div className="min-h-0 h-full md:col-span-2 xl:col-span-1">
+              <SiacSummaryCard
+                account={isAccountView ? activeAccount : null}
+                accounts={isAccountView ? undefined : tradingAccounts}
+                onSelectAccount={onSelectAccount}
+                onChanged={onSiacChanged}
+                fill
+              />
+            </div>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col gap-3 lg:h-full lg:w-[min(22rem,38%)]">
+
+        <div className="flex w-full min-h-0 shrink-0 flex-col gap-2 lg:h-full lg:w-[min(20rem,30%)]">
           <div className="shrink-0">
             <WinRateGauge wins={wins} losses={losses} fill />
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="min-h-[16rem] flex-1 lg:min-h-0">
             <BreakdownCard
-              breakdown={breakdown || { symbol: [], session: [] }}
+              breakdown={breakdown || { symbol: [], session: [], direction: [], outcome: [] }}
               denomination={denomination}
               fill
             />
@@ -367,6 +556,8 @@ export default function OverviewPage() {
     tradingAccounts,
     dataLoading,
     refreshTradingAccounts,
+    refreshTrades,
+    setActiveAccountId,
     tradesEpoch,
   } = useAppData();
 
@@ -400,13 +591,13 @@ export default function OverviewPage() {
   const tabs = useMemo(() => {
     const next = [
       { id: 'overview', label: 'Overview' },
-      { id: 'heatmap', label: 'Heatmap' },
+      { id: 'heatmap', label: 'Calendar' },
     ];
+    if (showEligibility) {
+      next.push({ id: 'eligibility', label: 'SIAC' });
+    }
     if (showAccounts) {
       next.push({ id: 'accounts', label: 'Accounts' });
-    }
-    if (showEligibility) {
-      next.push({ id: 'eligibility', label: 'SIAC Eligibility' });
     }
     return next;
   }, [showAccounts, showEligibility]);
@@ -435,7 +626,7 @@ export default function OverviewPage() {
             </div>
           )}
 
-          {(hasActivity || showEligibility) && (
+          {(hasActivity || tradingAccounts.length > 0) && (
             <>
               <OverviewSectionNav
                 tabs={tabs}
@@ -453,13 +644,37 @@ export default function OverviewPage() {
                     activeAccount={activeAccount}
                     viewMode={viewMode}
                     tradeExtremes={tradeExtremes}
+                    tradingAccounts={tradingAccounts}
+                    onSelectAccount={(id) => {
+                      setActiveAccountId(id);
+                      setActiveSection('eligibility');
+                    }}
+                    onSiacChanged={refreshTradingAccounts}
                   />
                 )}
 
+                {activeSection === 'overview' && !hasActivity && tradingAccounts.length > 0 && (
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    <SiacSummaryCard
+                      account={showEligibility ? activeAccount : null}
+                      accounts={showEligibility ? undefined : tradingAccounts}
+                      onSelectAccount={(id) => {
+                        setActiveAccountId(id);
+                        setActiveSection('eligibility');
+                      }}
+                      onChanged={refreshTradingAccounts}
+                    />
+                  </div>
+                )}
+
                 {activeSection === 'heatmap' && hasActivity && (
-                  <section aria-label="Heatmap" role="tabpanel" className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-                    <HeatmapView daily={journalDaily} denomination={denomination} fill />
-                  </section>
+                  <OverviewCalendarSection
+                    daily={journalDaily}
+                    denomination={denomination}
+                    viewMode={viewMode}
+                    dataLoading={dataLoading}
+                    onRefresh={refreshTrades}
+                  />
                 )}
 
                 {activeSection === 'accounts' && showAccounts && (
