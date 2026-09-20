@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { platformLabel, platformShort } from '../../lib/accounts';
 import { btnGhost, card } from '../../lib/ui';
 
@@ -67,6 +68,7 @@ export function syncStageLabel(stage, platform) {
  * Loading overlay shown while investor MetaTrader sync is in progress.
  * `stage` mirrors investor_credentials.sync_stage, patched live by the bridge worker.
  * Pass `onBackground` to allow dismissing the overlay while sync continues.
+ * Portaled to document.body so dashboard overflow/transform parents cannot clip it.
  */
 export default function SyncLoadingModal({ open, accountName, stage, platform, onBackground }) {
   const short = platformShort(platform);
@@ -98,23 +100,23 @@ export default function SyncLoadingModal({ open, accountName, stage, platform, o
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const currentIndex = stageName
     ? steps.findIndex((s) => s.stage === stageName)
     : -1;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-900/45 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-zinc-900/50 p-4 backdrop-blur-[2px]"
       role="alertdialog"
       aria-modal="true"
       aria-busy="true"
       aria-labelledby="sync-loading-title"
       aria-describedby="sync-loading-message"
     >
-      <div className={`${card} w-full max-w-sm shadow-xl dark:bg-zinc-900`}>
-        <div className="flex flex-col items-center px-6 py-8 text-center">
+      <div className={`${card} w-full max-w-sm overflow-hidden shadow-2xl dark:bg-zinc-900`}>
+        <div className="flex max-h-[min(85vh,32rem)] flex-col overflow-y-auto px-6 py-7 text-center">
           <h2
             id="sync-loading-title"
             className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
@@ -161,7 +163,7 @@ export default function SyncLoadingModal({ open, accountName, stage, platform, o
           {typeof onBackground === 'function' ? (
             <button
               type="button"
-              className={`${btnGhost} mt-4 text-sm`}
+              className={`${btnGhost} mt-4 w-full text-sm`}
               onClick={onBackground}
             >
               Continue in background
@@ -169,6 +171,7 @@ export default function SyncLoadingModal({ open, accountName, stage, platform, o
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

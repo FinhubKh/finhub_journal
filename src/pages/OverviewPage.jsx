@@ -354,14 +354,16 @@ function StrategyOverviewSection({
   const totalPnl = Number(stats?.totalPnl) || 0;
   const deposits = Number(stats?.deposits) || 0;
   const withdrawals = Number(stats?.withdrawals) || 0;
-  const netDeposits = deposits - withdrawals;
-  // Equity chart start = balance − trade PnL (same as net deposits when cashflows are complete).
-  const equityStart = startingEquityFromStats(stats)
-    || (isAccountView ? Number(activeAccount?.starting_balance) || 0 : 0)
-    || netDeposits;
+  // Capital base for DD% / risk tiles: money put in — never negative net cashflow.
+  const capitalBase = (isAccountView ? Number(activeAccount?.starting_balance) || 0 : 0)
+    || deposits
+    || startingEquityFromStats(stats);
+  // Equity curve starts at 0 so it shows cumulative trade PnL.
+  // Using net cashflow (balance − totalPnl) as Start warps the chart to −$hundreds of k after withdrawals.
+  const equityStart = 0;
   const currentBalance = stats?.balance != null
     ? Number(stats.balance)
-    : equityStart + totalPnl;
+    : capitalBase + totalPnl;
   const trades = Number(stats?.total) || 0;
   const wins = Number(stats?.wins) || 0;
   const losses = Number(stats?.losses) || 0;
@@ -372,8 +374,8 @@ function StrategyOverviewSection({
   const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || pfInfinite);
 
   const trueMaxDd = Number(stats?.maxDD) || 0;
-  const trueMaxDdPercent = equityStart > 0 && trueMaxDd > 0
-    ? Number(((trueMaxDd / equityStart) * 100).toFixed(1))
+  const trueMaxDdPercent = capitalBase > 0 && trueMaxDd > 0
+    ? Number(((trueMaxDd / capitalBase) * 100).toFixed(1))
     : 0;
   const recovery = totalPnl > 0 && trueMaxDd > 0
     ? Number((totalPnl / trueMaxDd).toFixed(2))
@@ -415,7 +417,7 @@ function StrategyOverviewSection({
       session: breakdown?.session || [],
       direction: breakdown?.direction || [],
       outcome: breakdown?.outcome || [],
-      initialDeposit: equityStart,
+      initialDeposit: capitalBase,
       maxDdAmount: trueMaxDd,
       maxDdPercent: trueMaxDdPercent,
       sharpeRatio: sharpe,
@@ -443,7 +445,7 @@ function StrategyOverviewSection({
     stats,
     tradeExtremes,
     breakdown,
-    equityStart,
+    capitalBase,
   ]);
 
   return (
@@ -466,7 +468,7 @@ function StrategyOverviewSection({
         />
         <StatTile
           label="Deposits"
-          value={fmtBalance(deposits || (withdrawals > 0 ? 0 : equityStart), denomination)}
+          value={fmtBalance(deposits || (withdrawals > 0 ? 0 : capitalBase), denomination)}
           hint={
             withdrawals > 0
               ? `Withdrawn ${fmtBalance(withdrawals, denomination)}`
@@ -508,14 +510,14 @@ function StrategyOverviewSection({
             />
           </div>
 
-          <div className="grid min-h-[16rem] flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3 xl:grid-rows-1 lg:min-h-0">
-            <div className="min-h-0 h-full">
+          <div className="grid shrink-0 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            <div className="h-full min-h-[16rem]">
               <RiskCard overview={overview} daily={daily} denomination={denomination} fill />
             </div>
-            <div className="min-h-0 h-full">
+            <div className="h-full min-h-[16rem]">
               <HighlightsCard overview={overview} daily={daily} denomination={denomination} fill />
             </div>
-            <div className="min-h-0 h-full md:col-span-2 xl:col-span-1">
+            <div className="h-full md:col-span-2 xl:col-span-1">
               <SiacSummaryCard
                 account={isAccountView ? activeAccount : null}
                 accounts={isAccountView ? undefined : tradingAccounts}

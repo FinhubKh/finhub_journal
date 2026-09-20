@@ -135,7 +135,7 @@ export default function RiskEligibilityPanel({
   return (
     <div className={fill || headerMode ? 'flex h-full min-h-0 flex-col' : undefined}>
       {headerMode ? (
-        <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
+        <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             {header}
           </div>
@@ -169,12 +169,12 @@ export default function RiskEligibilityPanel({
           Refreshing…
         </p>
       ) : rules.length ? (
-        <div className={fill || headerMode ? 'min-h-0 flex-1 overflow-y-auto' : 'mt-4'}>
+        <div className={fill || headerMode ? 'mt-1 min-h-0 flex-1 overflow-hidden' : 'mt-4'}>
           <SiacChecklist rules={rules} fill={fill || headerMode} />
         </div>
       ) : null}
 
-      <p className={`text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 ${fill || headerMode ? 'mt-auto shrink-0 border-t border-zinc-100 pt-3 dark:border-zinc-800' : 'mt-4'}`}>
+      <p className={`text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 ${fill || headerMode ? 'mt-4 shrink-0 border-t border-zinc-200 pt-3 dark:border-zinc-800' : 'mt-4'}`}>
         Auto-checked from journal history. Operational EA controls are not verified in v1.
       </p>
     </div>

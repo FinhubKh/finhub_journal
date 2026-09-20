@@ -95,7 +95,7 @@ export default function SiacSummaryCard({
     <section
       aria-label="SIAC Eligibility"
       className={`${card} px-3 py-3 md:px-4 ${
-        fill ? 'flex h-full min-h-0 flex-col' : 'shrink-0'
+        fill ? 'flex h-full flex-col' : 'shrink-0'
       }`}
     >
       <div className="mb-2.5 flex shrink-0 items-center gap-2.5">
@@ -103,14 +103,11 @@ export default function SiacSummaryCard({
         <div className="min-w-0">
           <h2 className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             SIAC Eligibility
-          </h2>
-          <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-            {isPortfolio ? 'Status across your accounts' : 'Checked from this account’s history'}
-          </p>
+          </h2> 
         </div>
       </div>
 
-      <div className={fill ? 'min-h-0 flex-1 overflow-y-auto' : undefined}>
+      <div className={fill ? 'flex-1' : undefined}>
         {isPortfolio ? (
           portfolioRows.length === 0 ? (
             <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">

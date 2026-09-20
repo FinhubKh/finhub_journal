@@ -3,7 +3,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { useTradeModal } from '../../context/TradeModalContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, fetchTradesPage, fetchUnannotatedCount, fetchCashflows, TRADE_PAGE_SIZE } from '../../api';
-import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue, fmtBalance } from '../../lib/format';
+import { fmtDateShort, capitalize, fmtPnlStrict, fmtLot, fmtTradeR, tradeRValue, fmtBalance, fmtPrice, fmtDateTimeShort } from '../../lib/format';
 import { mergeCashflowsIntoPage, CASHFLOW_RESULTS, TRADE_RESULTS } from '../../lib/tradeLog';
 import { tradePnlDenomination, platformShort } from '../../lib/accounts';
 import {
@@ -315,13 +315,17 @@ export default function TradeList() {
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full min-w-[1080px] border-collapse">
+            <table className="w-full min-w-[1280px] border-collapse">
               <thead>
                 <tr>
                   <th className={th}>Date</th>
                   <th className={th}>Symbol</th>
                   <th className={th}>Side</th>
                   <th className={`${th} text-right`}>Lot</th>
+                  <th className={`${th} text-right`}>Open</th>
+                  <th className={`${th} text-right`}>Close</th>
+                  <th className={th}>Opened</th>
+                  <th className={th}>Closed</th>
                   <th className={th}>Account</th>
                   <th className={th}>Result</th>
                   <th className={`${th} text-right`}>R</th>
@@ -375,6 +379,10 @@ export default function TradeList() {
                         ) : '—'}
                       </td>
                       <td className={tdNum}>{fmtLot(t.lot_size)}</td>
+                      <td className={tdNum}>{isCashflow ? '—' : fmtPrice(t.entry_price)}</td>
+                      <td className={tdNum}>{isCashflow ? '—' : fmtPrice(t.exit_price)}</td>
+                      <td className={`${td} tabular-nums text-zinc-500`}>{isCashflow ? '—' : fmtDateTimeShort(t.open_time)}</td>
+                      <td className={`${td} tabular-nums text-zinc-500`}>{isCashflow ? '—' : fmtDateTimeShort(t.close_time)}</td>
                       <td className={td}>
                         <span className="max-w-[140px] truncate block text-zinc-600">{accountName}</span>
                       </td>

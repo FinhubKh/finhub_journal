@@ -55,11 +55,17 @@ export function buildSeries(points, denomination, initialDeposit = 0) {
   return { labels, dataUsd, peakUsd };
 }
 
-/** Starting equity before trade PnL: balance − net result (falls back to deposits). */
+/** Starting equity before trade PnL for charts / DD capital base.
+ * `balance − totalPnl` equals net cashflow; after large withdrawals that goes
+ * largely negative and is not useful as a curve start — clamp and prefer deposits.
+ */
 export function startingEquityFromStats(stats) {
   if (!stats) return 0;
+  const deposits = Number(stats.deposits) || 0;
   if (stats.balance != null && Number.isFinite(Number(stats.balance))) {
-    return Number(stats.balance) - (Number(stats.totalPnl) || 0);
+    const inferred = Number(stats.balance) - (Number(stats.totalPnl) || 0);
+    if (inferred > 0) return inferred;
   }
-  return Number(stats.deposits) || 0;
+  if (deposits > 0) return deposits;
+  return 0;
 }

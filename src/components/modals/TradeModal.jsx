@@ -3,7 +3,7 @@ import { useTradeModal } from '../../context/TradeModalContext';
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { deleteTrade, updateTradeAnnotation } from '../../api';
-import { fmtPnlStrict, fmtDateLong, fmtTradeR, tradeRValue } from '../../lib/format';
+import { fmtPnlStrict, fmtDateLong, fmtTradeR, tradeRValue, fmtPrice, fmtDateTimeShort } from '../../lib/format';
 import { tradePnlDenomination } from '../../lib/accounts';
 import CustomDropdown from '../common/CustomDropdown';
 import TradeScreenshots from '../journal/TradeScreenshots';
@@ -45,7 +45,7 @@ export default function TradeModal() {
   if (!trade) return null;
 
   const t = trade;
-  const isApi = t.source === 'api';
+  const isApi = t.source === 'api' || t.source === 'investor_bridge';
   const isManual = !isApi;
   const denomination = tradePnlDenomination(t, resolveTradeAccount);
   const r = tradeRValue(t, journalStats?.avgLoss);
@@ -53,6 +53,7 @@ export default function TradeModal() {
   const pnlDisplay = fmtPnlStrict(t.pnl_usd, denomination);
   const pnlClass = (t.pnl_usd || 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
   const rClass = (r || 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : (r || 0) < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100';
+  const hasPriceOrTime = t.entry_price != null || t.exit_price != null || t.open_time || t.close_time;
 
   async function handleDelete() {
     const ok = await confirm({
@@ -122,14 +123,18 @@ export default function TradeModal() {
             </div>
           </div>
 
-          {isApi && (
+          {(isApi || hasPriceOrTime) && (
             <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Synced from MT4/5</div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                {isApi ? 'Synced from MT4/5' : 'Position'}
+              </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-zinc-500 dark:text-zinc-400">Symbol</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.symbol || '—'}</div></div>
                 <div><span className="text-zinc-500 dark:text-zinc-400">Direction</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{(t.direction || '—').toUpperCase()}</div></div>
-                <div><span className="text-zinc-500 dark:text-zinc-400">Entry</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—'}</div></div>
-                <div><span className="text-zinc-500 dark:text-zinc-400">Exit</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—'}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Open price</span><div className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(t.entry_price)}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Close price</span><div className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(t.exit_price)}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Open time</span><div className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtDateTimeShort(t.open_time)}</div></div>
+                <div><span className="text-zinc-500 dark:text-zinc-400">Close time</span><div className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtDateTimeShort(t.close_time)}</div></div>
                 <div><span className="text-zinc-500 dark:text-zinc-400">Lot Size</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.lot_size ?? '—'}</div></div>
                 <div><span className="text-zinc-500 dark:text-zinc-400">Ticket</span><div className="font-medium text-zinc-900 dark:text-zinc-100">{t.ticket ?? '—'}</div></div>
               </div>

@@ -118,6 +118,32 @@ export function fmtDateLong(dateStr) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
 }
 
+/** Price for entry/exit (keeps enough decimals for FX without trailing junk). */
+export function fmtPrice(value) {
+  if (value == null || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  const digits = abs >= 1000 ? 2 : abs >= 10 ? 3 : abs >= 1 ? 5 : 5;
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+  });
+}
+
+/** Short date + time for open/close timestamps. */
+export function fmtDateTimeShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Other';
 }

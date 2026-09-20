@@ -63,12 +63,25 @@ describe('buildSeries', () => {
 });
 
 describe('startingEquityFromStats', () => {
-  it('derives start from balance minus net PnL', () => {
+  it('derives start from balance minus net PnL when positive', () => {
     expect(startingEquityFromStats({ balance: 2001.81, totalPnl: 1.81 })).toBe(2000);
+  });
+
+  it('falls back to deposits when inferred start is negative (withdrawals)', () => {
+    expect(startingEquityFromStats({
+      balance: 1,
+      totalPnl: 400001,
+      deposits: 10000,
+      withdrawals: 410000,
+    })).toBe(10000);
   });
 
   it('falls back to deposits when balance is missing', () => {
     expect(startingEquityFromStats({ deposits: 500, totalPnl: 10 })).toBe(500);
+  });
+
+  it('returns 0 when inferred start is negative and deposits are missing', () => {
+    expect(startingEquityFromStats({ balance: 1, totalPnl: 400001 })).toBe(0);
   });
 
   it('returns 0 without stats', () => {
