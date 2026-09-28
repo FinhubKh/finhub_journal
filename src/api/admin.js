@@ -11,6 +11,32 @@ async function rpc(name, body = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+/** Fetch every row from a PostgREST table (pages past max_rows). */
+async function restGetAll(pathWithQuery) {
+  const pageSize = 1000;
+  const out = [];
+  let from = 0;
+
+  for (;;) {
+    const to = from + pageSize - 1;
+    const res = await authFetch(`${SUPABASE_URL}/rest/v1/${pathWithQuery}`, {
+      headers: {
+        ...authHeaders(getToken()),
+        Range: `${from}-${to}`,
+        Prefer: 'count=exact',
+      },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const chunk = await res.json();
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    out.push(...chunk);
+    if (chunk.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return out;
+}
+
 export async function adminPlatformStats() {
   return rpc('admin_platform_stats');
 }
@@ -28,12 +54,9 @@ export async function adminDeleteUser(userId) {
 }
 
 export async function adminFetchTradingAccounts() {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/trading_accounts?select=id,user_id,name,account_type,broker,pnl_denomination,is_default,created_at&order=created_at.desc`,
-    { headers: authHeaders(getToken()) },
+  return restGetAll(
+    'trading_accounts?select=id,user_id,name,account_type,broker,pnl_denomination,is_default,is_public,connection_status,starting_balance,risk_track,risk_eligible,created_at&order=created_at.desc',
   );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function adminDeleteTradingAccount(id) {
@@ -45,12 +68,9 @@ export async function adminDeleteTradingAccount(id) {
 }
 
 export async function adminFetchSyncKeys() {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?select=id,user_id,trading_account_id,created_at,last_synced_at&order=created_at.desc`,
-    { headers: authHeaders(getToken()) },
+  return restGetAll(
+    'sync_keys?select=id,user_id,trading_account_id,created_at,last_synced_at&order=created_at.desc',
   );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function adminRevokeSyncKey(id) {
@@ -62,12 +82,9 @@ export async function adminRevokeSyncKey(id) {
 }
 
 export async function adminFetchTeams() {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/teams?select=id,name,tag,created_by,created_at&order=created_at.desc`,
-    { headers: authHeaders(getToken()) },
+  return restGetAll(
+    'teams?select=id,name,tag,created_by,created_at&order=created_at.desc',
   );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function adminDeleteTeam(id) {
@@ -81,3 +98,13 @@ export async function adminDeleteTeam(id) {
     throw new Error('Team could not be deleted (RLS blocked it). Please run the updated SQL policies in Supabase.');
   }
 }
+
+export async function adminGetUserDetail(userId) {
+  return rpc('admin_get_user_detail', { target_user_id: userId });
+}
+
+export async function adminGetAccountDetail(accountId) {
+  return rpc('admin_get_account_detail', { target_account_id: accountId });
+}
+
+export { fetchSiacRuleConfig, adminUpdateSiacRuleConfig } from './siac';

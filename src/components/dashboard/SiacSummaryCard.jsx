@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { refreshAccountRiskEligibility } from '../../api';
+import { fetchSiacRuleConfig } from '../../api/siac';
 import { normalizeRiskTrack, riskTrackLabel } from '../../lib/accounts';
+import { DEFAULT_SIAC_CONFIG, mergeSiacConfig } from '../../lib/riskEligibility';
 import {
   hasPersistedRiskSnapshot,
   needsRiskRefresh,
@@ -25,7 +27,16 @@ export default function SiacSummaryCard({
   fill = false,
 }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [siacConfig, setSiacConfig] = useState(() => mergeSiacConfig(DEFAULT_SIAC_CONFIG));
   const isPortfolio = Array.isArray(accounts);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSiacRuleConfig()
+      .then((cfg) => { if (!cancelled) setSiacConfig(cfg); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const refreshKey = isPortfolio
     ? (accounts || []).map((a) => `${a.id}:${a.risk_track || ''}:${a.risk_checked_at || ''}`).join('|')
@@ -73,12 +84,12 @@ export default function SiacSummaryCard({
     if (hasPersistedRiskSnapshot(account)) {
       return {
         status: nextStatus,
-        rules: rulesFromPersisted(account, track),
+        rules: rulesFromPersisted(account, track, siacConfig),
         awaitingMetrics: false,
       };
     }
     return { status: nextStatus, rules: [], awaitingMetrics: true };
-  }, [account, isPortfolio]);
+  }, [account, isPortfolio, siacConfig]);
 
   const portfolioRows = useMemo(() => {
     if (!isPortfolio) return [];
@@ -154,7 +165,7 @@ export default function SiacSummaryCard({
             Refreshing…
           </p>
         ) : (
-          <SiacChecklist rules={rules} />
+          <SiacChecklist rules={rules} labels={siacConfig.rule_labels} />
         )}
       </div>
     </section>

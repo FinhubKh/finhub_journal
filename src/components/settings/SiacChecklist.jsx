@@ -48,18 +48,24 @@ function StatusMark({ checked }) {
 /**
  * Read-only SIAC rule checklist with met / open markers.
  */
-export default function SiacChecklist({ rules = [], ariaLabel = 'SIAC Eligibility checklist', fill = false }) {
+export default function SiacChecklist({
+  rules = [],
+  labels,
+  ariaLabel = 'SIAC Eligibility checklist',
+  fill = false,
+}) {
   if (!rules.length) return null;
 
   const passed = rules.filter((rule) => rule.pass === true).length;
   const open = rules.length - passed;
+  const titleFor = (rule) => rule.label || (labels && labels[rule.id]) || RULE_COPY[rule.id] || rule.id;
 
   if (!fill) {
     return (
       <ul className="divide-y divide-zinc-100 dark:divide-zinc-800" role="list" aria-label={ariaLabel}>
         {rules.map((rule) => {
           const checked = rule.pass === true;
-          const title = RULE_COPY[rule.id] || rule.id;
+          const title = titleFor(rule);
           return (
             <li key={rule.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -70,9 +76,9 @@ export default function SiacChecklist({ rules = [], ariaLabel = 'SIAC Eligibilit
                 </span>
               </div>
               <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
-                {formatRuleActual(rule.id, rule.actual)}
+                {formatRuleActual(rule.id, rule.actual, undefined, rule)}
                 <span className="mx-1 text-zinc-300 dark:text-zinc-600">/</span>
-                {formatRuleLimit(rule.id, rule.limit)}
+                {formatRuleLimit(rule.id, rule.limit, undefined, rule)}
               </span>
             </li>
           );
@@ -106,9 +112,9 @@ export default function SiacChecklist({ rules = [], ariaLabel = 'SIAC Eligibilit
       >
         {rules.map((rule, index) => {
           const checked = rule.pass === true;
-          const title = RULE_COPY[rule.id] || rule.id;
-          const actual = formatRuleActual(rule.id, rule.actual);
-          const limit = formatRuleLimit(rule.id, rule.limit);
+          const title = titleFor(rule);
+          const actual = formatRuleActual(rule.id, rule.actual, undefined, rule);
+          const limit = formatRuleLimit(rule.id, rule.limit, undefined, rule);
 
           return (
             <li

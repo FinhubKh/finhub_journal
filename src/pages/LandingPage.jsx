@@ -665,7 +665,7 @@ export default function LandingPage() {
           <ScrollReveal delay={80} className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {isAuthenticated ? (
               <Link
-                to="/dashboard"
+                to={isAdmin ? '/admin' : '/dashboard'}
                 state={{ tab: 'setup' }}
                 className={btnPrimaryLg}
               >

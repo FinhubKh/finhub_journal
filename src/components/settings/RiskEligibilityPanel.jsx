@@ -2,9 +2,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { refreshAccountRiskEligibility, updateTradingAccount } from '../../api';
+import { fetchSiacRuleConfig } from '../../api/siac';
 import CustomDropdown from '../common/CustomDropdown';
 import { RISK_TRACKS, normalizeRiskTrack, riskTrackLabel } from '../../lib/accounts';
-import { evaluateRiskEligibility } from '../../lib/riskEligibility';
+import { DEFAULT_SIAC_CONFIG, evaluateRiskEligibility, mergeSiacConfig } from '../../lib/riskEligibility';
 import {
   hasPersistedRiskSnapshot,
   needsRiskRefresh,
@@ -33,9 +34,18 @@ export default function RiskEligibilityPanel({
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [siacConfig, setSiacConfig] = useState(() => mergeSiacConfig(DEFAULT_SIAC_CONFIG));
 
   const trackValue = normalizeRiskTrack(account?.risk_track) || '';
   const headerMode = Boolean(header);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSiacRuleConfig()
+      .then((cfg) => { if (!cancelled) setSiacConfig(cfg); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!needsRiskRefresh(account)) return undefined;
@@ -75,7 +85,7 @@ export default function RiskEligibilityPanel({
       if (hasPersistedRiskSnapshot(account)) {
         return {
           status,
-          rules: rulesFromPersisted(account, track),
+          rules: rulesFromPersisted(account, track, siacConfig),
           awaitingMetrics: false,
         };
       }
@@ -87,13 +97,14 @@ export default function RiskEligibilityPanel({
       trades,
       daily,
       maxDd,
+      config: siacConfig,
     });
     return {
       status,
       rules: evaluation.rules,
       awaitingMetrics: false,
     };
-  }, [account, trades, daily, maxDd]);
+  }, [account, trades, daily, maxDd, siacConfig]);
 
   async function handleTrackChange(next) {
     if (!account?.id) return;
@@ -170,7 +181,7 @@ export default function RiskEligibilityPanel({
         </p>
       ) : rules.length ? (
         <div className={fill || headerMode ? 'mt-1 min-h-0 flex-1 overflow-hidden' : 'mt-4'}>
-          <SiacChecklist rules={rules} fill={fill || headerMode} />
+          <SiacChecklist rules={rules} labels={siacConfig.rule_labels} fill={fill || headerMode} />
         </div>
       ) : null}
 

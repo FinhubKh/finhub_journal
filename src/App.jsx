@@ -27,13 +27,10 @@ function RouteFallback() {
 }
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, ready } = useAuth();
-  if (!ready) return <RouteFallback />;
+  const { isAuthenticated, isAdmin, ready, profileLoading } = useAuth();
+  if (!ready || (isAuthenticated && profileLoading)) return <RouteFallback />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
-}
-
-function JournalRoute({ children }) {
+  if (isAdmin) return <Navigate to="/admin" replace />;
   return children;
 }
 
@@ -91,11 +88,9 @@ export default function App() {
                 path="/dashboard/*"
                 element={(
                   <ProtectedRoute>
-                    <JournalRoute>
-                      <AppDataProvider>
-                        <DashboardPage />
-                      </AppDataProvider>
-                    </JournalRoute>
+                    <AppDataProvider>
+                      <DashboardPage />
+                    </AppDataProvider>
                   </ProtectedRoute>
                 )}
               />
