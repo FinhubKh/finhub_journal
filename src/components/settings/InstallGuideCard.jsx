@@ -61,7 +61,7 @@ async function copyText(value, label) {
 function ProgressTrack({ current, total, onJump }) {
   const pct = ((current + 1) / total) * 100;
   return (
-    <div className="space-y-3">
+    <div className="shrink-0 space-y-3">
       <div className="flex items-center justify-between gap-3 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
         <span>
           Step {current + 1} of {total}
@@ -216,7 +216,7 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
 
           <div
             key={animKey}
-            className={`overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-zinc-50 to-white shadow-sm dark:border-zinc-800 dark:from-zinc-900/80 dark:to-zinc-950 ${slideClass}`}
+            className={`shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-zinc-50 to-white shadow-sm dark:border-zinc-800 dark:from-zinc-900/80 dark:to-zinc-950 ${slideClass}`}
             role="group"
             aria-labelledby={`install-step-${step.n}-title`}
           >
@@ -246,7 +246,7 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
             </div>
           </div>
 
-          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <div className="mt-auto shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
             <button
               className={btnGhost}
               type="button"
