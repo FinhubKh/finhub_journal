@@ -112,6 +112,7 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [standalone, index]);
 
   function goTo(next, dir) {

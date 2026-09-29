@@ -67,7 +67,7 @@ export default function TradeModal() {
       await deleteTrade(t.id);
       close();
       await refreshTrades();
-    } catch (e) {
+    } catch {
       await alert({ title: 'Error', message: 'Could not delete trade.' });
     }
   }
@@ -82,7 +82,7 @@ export default function TradeModal() {
       });
       setAnnMsg({ text: 'Saved!', type: 'success' });
       await refreshTrades();
-    } catch (e) {
+    } catch {
       setAnnMsg({ text: 'Could not save.', type: 'error' });
     } finally {
       setSaving(false);

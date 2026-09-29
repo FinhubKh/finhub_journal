@@ -167,6 +167,7 @@ export default function InstallGuideCard({ defaultOpen = true, standalone = fals
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [standalone, index]);
 
   function goTo(next, dir) {

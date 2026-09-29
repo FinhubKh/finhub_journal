@@ -6,7 +6,7 @@ import { viewPnlDenomination, platformShort } from '../lib/accounts';
 import { fmtPnlStrict, fmtBalance } from '../lib/format';
 import { overridesToMap } from '../lib/dailyPnl';
 import {
-  btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, sectionLabel,
+  btnOutline, card, dashboardPageWideFull, pillBtn, pillToggle, 
 } from '../lib/ui';
 import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import EquityChart from '../components/dashboard/EquityChart';
