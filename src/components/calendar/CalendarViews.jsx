@@ -112,7 +112,7 @@ export function YearView({
   loading,
   onYearChange,
   onSelectMonth,
-  hint = 'Select a month to view and edit daily PnL',
+  hint = '',
   showManualLegend = true,
   minYear,
   maxYear,
@@ -124,16 +124,16 @@ export function YearView({
   return (
     <div className={fill ? 'flex h-full min-h-0 flex-col gap-3' : 'space-y-4'}>
       {!hideHeader && (
-        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div className="relative z-40 flex shrink-0 flex-wrap items-center justify-end gap-3">
+          {hint ? <p className="mr-auto text-xs text-zinc-400 dark:text-zinc-500">{hint}</p> : null}
           <div className="flex flex-wrap items-center gap-2">
-            <YearDropdown value={year} onChange={onYearChange} minYear={minYear} maxYear={maxYear} />
             {year !== currentYear && (
               <button className={btnGhost} type="button" onClick={() => onYearChange(currentYear)}>
                 Go to {currentYear}
               </button>
             )}
+            <YearDropdown value={year} onChange={onYearChange} minYear={minYear} maxYear={maxYear} />
           </div>
-          {hint ? <p className="hidden text-xs text-zinc-400 lg:block">{hint}</p> : null}
         </div>
       )}
 

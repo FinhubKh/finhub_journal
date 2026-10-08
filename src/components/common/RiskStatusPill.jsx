@@ -40,7 +40,7 @@ const TONE_DOT = {
 };
 
 const TOOLBAR_PILL =
-  'inline-flex h-10 items-center gap-1.5 rounded-full border border-zinc-200/90 bg-white/90 px-4 text-[12px] shadow-sm shadow-zinc-900/5 backdrop-blur-sm transition hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-black/30 dark:hover:bg-zinc-800/80';
+  'inline-flex h-10 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold shadow-xs transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
 
 /**
  * Compact SIAC status control for overview header.

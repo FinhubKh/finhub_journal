@@ -190,7 +190,7 @@ export default function SyncNowButton({ size = 'md', className = '', variant = '
   const toolbar = variant === 'toolbar';
   const compact = size === 'sm' || toolbar;
   const btnClass = toolbar
-    ? 'inline-flex h-10 items-center gap-1.5 rounded-full border border-zinc-200/90 bg-white/90 px-4 text-[12px] shadow-sm shadow-zinc-900/5 backdrop-blur-sm transition hover:bg-zinc-50 disabled:opacity-45 dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-black/30 dark:hover:bg-zinc-800/80'
+    ? 'inline-flex h-10 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-xs transition hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
     : compact
       ? 'inline-flex items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-700 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 active:scale-[0.98] disabled:opacity-45 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-violet-600 dark:hover:bg-violet-950/40 dark:hover:text-violet-300'
       : btnOutline;
@@ -250,10 +250,10 @@ export default function SyncNowButton({ size = 'md', className = '', variant = '
 
   return (
     <>
-      <div className={`${toolbar ? 'contents' : `inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 ${className}`.trim()}`}>
+      <div className={`inline-flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-1 ${className}`.trim()}>
         <button
           type="button"
-          className={`${btnClass} ${!compact && !toolbar ? 'min-w-[7.5rem]' : ''} ${className}`.trim()}
+          className={`${btnClass} ${!compact && !toolbar ? 'min-w-[7.5rem]' : ''}`.trim()}
           disabled={busy || loadingStatus}
           title={title}
           aria-busy={busy || loadingStatus}

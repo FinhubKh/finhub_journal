@@ -4,12 +4,12 @@ import { toast } from 'react-toastify';
 import { deleteTradingAccount } from '../api';
 import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
-import { accountTypeLabel, pnlDenominationLabel } from '../lib/accounts';
+import { accountTypeLabel, MAX_TRADING_ACCOUNTS, pnlDenominationLabel } from '../lib/accounts';
 import { resolveSiacStatus } from '../lib/siacEligibilityUi';
 import { AccountFormModal } from '../components/settings/TradingAccountsManager';
 import { SiacStatusPill } from '../components/settings/SiacChecklist';
 import {
-  btnOutline, btnPrimary, card, dashboardPageWideFull, emptyState,
+  btnPrimary, card, dashboardPageWideFull, emptyState,
 } from '../lib/ui';
 
 function IconButton({ label, onClick, tone = 'neutral', children }) {
@@ -140,6 +140,19 @@ export default function AccountsPage() {
     await refreshTrades();
   }
 
+  async function handleAddAccount() {
+    if (tradingAccounts.length >= MAX_TRADING_ACCOUNTS) {
+      await alert({
+        title: 'Account limit reached',
+        message: `You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts. Delete an existing account to add a new one.`,
+        confirmLabel: 'Got it',
+        tone: 'danger',
+      });
+      return;
+    }
+    setModal({ mode: 'add' });
+  }
+
   async function handleDelete(account) {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
@@ -172,7 +185,7 @@ export default function AccountsPage() {
             </h1>
           </div>
         </div>
-        <button className={btnPrimary} type="button" onClick={() => setModal({ mode: 'add' })}>
+        <button className={btnPrimary} type="button" onClick={() => void handleAddAccount()}>
           + Add Account
         </button>
       </header>
@@ -191,7 +204,7 @@ export default function AccountsPage() {
           <button
             type="button"
             className={btnPrimary}
-            onClick={() => setModal({ mode: 'add' })}
+            onClick={() => void handleAddAccount()}
           >
             + Add First Account
           </button>

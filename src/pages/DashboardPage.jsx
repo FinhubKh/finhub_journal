@@ -63,8 +63,12 @@ export default function DashboardPage() {
     if (tab === 'news' || tab === 'economic-calendar' || tab === 'world-news') {
       tab = 'overview';
     }
-    if (tab === 'settings' && (section === 'mt5-setup' || section === 'setup')) {
-      tab = 'setup';
+    // Advisor + install guide temporarily hidden from nav
+    if (tab === 'ai-advisor') {
+      tab = 'overview';
+    }
+    if (tab === 'setup' || (tab === 'settings' && (section === 'mt5-setup' || section === 'setup'))) {
+      tab = 'accounts';
       section = null;
     }
     if (tab === 'settings' && section === 'trading-accounts') {

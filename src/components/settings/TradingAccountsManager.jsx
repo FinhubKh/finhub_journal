@@ -1123,6 +1123,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
 }
 
 export default function TradingAccountsManager({ tradingAccounts, onUpdated, onSetDefault }) {
+  const { alert } = useDialog();
   const [modal, setModal] = useState(null);
   const [syncKeyByAccount, setSyncKeyByAccount] = useState({});
   const [investorByAccount, setInvestorByAccount] = useState({});
@@ -1172,6 +1173,19 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
 
   const atAccountLimit = tradingAccounts.length >= MAX_TRADING_ACCOUNTS;
 
+  async function handleAddAccount() {
+    if (atAccountLimit) {
+      await alert({
+        title: 'Account limit reached',
+        message: `You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts. Delete an existing account to add a new one.`,
+        confirmLabel: 'Got it',
+        tone: 'danger',
+      });
+      return;
+    }
+    setModal({ mode: 'add' });
+  }
+
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1183,24 +1197,17 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
         <button
           className={btnPrimary}
           type="button"
-          disabled={atAccountLimit}
           title={atAccountLimit ? `Limit is ${MAX_TRADING_ACCOUNTS} accounts per user` : 'Add a trading account'}
-          onClick={() => setModal({ mode: 'add' })}
+          onClick={() => void handleAddAccount()}
         >
           Add account
         </button>
       </div>
 
-      {atAccountLimit ? (
-        <p className="mt-2 text-xs text-zinc-500">
-          Account limit reached ({MAX_TRADING_ACCOUNTS}). Delete an account to add another.
-        </p>
-      ) : null}
-
       {tradingAccounts.length === 0 ? (
         <div className={`${card} ${emptyState} mt-3`}>
           <p>No trading accounts yet.</p>
-          <button className={`${btnOutline} mt-4`} type="button" onClick={() => setModal({ mode: 'add' })}>
+          <button className={`${btnOutline} mt-4`} type="button" onClick={() => void handleAddAccount()}>
             Add your first account
           </button>
         </div>

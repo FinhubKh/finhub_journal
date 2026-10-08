@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { createBacktest, deleteBacktest, listBacktests } from '../api/backtests';
+import { createBacktest, deleteBacktest, listBacktests, MAX_BACKTESTS } from '../api/backtests';
 import DeleteConfirmModal from '../components/modals/DeleteConfirmModal';
+import { useDialog } from '../context/DialogContext';
 import { fmtPnlStrict } from '../lib/format';
 import {
   btnGhost,
-  btnOutline,
   btnPrimary,
   card,
   dashboardPageWideFull,
@@ -211,12 +211,28 @@ function StrategyCard({ row, onOpen, onDelete }) {
 
 export default function BacktestsPage() {
   const navigate = useNavigate();
+  const { alert } = useDialog();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+
+  const atBacktestLimit = rows.length >= MAX_BACKTESTS;
+
+  async function handleAddStrategy() {
+    if (atBacktestLimit) {
+      await alert({
+        title: 'Strategy limit reached',
+        message: `You can create at most ${MAX_BACKTESTS} backtesting strategies. Delete an existing strategy to add a new one.`,
+        confirmLabel: 'Got it',
+        tone: 'danger',
+      });
+      return;
+    }
+    setShowCreate(true);
+  }
 
   async function loadList() {
     setLoading(true);
@@ -268,7 +284,9 @@ export default function BacktestsPage() {
             </h1>
           </div>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Create a strategy, then open it to upload an MT5 HTML report to analyze your performance.
+            {rows.length === 0
+              ? 'Create a strategy, then open it to upload an MT5 HTML report to analyze your performance.'
+              : `${rows.length} of ${MAX_BACKTESTS} strategies · upload an MT5 HTML report on each strategy`}
           </p>
         </div>
         
@@ -302,7 +320,12 @@ export default function BacktestsPage() {
             </button>
           </div>
 
-          <button className={btnPrimary} type="button" onClick={() => setShowCreate(true)}>
+          <button
+            className={btnPrimary}
+            type="button"
+            title={atBacktestLimit ? `Limit is ${MAX_BACKTESTS} strategies per user` : 'Add a strategy'}
+            onClick={() => void handleAddStrategy()}
+          >
             + Add Strategy
           </button>
         </div>
@@ -336,7 +359,7 @@ export default function BacktestsPage() {
           <button
             type="button"
             className={btnPrimary}
-            onClick={() => setShowCreate(true)}
+            onClick={() => void handleAddStrategy()}
           >
             + Create First Strategy
           </button>

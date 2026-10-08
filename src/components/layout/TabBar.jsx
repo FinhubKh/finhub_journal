@@ -7,6 +7,10 @@ import { getUserEmail, getUserDisplayName } from '../../api/auth';
 import { btnGhost } from '../../lib/ui';
 import { BrandLogo } from '../BrandLogo';
 
+/** Temporarily hidden from nav — set true to show again. */
+const SHOW_AI_ADVISOR_TAB = false;
+const SHOW_SETUP_TAB = false;
+
 const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', short: 'Home', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
   { id: 'log', label: 'Log', short: 'Log', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
@@ -14,7 +18,7 @@ const PRIMARY_TABS = [
   { id: 'backtests', label: 'Backtest', short: 'BT', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 10.5l2-3 2 1.5 2.5-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11.5 5.5h1.5V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'checklist', label: 'Checklist', short: 'List', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'compound', label: 'Compound', short: 'Cmp', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
-  {
+  ...(SHOW_AI_ADVISOR_TAB ? [{
     id: 'ai-advisor',
     label: 'Advisor',
     short: 'AI',
@@ -24,7 +28,7 @@ const PRIMARY_TABS = [
         <path d="M6.4 11.6c.3 1 1 1.6 1.6 1.6s1.3-.6 1.6-1.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     ),
-  },
+  }] : []),
   { id: 'leaderboard', label: 'Leaderboard', short: 'Board', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13h10M5 13V8.5M8 13V4.5M11 13v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /><path d="M5.5 6.5l2.5-3 2.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
 ];
 
@@ -42,7 +46,7 @@ const TRAILING_TABS = [
     ),
   },
   { id: 'settings', label: 'Settings', short: 'Set', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" /><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
-  {
+  ...(SHOW_SETUP_TAB ? [{
     id: 'setup',
     label: 'How to install',
     short: 'Setup',
@@ -52,7 +56,7 @@ const TRAILING_TABS = [
         <path d="M5.5 3v1.5M10.5 3v1.5M6 8.5l1.5 1.5L10.5 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-  },
+  }] : []),
 ];
 
 const MOBILE_TABS = [

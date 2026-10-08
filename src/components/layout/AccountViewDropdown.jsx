@@ -118,8 +118,10 @@ export default function AccountViewDropdown({ variant = 'header' }) {
           : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
       }`
     : toolbar
-      ? `inline-flex h-10 w-full items-center justify-between gap-2 rounded-full border border-zinc-200/90 bg-white/90 px-5 text-left text-[13px] shadow-sm shadow-zinc-900/5 backdrop-blur-sm transition hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-black/30 dark:hover:bg-zinc-800/80 ${
-          open ? 'bg-zinc-50 dark:bg-zinc-800/80' : ''
+      ? `inline-flex h-10 w-full items-center justify-between gap-2 rounded-xl border bg-white px-3.5 text-left text-[13px] shadow-xs transition dark:bg-zinc-900 ${
+          open
+            ? 'border-violet-300 ring-2 ring-violet-500/15 dark:border-violet-600'
+            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`
       : `flex w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 py-1.5 text-left text-xs font-medium transition dark:bg-zinc-900 ${
           open
@@ -129,7 +131,7 @@ export default function AccountViewDropdown({ variant = 'header' }) {
 
   return (
     <div
-      className={`relative ${sidebar ? 'w-full' : toolbar ? 'w-full min-w-[16rem] max-w-sm sm:min-w-[18rem]' : 'w-[240px]'}`}
+      className={`relative ${sidebar ? 'w-full' : toolbar ? 'w-full' : 'w-[240px]'}`}
       ref={rootRef}
     >
       <button
@@ -140,6 +142,11 @@ export default function AccountViewDropdown({ variant = 'header' }) {
         onClick={() => setOpen((v) => !v)}
       >
         <span className="min-w-0 truncate">
+          {toolbar ? (
+            <span className="mr-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+              View
+            </span>
+          ) : null}
           <span className="font-semibold text-zinc-800 dark:text-zinc-100">{title}</span>
           {!toolbar && subtitle ? (
             <span className="font-normal text-zinc-400"> · {subtitle}</span>

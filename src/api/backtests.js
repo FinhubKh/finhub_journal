@@ -1,5 +1,8 @@
 import { SUPABASE_URL, authHeaders, getToken, getUserId, authFetch } from './auth';
 
+/** Max strategy backtests a single user may create. */
+export const MAX_BACKTESTS = 12;
+
 const BACKTEST_SELECT = [
   'id',
   'user_id',
@@ -92,6 +95,10 @@ export async function fetchBacktestDaily(backtestId) {
 
 export async function createBacktest({ name, currency, reportMeta, dailyRows }) {
   const uid = getUserId();
+  const existing = await listBacktests();
+  if ((existing || []).length >= MAX_BACKTESTS) {
+    throw new Error(`You can create at most ${MAX_BACKTESTS} backtesting strategies.`);
+  }
   const parent = {
     user_id: uid,
     name: String(name || 'Strategy backtest').trim() || 'Strategy backtest',
@@ -116,7 +123,13 @@ export async function createBacktest({ name, currency, reportMeta, dailyRows }) 
     headers: { ...authHeaders(getToken()), Prefer: 'return=representation' },
     body: JSON.stringify(parent),
   });
-  if (!createdRes.ok) throw await restError(createdRes, 'Could not save backtest.');
+  if (!createdRes.ok) {
+    const err = await restError(createdRes, 'Could not save backtest.');
+    if (/backtest limit reached|at most \d+ backtesting/i.test(err.message || '')) {
+      throw new Error(`You can create at most ${MAX_BACKTESTS} backtesting strategies.`);
+    }
+    throw err;
+  }
   const createdRows = await createdRes.json();
   const backtest = Array.isArray(createdRows) ? createdRows[0] : createdRows;
   if (!backtest?.id) throw new Error('Could not save backtest.');

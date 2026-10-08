@@ -3,6 +3,18 @@ import { btnDanger, btnGhost, btnPrimary, card } from '../lib/ui';
 
 const DialogContext = createContext(null);
 
+function WarningIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+      <path
+        fillRule="evenodd"
+        d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 function AppDialog({ dialog, onClose }) {
   const cancelRef = useRef(null);
   const confirmRef = useRef(null);
@@ -30,6 +42,7 @@ function AppDialog({ dialog, onClose }) {
 
   const isConfirm = dialog.type === 'confirm';
   const destructive = Boolean(dialog.destructive);
+  const isDanger = dialog.tone === 'danger' || destructive;
 
   return (
     <div
@@ -38,24 +51,51 @@ function AppDialog({ dialog, onClose }) {
       onClick={() => onClose(isConfirm ? false : undefined)}
     >
       <div
-        className={`${card} w-full max-w-md shadow-xl`}
+        className={`${card} w-full max-w-md overflow-hidden shadow-xl ${
+          isDanger ? 'border-rose-200 dark:border-rose-900/60' : ''
+        }`}
         role={isConfirm ? 'alertdialog' : 'alert'}
         aria-modal="true"
         aria-labelledby="app-dialog-title"
         aria-describedby="app-dialog-message"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-zinc-100 px-5 py-4">
-          <h2 id="app-dialog-title" className="text-base font-semibold text-zinc-900">
-            {dialog.title}
-          </h2>
-        </div>
-        <div className="px-5 py-4">
-          <p id="app-dialog-message" className="text-sm leading-relaxed text-zinc-600">
-            {dialog.message}
-          </p>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-100 px-5 py-4">
+        {isDanger ? (
+          <div className="border-b border-rose-100 bg-rose-50 px-5 py-4 dark:border-rose-900/40 dark:bg-rose-950/40">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400">
+                <WarningIcon />
+              </span>
+              <div className="min-w-0 pt-0.5">
+                <h2 id="app-dialog-title" className="text-base font-semibold text-rose-700 dark:text-rose-300">
+                  {dialog.title}
+                </h2>
+                <p id="app-dialog-message" className="mt-1.5 text-sm leading-relaxed text-rose-700/80 dark:text-rose-300/80">
+                  {dialog.message}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+              <h2 id="app-dialog-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                {dialog.title}
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              <p id="app-dialog-message" className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                {dialog.message}
+              </p>
+            </div>
+          </>
+        )}
+        <div className={`flex flex-wrap justify-end gap-2 px-5 py-4 ${
+          isDanger
+            ? 'border-t border-rose-100 bg-white dark:border-rose-900/40 dark:bg-zinc-950'
+            : 'border-t border-zinc-100 dark:border-zinc-800'
+        }`}
+        >
           {isConfirm && (
             <button
               ref={cancelRef}
@@ -69,7 +109,7 @@ function AppDialog({ dialog, onClose }) {
           <button
             ref={confirmRef}
             type="button"
-            className={destructive ? btnDanger : btnPrimary}
+            className={isDanger ? btnDanger : btnPrimary}
             onClick={() => onClose(isConfirm ? true : undefined)}
           >
             {dialog.confirmLabel || (isConfirm ? 'Confirm' : 'OK')}
@@ -91,10 +131,10 @@ export function DialogProvider({ children }) {
     if (resolve) resolve(result);
   }, []);
 
-  const alert = useCallback(({ title = 'Notice', message, confirmLabel = 'OK' }) => {
+  const alert = useCallback(({ title = 'Notice', message, confirmLabel = 'OK', tone } = {}) => {
     return new Promise((resolve) => {
       resolverRef.current = () => resolve();
-      setDialog({ type: 'alert', title, message, confirmLabel });
+      setDialog({ type: 'alert', title, message, confirmLabel, tone });
     });
   }, []);
 
