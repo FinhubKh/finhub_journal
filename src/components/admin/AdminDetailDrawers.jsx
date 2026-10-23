@@ -224,7 +224,6 @@ export function AdminUserDetailDrawer({
   userId,
   onClose,
   onOpenAccount,
-  onToggleRole,
   onDeleteUser,
   busyId,
   limitRow,
@@ -268,24 +267,14 @@ export function AdminUserDetailDrawer({
         <div className="flex flex-wrap justify-end gap-2">
           <button className={btnGhost} type="button" onClick={onClose}>Close</button>
           {profile ? (
-            <>
-              <button
-                className={btnSm}
-                type="button"
-                disabled={busyId === profile.id}
-                onClick={() => onToggleRole?.(profile)}
-              >
-                {profile.role === 'admin' ? 'Demote' : 'Make admin'}
-              </button>
-              <button
-                className={btnDanger}
-                type="button"
-                disabled={busyId === profile.id}
-                onClick={() => onDeleteUser?.(profile)}
-              >
-                Delete user
-              </button>
-            </>
+            <button
+              className={btnDanger}
+              type="button"
+              disabled={busyId === profile.id}
+              onClick={() => onDeleteUser?.(profile)}
+            >
+              Delete user
+            </button>
           ) : null}
         </div>
       )}

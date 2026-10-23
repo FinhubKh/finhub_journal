@@ -18,7 +18,6 @@ import { useDialog } from '../context/DialogContext';
 import {
   adminPlatformStats,
   adminListUsers,
-  adminSetUserRole,
   adminDeleteUser,
   adminFetchTradingAccounts,
   adminDeleteTradingAccount,
@@ -33,7 +32,7 @@ import SiacRulesAdminPanel from '../components/admin/SiacRulesAdminPanel';
 import AccountLimitsAdminPanel from '../components/admin/AccountLimitsAdminPanel';
 import { AdminAccountDetailDrawer, AdminUserDetailDrawer } from '../components/admin/AdminDetailDrawers';
 import {
-  appShell, btnDanger, btnOutline, btnSm, card, cardHd, cardTitle,
+  appShell, btnDanger, btnOutline, card, cardHd, cardTitle,
   emptyState, input, msgError, tableTd, tableTh,
 } from '../lib/ui';
 
@@ -291,26 +290,6 @@ export default function AdminPage() {
   const page = PAGE_META[activeTab] || PAGE_META.overview;
   const showSearch = ['users', 'accounts', 'sync', 'teams'].includes(activeTab);
 
-  async function handleToggleRole(userRow) {
-    const nextRole = userRow.role === 'admin' ? 'user' : 'admin';
-    const ok = await confirm({
-      title: nextRole === 'admin' ? 'Promote to admin?' : 'Remove admin role?',
-      message: `${userRow.email} will be set to "${nextRole}".`,
-      confirmLabel: 'Confirm',
-      destructive: nextRole === 'user',
-    });
-    if (!ok) return;
-    setBusyId(userRow.id);
-    try {
-      await adminSetUserRole(userRow.id, nextRole);
-      await loadAll();
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not update role.' });
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   async function handleDeleteUser(userRow) {
     const ok = await confirm({
       title: `Delete user ${userRow.email}?`,
@@ -405,11 +384,6 @@ export default function AdminPage() {
   function openAccountDetail(accountId) {
     setDetailUserId(null);
     setDetailAccountId(accountId);
-  }
-
-  async function handleToggleRoleFromDetail(profile) {
-    await handleToggleRole(profile);
-    // Keep drawer open; refresh list already happens in handleToggleRole.
   }
 
   async function handleDeleteUserFromDetail(profile) {
@@ -600,14 +574,6 @@ export default function AdminPage() {
                                     View
                                   </button>
                                   <button
-                                    className={btnSm}
-                                    type="button"
-                                    disabled={busyId === row.id}
-                                    onClick={() => handleToggleRole(row)}
-                                  >
-                                    {row.role === 'admin' ? 'Demote' : 'Make admin'}
-                                  </button>
-                                  <button
                                     className={btnDanger}
                                     type="button"
                                     disabled={busyId === row.id}
@@ -780,7 +746,6 @@ export default function AdminPage() {
           busyId={busyId}
           onClose={() => setDetailUserId(null)}
           onOpenAccount={openAccountDetail}
-          onToggleRole={handleToggleRoleFromDetail}
           onDeleteUser={handleDeleteUserFromDetail}
           limitRow={userById[detailUserId]}
           defaultLimits={appLimits}
