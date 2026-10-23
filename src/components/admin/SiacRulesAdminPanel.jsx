@@ -3,7 +3,13 @@ import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import { adminUpdateSiacRuleConfig, fetchSiacRuleConfig } from '../../api/siac';
-import { DEFAULT_SIAC_CONFIG, RISK_RULE_IDS, mergeSiacConfig } from '../../lib/riskEligibility';
+import {
+  DEFAULT_SIAC_CONFIG,
+  RISK_RULE_IDS,
+  customMetricOptions,
+  mergeSiacConfig,
+} from '../../lib/riskEligibility';
+import { formulaVarOptions, validateFormula } from '../../lib/siacFormula';
 import CustomDropdown from '../common/CustomDropdown';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, card, cardHd, cardTitle,
@@ -69,15 +75,7 @@ const BUILTIN = [
   },
 ];
 
-const METRIC_OPTIONS = [
-  { value: 'history_days', label: 'Trading history (days)', kind: 'int', unit: 'days' },
-  { value: 'daily_loss_pct', label: 'Max daily loss (%)', kind: 'pct', unit: '%' },
-  { value: 'overall_loss_pct', label: 'Max overall loss (%)', kind: 'pct', unit: '%' },
-  { value: 'max_dd_pct', label: 'Max drawdown (%)', kind: 'pct', unit: '%' },
-  { value: 'risk_per_trade_pct', label: 'Risk per trade (%)', kind: 'pct', unit: '%' },
-  { value: 'losing_streak', label: 'Losing streak (count)', kind: 'int', unit: 'losses' },
-  { value: 'guideline', label: 'Guideline (display only)', kind: null, unit: null },
-];
+const METRIC_OPTIONS = customMetricOptions();
 
 const TRACK_OPTIONS = [
   { value: 'both', label: 'Master + EA' },
@@ -107,10 +105,21 @@ function pctToInput(value) {
   return String(Number((n * 100).toFixed(4)));
 }
 
-function inputToPct(value) {
+function inputToPct(value, { allowZero = false } = {}) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
+  if (!Number.isFinite(n)) return null;
+  if (allowZero ? n < 0 : n <= 0) return null;
+  if (n > 1000) return null;
   return n / 100;
+}
+
+function operatorLabel(op) {
+  return op === 'lte' ? 'At most' : 'At least';
+}
+
+function metricOptionLabel(opt) {
+  if (!opt?.group || opt.value === 'guideline') return opt?.label || '';
+  return `${opt.group} · ${opt.label}`;
 }
 
 function newCustomId() {
@@ -128,38 +137,64 @@ function metricLabel(value) {
   return METRIC_OPTIONS.find((m) => m.value === value)?.label || value;
 }
 
+function defaultLimitInput(metric) {
+  const meta = METRIC_OPTIONS.find((m) => m.value === metric);
+  if (!meta?.kind) return '';
+  if (meta.kind === 'pct') return pctToInput(meta.defaultLimit ?? 0.01);
+  if (meta.kind === 'num') return String(meta.defaultLimit ?? 1);
+  return String(meta.defaultLimit ?? 1);
+}
+
+function defaultOperator(metric) {
+  return METRIC_OPTIONS.find((m) => m.value === metric)?.defaultOp || 'gte';
+}
+
+const FORMULA_VAR_OPTIONS = formulaVarOptions();
+
 function emptyForm() {
   return {
-    typeMode: 'create', // 'existing' | 'create'
-    existingKey: 'history_days',
-    typeName: '',
-    label: '',
+    name: '',
     tracks: 'both',
     metric: 'guideline',
+    operator: 'gte',
     limitInput: '',
     limitText: '',
+    formula: '',
     enabled: true,
   };
+}
+
+function SegmentedControl({ value, onChange, options, ariaLabel }) {
+  return (
+    <div className="inline-flex w-full rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80" role="group" aria-label={ariaLabel}>
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              active
+                ? opt.tone === 'success'
+                  ? 'bg-white text-emerald-700 shadow-sm dark:bg-zinc-800 dark:text-emerald-400'
+                  : opt.tone === 'danger'
+                    ? 'bg-white text-rose-700 shadow-sm dark:bg-zinc-800 dark:text-rose-400'
+                    : 'bg-white text-violet-700 shadow-sm dark:bg-zinc-800 dark:text-violet-300'
+                : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+            }`}
+            onClick={() => onChange(opt.value)}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function AddRuleModal({ open, onClose, onAdd, existingTypes }) {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState(null);
-
-  const typeOptions = [
-    ...METRIC_OPTIONS.map((opt) => ({
-      key: `metric:${opt.value}`,
-      name: opt.label,
-      metric: opt.value,
-      kind: 'builtin',
-    })),
-    ...(existingTypes || []).map((t) => ({
-      key: `custom:${t.name}`,
-      name: t.name,
-      metric: t.metric || 'guideline',
-      kind: 'custom',
-    })),
-  ];
 
   useEffect(() => {
     if (!open) return undefined;
@@ -178,65 +213,91 @@ function AddRuleModal({ open, onClose, onAdd, existingTypes }) {
 
   if (!open) return null;
 
-  const activeMetric = form.typeMode === 'existing'
-    ? (typeOptions.find((t) => t.key === form.existingKey)?.metric || form.metric)
-    : form.metric;
-  const meta = METRIC_OPTIONS.find((m) => m.value === activeMetric) || METRIC_OPTIONS.find((m) => m.value === 'guideline');
+  const meta = METRIC_OPTIONS.find((m) => m.value === form.metric) || METRIC_OPTIONS[METRIC_OPTIONS.length - 1];
+  const templates = [
+    ...METRIC_OPTIONS.filter((m) => m.value !== 'guideline').map((m) => ({
+      key: `metric:${m.value}`,
+      name: m.label.replace(/\s*\([^)]*\)\s*$/, ''),
+      metric: m.value,
+    })),
+    ...(existingTypes || []).map((t) => ({
+      key: `custom:${t.name}`,
+      name: t.name,
+      metric: t.metric || 'guideline',
+    })),
+  ];
 
-  function applyExisting(key) {
-    const opt = typeOptions.find((t) => t.key === key);
-    const metric = opt?.metric || 'guideline';
-    const next = METRIC_OPTIONS.find((m) => m.value === metric);
+  function applyTemplate(template) {
     setForm((prev) => ({
       ...prev,
-      typeMode: 'existing',
-      existingKey: key,
-      typeName: opt?.kind === 'custom' ? opt.name : '',
-      metric,
-      label: prev.label || (opt?.kind === 'custom' ? opt.name : ''),
-      limitInput: next?.kind === 'pct' ? '1' : next?.kind === 'int' ? (metric === 'history_days' ? '182' : '3') : '',
+      name: template.name,
+      metric: template.metric,
+      operator: defaultOperator(template.metric),
+      limitInput: defaultLimitInput(template.metric),
       limitText: '',
+      formula: template.metric === 'formula' ? (prev.formula || 'win_rate * 100') : '',
     }));
+    setFormError(null);
   }
 
-  function setScoreMetric(metric) {
-    const next = METRIC_OPTIONS.find((m) => m.value === metric);
+  function setMetric(metric) {
+    const nextMeta = METRIC_OPTIONS.find((m) => m.value === metric);
     setForm((prev) => ({
       ...prev,
       metric,
-      limitInput: next?.kind === 'pct' ? '1' : next?.kind === 'int' ? (metric === 'history_days' ? '182' : '3') : '',
+      operator: defaultOperator(metric),
+      name: prev.name.trim() ? prev.name : (nextMeta?.label.replace(/\s*\([^)]*\)\s*$/, '') || prev.name),
+      limitInput: defaultLimitInput(metric),
       limitText: '',
+      formula: metric === 'formula' ? (prev.formula || 'win_rate * 100') : '',
     }));
+    setFormError(null);
+  }
+
+  function insertFormulaVar(name) {
+    setForm((prev) => {
+      const base = prev.formula?.trim() ? `${prev.formula.trim()} ` : '';
+      return { ...prev, formula: `${base}${name}` };
+    });
+    setFormError(null);
   }
 
   function handleSubmit(e) {
     e.preventDefault();
 
-    let typeName = '';
-    let metric = activeMetric;
-
-    if (form.typeMode === 'create') {
-      typeName = form.typeName.trim();
-      if (!typeName) {
-        setFormError('Rule type name is required.');
-        return;
-      }
-      metric = form.metric || 'guideline';
-    } else {
-      const opt = typeOptions.find((t) => t.key === form.existingKey);
-      typeName = opt?.kind === 'custom' ? opt.name : (opt?.name || metricLabel(metric));
-      metric = opt?.metric || form.metric || 'guideline';
+    const name = form.name.trim();
+    if (!name) {
+      setFormError('Rule name is required.');
+      return;
     }
 
-    const labelText = form.label.trim() || typeName;
+    const metric = form.metric || 'guideline';
     const scoreMeta = METRIC_OPTIONS.find((m) => m.value === metric) || METRIC_OPTIONS[METRIC_OPTIONS.length - 1];
+    const fixedOp = scoreMeta.special === 'breaches' || scoreMeta.special === 'streak';
+    const operator = fixedOp
+      ? (scoreMeta.defaultOp || 'lte')
+      : (form.operator === 'lte' ? 'lte' : 'gte');
 
     let limit = null;
     let limit_text = '';
-    if (scoreMeta.kind === 'pct') {
-      limit = inputToPct(form.limitInput);
+    let formula = '';
+    if (metric === 'formula') {
+      const checked = validateFormula(form.formula);
+      if (!checked.ok) {
+        setFormError(checked.error);
+        return;
+      }
+      formula = checked.formula;
+      const n = Number(form.limitInput);
+      if (!Number.isFinite(n)) {
+        setFormError('Enter a valid threshold number.');
+        return;
+      }
+      limit = n;
+    } else if (scoreMeta.kind === 'pct') {
+      limit = inputToPct(form.limitInput, { allowZero: metric === 'win_rate' || metric === 'total_pnl_pct' });
       if (limit == null) {
-        setFormError('Enter a valid limit percentage.');
+        setFormError('Enter a valid percentage limit.');
         return;
       }
     } else if (scoreMeta.kind === 'int') {
@@ -246,48 +307,71 @@ function AddRuleModal({ open, onClose, onAdd, existingTypes }) {
         return;
       }
       limit = n;
+    } else if (scoreMeta.kind === 'num') {
+      const n = Number(form.limitInput);
+      if (!Number.isFinite(n) || n <= 0) {
+        setFormError('Enter a valid number (greater than 0).');
+        return;
+      }
+      limit = n;
     } else {
       limit_text = form.limitText.trim();
     }
 
     onAdd({
       id: newCustomId(),
-      type_name: typeName,
-      label: labelText,
+      type_name: name,
+      label: name,
       enabled: form.enabled !== false,
       tracks: form.tracks,
       metric,
+      operator,
       limit,
       limit_text,
+      formula,
     });
     onClose();
   }
 
+  const isFormula = form.metric === 'formula';
+  const previewName = form.name.trim() || 'New rule';
+  const previewLimit = !meta?.kind
+    ? (form.limitText.trim() || 'Guideline')
+    : isFormula
+      ? `${form.formula.trim() || '…'} ${form.operator === 'lte' ? '≤' : '≥'} ${form.limitInput || '—'}`
+      : meta.kind === 'pct'
+        ? `${operatorLabel(form.operator)} ${form.limitInput || '—'}%`
+        : `${operatorLabel(form.operator)} ${form.limitInput || '—'} ${meta.unit || ''}`.trim();
+  const showOperator = Boolean(meta?.kind && meta.special !== 'breaches' && meta.special !== 'streak');
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-900/45 p-4 backdrop-blur-[2px]"
       role="presentation"
       onClick={onClose}
     >
       <div
-        className={`${card} w-full max-w-lg shadow-xl`}
+        className={`${card} flex max-h-[min(90vh,40rem)] w-full max-w-xl flex-col overflow-hidden shadow-xl`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-siac-rule-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-          <div>
-            <h3 id="add-siac-rule-title" className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-              Add SIAC rule
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-400">
+              SIAC
+            </p>
+            <h3 id="add-siac-rule-title" className="mt-0.5 text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Add rule
             </h3>
-            <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-              Pick an existing type or create a new rule type.
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Name it, choose how it scores, then set the limit.
             </p>
           </div>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
             onClick={onClose}
             aria-label="Close"
           >
@@ -295,173 +379,237 @@ function AddRuleModal({ open, onClose, onAdd, existingTypes }) {
           </button>
         </div>
 
-        <form className="space-y-4 px-5 py-4" onSubmit={handleSubmit}>
-          {formError && <p className={msgError}>{formError}</p>}
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            {formError ? (
+              <p className={`${msgError} rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-900/50 dark:bg-rose-950/30`}>
+                {formError}
+              </p>
+            ) : null}
 
-          <div>
-            <div className={label}>Rule type</div>
-            <div className="mb-3 flex gap-2">
-              <button
-                type="button"
-                className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                  form.typeMode === 'create'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
-                }`}
-                onClick={() => setForm((prev) => ({
-                  ...prev,
-                  typeMode: 'create',
-                  metric: prev.metric || 'guideline',
-                  limitInput: '',
-                  limitText: '',
-                }))}
-              >
-                Create new type
-              </button>
-              <button
-                type="button"
-                className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                  form.typeMode === 'existing'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
-                }`}
-                onClick={() => applyExisting(form.existingKey || 'metric:history_days')}
-              >
-                Use existing
-              </button>
-            </div>
-
-            {form.typeMode === 'create' ? (
-              <div className="space-y-3">
-                <div>
-                  <label className={label} htmlFor="add-rule-type-name">Type name</label>
-                  <input
-                    id="add-rule-type-name"
-                    className={input}
-                    placeholder="e.g. Max weekly loss"
-                    value={form.typeName}
-                    onChange={(e) => setForm((prev) => ({
-                      ...prev,
-                      typeName: e.target.value,
-                      label: prev.label || e.target.value,
-                    }))}
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className={label}>Score using</label>
-                  <CustomDropdown
-                    className="w-full"
-                    menuClassName="w-full"
-                    buttonClassName={formSelectBtn}
-                    value={form.metric}
-                    onChange={setScoreMetric}
-                    options={METRIC_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
-                    ariaLabel="Score using"
-                  />
-                  <p className="mt-1 text-xs text-zinc-400">
-                    Choose how this type is checked, or Guideline for display-only.
-                  </p>
+            {templates.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  Quick start — pick a score metric
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {templates.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-violet-600 dark:hover:bg-violet-950/40 dark:hover:text-violet-300"
+                      onClick={() => applyTemplate(t)}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
+            ) : null}
+
+            <div>
+              <label className={label} htmlFor="add-rule-name">Rule name</label>
+              <input
+                id="add-rule-name"
+                className={input}
+                placeholder="e.g. Max weekly loss"
+                value={form.name}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, name: e.target.value }));
+                  setFormError(null);
+                }}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className={label}>How it scores</label>
+              <CustomDropdown
+                className="w-full"
+                menuClassName="w-full"
+                buttonClassName={formSelectBtn}
+                value={form.metric}
+                onChange={setMetric}
+                options={METRIC_OPTIONS.map((opt) => ({
+                  value: opt.value,
+                  label: metricOptionLabel(opt),
+                }))}
+                ariaLabel="How it scores"
+              />
+              <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+                {isFormula
+                  ? 'Write an expression over journal metrics. Result is compared with Pass when + threshold.'
+                  : meta?.kind
+                    ? 'Scored from the trader journal. Set Pass when (at least / at most) and the threshold.'
+                    : 'Guideline only — shown on checklists, not auto-scored.'}
+              </p>
+            </div>
+
+            {isFormula ? (
               <div>
-                <label className={label}>Existing type</label>
-                <CustomDropdown
-                  className="w-full"
-                  menuClassName="w-full"
-                  buttonClassName={formSelectBtn}
-                  value={form.existingKey}
-                  onChange={applyExisting}
+                <label className={label} htmlFor="add-rule-formula">Formula</label>
+                <textarea
+                  id="add-rule-formula"
+                  className={`${input} min-h-[4.5rem] resize-y font-mono text-sm`}
+                  placeholder="e.g. win_rate * 100"
+                  value={form.formula}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, formula: e.target.value }));
+                    setFormError(null);
+                  }}
+                  spellCheck={false}
+                />
+                <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+                  Numbers, + − × ÷, parentheses, and metric names only.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {FORMULA_VAR_OPTIONS.map((v) => (
+                    <button
+                      key={v.value}
+                      type="button"
+                      title={v.label}
+                      className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[11px] text-zinc-600 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-violet-600 dark:hover:bg-violet-950/40 dark:hover:text-violet-300"
+                      onClick={() => insertFormulaVar(v.value)}
+                    >
+                      {v.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {showOperator ? (
+                <div className="sm:col-span-2">
+                  <label className={label}>Pass when</label>
+                  <div className="max-w-sm">
+                    <SegmentedControl
+                      value={form.operator === 'lte' ? 'lte' : 'gte'}
+                      onChange={(v) => setForm((prev) => ({ ...prev, operator: v }))}
+                      options={[
+                        { value: 'gte', label: 'At least (≥)' },
+                        { value: 'lte', label: 'At most (≤)' },
+                      ]}
+                      ariaLabel="Pass when"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {meta?.kind ? (
+                <div>
+                  <label className={label} htmlFor="add-rule-limit">
+                    {showOperator ? 'Threshold' : 'Limit'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="add-rule-limit"
+                      className={`${input} ${meta.unit ? 'pr-14' : ''}`}
+                      type="number"
+                      min={isFormula ? undefined : meta.kind === 'pct' ? 0 : meta.kind === 'num' ? 0.01 : 1}
+                      step={isFormula || meta.kind === 'num' ? 0.1 : meta.kind === 'pct' ? 0.01 : 1}
+                      value={form.limitInput}
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, limitInput: e.target.value }));
+                        setFormError(null);
+                      }}
+                      placeholder={isFormula ? '55' : meta.kind === 'pct' ? '50' : meta.kind === 'num' ? '1.2' : '1'}
+                    />
+                    {meta.unit ? (
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-zinc-400">
+                        {meta.unit}
+                      </span>
+                    ) : null}
+                  </div>
+                  {meta.special === 'breaches' ? (
+                    <p className="mt-1 text-xs text-zinc-400">Fails if any trade risks more than this %.</p>
+                  ) : null}
+                  {meta.special === 'streak' ? (
+                    <p className="mt-1 text-xs text-zinc-400">Fails if a losing streak of this length appears.</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div>
+                  <label className={label} htmlFor="add-rule-note">
+                    Note <span className="font-normal text-zinc-400">(optional)</span>
+                  </label>
+                  <input
+                    id="add-rule-note"
+                    className={input}
+                    placeholder="Shown next to the rule"
+                    value={form.limitText}
+                    onChange={(e) => setForm((prev) => ({ ...prev, limitText: e.target.value }))}
+                  />
+                </div>
+              )}
+              <div>
+                <label className={label}>Applies to</label>
+                <SegmentedControl
+                  value={form.tracks}
+                  onChange={(v) => setForm((prev) => ({ ...prev, tracks: v }))}
                   options={[
-                    ...METRIC_OPTIONS.map((opt) => ({
-                      value: `metric:${opt.value}`,
-                      label: opt.label,
-                    })),
-                    ...(existingTypes || []).map((t) => ({
-                      value: `custom:${t.name}`,
-                      label: t.name,
-                    })),
+                    { value: 'both', label: 'Both' },
+                    { value: 'master', label: 'Master' },
+                    { value: 'ea', label: 'EA' },
                   ]}
-                  ariaLabel="Existing type"
+                  ariaLabel="Applies to"
                 />
               </div>
-            )}
-          </div>
-
-          <div>
-            <label className={label}>Applies to</label>
-            <CustomDropdown
-              className="w-full"
-              menuClassName="w-full"
-              buttonClassName={formSelectBtn}
-              value={form.tracks}
-              onChange={(v) => setForm((prev) => ({ ...prev, tracks: v }))}
-              options={TRACK_OPTIONS}
-              ariaLabel="Applies to"
-            />
-          </div>
-
-          <div>
-            <label className={label} htmlFor="add-rule-label">Display label</label>
-            <input
-              id="add-rule-label"
-              className={input}
-              placeholder="Shown on trader checklists"
-              value={form.label}
-              onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
-            />
-          </div>
-
-          {meta?.kind ? (
-            <div>
-              <label className={label} htmlFor="add-rule-limit">
-                Limit ({meta.unit})
-              </label>
-              <input
-                id="add-rule-limit"
-                className={input}
-                type="number"
-                min={meta.kind === 'pct' ? 0.01 : 1}
-                step={meta.kind === 'pct' ? 0.01 : 1}
-                value={form.limitInput}
-                onChange={(e) => setForm((prev) => ({ ...prev, limitInput: e.target.value }))}
-              />
+              <div className="sm:col-span-2">
+                <label className={label}>Status</label>
+                <div className="max-w-xs">
+                  <SegmentedControl
+                    value={statusFromEnabled(form.enabled)}
+                    onChange={(v) => setForm((prev) => ({ ...prev, enabled: enabledFromStatus(v) }))}
+                    options={[
+                      { value: 'active', label: 'Active', tone: 'success' },
+                      { value: 'close', label: 'Close', tone: 'danger' },
+                    ]}
+                    ariaLabel="Rule status"
+                  />
+                </div>
+              </div>
             </div>
-          ) : (
-            <div>
-              <label className={label} htmlFor="add-rule-note">Limit note (optional)</label>
-              <input
-                id="add-rule-note"
-                className={input}
-                placeholder="Shown next to the rule on checklists"
-                value={form.limitText}
-                onChange={(e) => setForm((prev) => ({ ...prev, limitText: e.target.value }))}
-              />
-            </div>
-          )}
 
-          <div>
-            <label className={label}>Status</label>
-            <CustomDropdown
-              className="w-full"
-              menuClassName="w-full"
-              buttonClassName={formSelectBtn}
-              value={statusFromEnabled(form.enabled)}
-              onChange={(v) => setForm((prev) => ({ ...prev, enabled: enabledFromStatus(v) }))}
-              options={STATUS_OPTIONS}
-              ariaLabel="Rule status"
-            />
+            <section className="rounded-2xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
+                Preview
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-lg bg-white px-2.5 py-1 text-sm font-semibold text-zinc-900 shadow-xs dark:bg-zinc-800 dark:text-zinc-100">
+                  {previewName}
+                </span>
+                <span className="rounded-md bg-zinc-200/80 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  {trackLabel(form.tracks)}
+                </span>
+                <span className="rounded-md bg-zinc-200/80 px-2 py-0.5 text-[11px] font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  {previewLimit}
+                </span>
+                <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                  form.enabled !== false
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
+                    : 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                }`}
+                >
+                  {form.enabled !== false ? 'Active' : 'Close'}
+                </span>
+              </div>
+            </section>
           </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-zinc-100 pt-4 sm:flex-row sm:justify-end dark:border-zinc-800">
-            <button className={btnGhost} type="button" onClick={onClose}>
-              Cancel
-            </button>
-            <button className={btnPrimary} type="submit">
-              <LuPlus className="h-4 w-4" />
-              Add rule
-            </button>
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-100 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Click Save on the rules page after adding.
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button className={btnGhost} type="button" onClick={onClose}>
+                Cancel
+              </button>
+              <button className={btnPrimary} type="submit">
+                <LuPlus className="h-4 w-4" />
+                Add rule
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -558,16 +706,28 @@ export default function SiacRulesAdminPanel() {
     setSaving(true);
     setError(null);
     try {
-      const customs = (draft.custom_rules || []).map((row) => ({
-        id: String(row.id),
-        type_name: String(row.type_name || row.label || 'Custom rule').trim(),
-        label: String(row.label || '').trim() || 'Custom rule',
-        enabled: row.enabled !== false,
-        tracks: ['both', 'master', 'ea'].includes(row.tracks) ? row.tracks : 'both',
-        metric: row.metric || 'guideline',
-        limit: row.metric === 'guideline' || row.limit == null ? null : Number(row.limit),
-        limit_text: String(row.limit_text || '').trim(),
-      }));
+      const customs = (draft.custom_rules || []).map((row) => {
+        const metric = row.metric || 'guideline';
+        const formula = metric === 'formula' ? String(row.formula || '').trim() : '';
+        if (metric === 'formula') {
+          const checked = validateFormula(formula);
+          if (!checked.ok) {
+            throw new Error(`${row.label || 'Formula rule'}: ${checked.error}`);
+          }
+        }
+        return {
+          id: String(row.id),
+          type_name: String(row.type_name || row.label || 'Custom rule').trim(),
+          label: String(row.label || '').trim() || 'Custom rule',
+          enabled: row.enabled !== false,
+          tracks: ['both', 'master', 'ea'].includes(row.tracks) ? row.tracks : 'both',
+          metric,
+          operator: row.operator === 'lte' ? 'lte' : 'gte',
+          limit: metric === 'guideline' || row.limit == null ? null : Number(row.limit),
+          limit_text: String(row.limit_text || '').trim(),
+          formula,
+        };
+      });
       const saved = await adminUpdateSiacRuleConfig({
         history_days_min: draft.history_days_min,
         daily_loss_max_pct: draft.daily_loss_max_pct,
@@ -711,17 +871,26 @@ export default function SiacRulesAdminPanel() {
             {customs.map((row) => {
               const meta = METRIC_OPTIONS.find((m) => m.value === row.metric) || METRIC_OPTIONS[METRIC_OPTIONS.length - 1];
               const typeName = row.type_name || metricLabel(row.metric);
-              const limitDisplay = meta.kind === 'pct'
-                ? `${pctToInput(row.limit)}%`
-                : meta.kind === 'int'
-                  ? `${row.limit ?? '—'} ${meta.unit}`
-                  : (row.limit_text || '—');
+              const op = row.operator === 'lte' ? '≤' : '≥';
+              const isFormulaRow = row.metric === 'formula';
+              const showOpHint = meta.kind && meta.special !== 'breaches' && meta.special !== 'streak';
+              const limitDisplay = !meta.kind
+                ? (row.limit_text || '—')
+                : isFormulaRow
+                  ? `${row.formula || '…'} ${op} ${row.limit ?? '—'}`
+                  : meta.kind === 'pct'
+                    ? `${meta.special ? '' : `${op} `}${pctToInput(row.limit)}%`
+                    : meta.kind === 'num'
+                      ? `${op} ${row.limit ?? '—'} ${meta.unit}`
+                      : `${meta.special ? '' : `${op} `}${row.limit ?? '—'} ${meta.unit}`;
               return (
                 <tr key={row.id} className={row.enabled === false ? 'opacity-55' : undefined}>
                   <td className={tableTd}>
                     <div className="font-semibold text-zinc-900 dark:text-zinc-100">{typeName}</div>
                     <div className="text-[11px] text-zinc-400">
-                      Custom · scores via {metricLabel(row.metric)}
+                      Custom · {metricLabel(row.metric)}
+                      {showOpHint ? ` · ${operatorLabel(row.operator || meta.defaultOp)}` : ''}
+                      {isFormulaRow && row.formula ? ` · ${row.formula}` : ''}
                     </div>
                     <button
                       type="button"

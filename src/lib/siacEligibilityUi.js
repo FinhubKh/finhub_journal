@@ -52,6 +52,18 @@ export function formatRuleActual(id, actual, config, rule) {
     const months = (days / 30.44).toFixed(1);
     return `${days} days (~${months} mo)`;
   }
+  if (metric === 'trade_count') {
+    const n = Number(actual) || 0;
+    return `${n} trade${n === 1 ? '' : 's'}`;
+  }
+  if (metric === 'win_rate' || metric === 'total_pnl_pct') {
+    return formatPct(actual);
+  }
+  if (metric === 'profit_factor' || metric === 'formula') {
+    if (actual === Number.POSITIVE_INFINITY) return '∞';
+    const n = Number(actual);
+    return Number.isFinite(n) ? n.toFixed(2) : '—';
+  }
   if (
     id === RISK_RULE_IDS.DAILY
     || id === RISK_RULE_IDS.OVERALL
@@ -84,7 +96,23 @@ export function formatRuleLimit(id, limit, config, rule) {
   if (limit == null && id !== RISK_RULE_IDS.STREAK && id !== RISK_RULE_IDS.PERF && id !== RISK_RULE_IDS.RISK_TRADE && metric !== 'losing_streak' && metric !== 'risk_per_trade_pct') {
     return '—';
   }
-  if (id === RISK_RULE_IDS.HISTORY || metric === 'history_days') return `${limit ?? cfg.history_days_min} days`;
+  const op = rule?.operator === 'lte' ? '≤' : rule?.operator === 'gte' ? '≥' : '';
+  if (id === RISK_RULE_IDS.HISTORY || metric === 'history_days') {
+    return `${op || '≥'} ${limit ?? cfg.history_days_min} days`;
+  }
+  if (metric === 'trade_count') return `${op || '≥'} ${limit ?? 0} trades`;
+  if (metric === 'win_rate' || metric === 'total_pnl_pct') {
+    return `${op || '≥'} ${formatPct(limit)}`;
+  }
+  if (metric === 'profit_factor') {
+    const n = Number(limit);
+    return `${op || '≥'} ${Number.isFinite(n) ? n.toFixed(2) : '—'} PF`;
+  }
+  if (metric === 'formula') {
+    const n = Number(limit);
+    const expr = rule?.formula ? `${rule.formula} ` : '';
+    return `${expr}${op || '≥'} ${Number.isFinite(n) ? n.toFixed(2) : '—'}`;
+  }
   if (
     id === RISK_RULE_IDS.DAILY
     || id === RISK_RULE_IDS.OVERALL
@@ -93,7 +121,7 @@ export function formatRuleLimit(id, limit, config, rule) {
     || metric === 'overall_loss_pct'
     || metric === 'max_dd_pct'
   ) {
-    return formatPct(limit);
+    return `${op || '≤'} ${formatPct(limit)}`;
   }
   if (id === RISK_RULE_IDS.RISK_TRADE || metric === 'risk_per_trade_pct') return '0 breaches';
   if (id === RISK_RULE_IDS.STREAK || metric === 'losing_streak') {
@@ -165,26 +193,36 @@ export function rulesFromPersisted(account, track, config) {
       });
       continue;
     }
-    let actual = null;
+    const customActuals = metrics.custom_actuals && typeof metrics.custom_actuals === 'object'
+      ? metrics.custom_actuals
+      : {};
+    let actual = customActuals[custom.id];
     let limit = custom.limit;
-    if (custom.metric === 'history_days') actual = metrics.history_days;
-    else if (custom.metric === 'daily_loss_pct') actual = metrics.max_daily_loss_pct;
-    else if (custom.metric === 'overall_loss_pct') actual = metrics.max_overall_loss_pct;
-    else if (custom.metric === 'max_dd_pct') actual = metrics.max_dd_pct;
-    else if (custom.metric === 'risk_per_trade_pct') {
-      actual = metrics.risk_per_trade_breaches;
-      limit = 0;
-    } else if (custom.metric === 'losing_streak') {
-      actual = metrics.losing_streak_3 ? 1 : 0;
-      limit = 0;
+    if (actual == null) {
+      if (custom.metric === 'history_days') actual = metrics.history_days;
+      else if (custom.metric === 'trade_count') actual = metrics.trade_count;
+      else if (custom.metric === 'win_rate') actual = metrics.win_rate;
+      else if (custom.metric === 'profit_factor') actual = metrics.profit_factor;
+      else if (custom.metric === 'total_pnl_pct') actual = metrics.total_pnl_pct;
+      else if (custom.metric === 'daily_loss_pct') actual = metrics.max_daily_loss_pct;
+      else if (custom.metric === 'overall_loss_pct') actual = metrics.max_overall_loss_pct;
+      else if (custom.metric === 'max_dd_pct') actual = metrics.max_dd_pct;
+      else if (custom.metric === 'risk_per_trade_pct') {
+        actual = metrics.risk_per_trade_breaches;
+        limit = 0;
+      } else if (custom.metric === 'losing_streak') {
+        actual = metrics.losing_streak_3 ? (custom.limit || 3) : 0;
+      }
     }
     rules.push({
       id: custom.id,
       pass: !failed.has(custom.id),
-      actual,
+      actual: actual ?? null,
       limit,
       label: custom.label,
       metric: custom.metric,
+      operator: custom.operator,
+      formula: custom.formula || '',
     });
   }
   return rules;

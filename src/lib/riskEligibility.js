@@ -1,5 +1,7 @@
 /** Master / EA journal eligibility (mirrors SQL refresh math). */
 
+import { evaluateFormulaExpr, validateFormula } from './siacFormula.js';
+
 export const RISK_RULE_IDS = {
   HISTORY: 'history_6m',
   DAILY: 'daily_loss_1pct',
@@ -51,16 +53,30 @@ export function mergeSiacConfig(raw) {
     };
   }
   const customs = Array.isArray(raw.custom_rules)
-    ? raw.custom_rules.map((row) => ({
-      id: String(row?.id || ''),
-      type_name: String(row?.type_name || row?.label || 'Custom rule'),
-      label: String(row?.label || 'Custom rule'),
-      enabled: row?.enabled !== false,
-      tracks: ['both', 'master', 'ea'].includes(row?.tracks) ? row.tracks : 'both',
-      metric: row?.metric || 'guideline',
-      limit: row?.limit == null || row?.limit === '' ? null : Number(row.limit),
-      limit_text: String(row?.limit_text || ''),
-    })).filter((row) => row.id)
+    ? raw.custom_rules.map((row) => {
+      const metric = row?.metric || 'guideline';
+      const def = CUSTOM_METRIC_DEFS[metric];
+      const opRaw = String(row?.operator || '').toLowerCase();
+      const operator = opRaw === 'gte' || opRaw === 'lte'
+        ? opRaw
+        : (def?.defaultOp || 'gte');
+      const formulaRaw = String(row?.formula || '').trim();
+      const formula = metric === 'formula'
+        ? (validateFormula(formulaRaw).ok ? formulaRaw : formulaRaw.slice(0, 200))
+        : '';
+      return {
+        id: String(row?.id || ''),
+        type_name: String(row?.type_name || row?.label || 'Custom rule'),
+        label: String(row?.label || 'Custom rule'),
+        enabled: row?.enabled !== false,
+        tracks: ['both', 'master', 'ea'].includes(row?.tracks) ? row.tracks : 'both',
+        metric,
+        operator,
+        limit: row?.limit == null || row?.limit === '' ? null : Number(row.limit),
+        limit_text: String(row?.limit_text || ''),
+        formula,
+      };
+    }).filter((row) => row.id)
     : [];
   return {
     history_days_min: Number(raw.history_days_min) || base.history_days_min,
@@ -76,11 +92,196 @@ export function mergeSiacConfig(raw) {
   };
 }
 
+/** Custom SIAC scoring metrics available to admins. */
+export const CUSTOM_METRIC_DEFS = {
+  history_days: {
+    label: 'Trading history (days)',
+    kind: 'int',
+    unit: 'days',
+    defaultOp: 'gte',
+    defaultLimit: 182,
+    group: 'History',
+  },
+  trade_count: {
+    label: 'Closed trades (count)',
+    kind: 'int',
+    unit: 'trades',
+    defaultOp: 'gte',
+    defaultLimit: 50,
+    group: 'Activity',
+  },
+  win_rate: {
+    label: 'Win rate (%)',
+    kind: 'pct',
+    unit: '%',
+    defaultOp: 'gte',
+    defaultLimit: 0.5,
+    group: 'Performance',
+  },
+  profit_factor: {
+    label: 'Profit factor',
+    kind: 'num',
+    unit: 'PF',
+    defaultOp: 'gte',
+    defaultLimit: 1.2,
+    group: 'Performance',
+  },
+  total_pnl_pct: {
+    label: 'Total trade PnL (% of capital)',
+    kind: 'pct',
+    unit: '%',
+    defaultOp: 'gte',
+    defaultLimit: 0.05,
+    group: 'Performance',
+  },
+  daily_loss_pct: {
+    label: 'Max daily loss (%)',
+    kind: 'pct',
+    unit: '%',
+    defaultOp: 'lte',
+    defaultLimit: 0.01,
+    group: 'Risk',
+  },
+  overall_loss_pct: {
+    label: 'Max overall loss (%)',
+    kind: 'pct',
+    unit: '%',
+    defaultOp: 'lte',
+    defaultLimit: 0.1,
+    group: 'Risk',
+  },
+  max_dd_pct: {
+    label: 'Max drawdown (%)',
+    kind: 'pct',
+    unit: '%',
+    defaultOp: 'lte',
+    defaultLimit: 0.1,
+    group: 'Risk',
+  },
+  risk_per_trade_pct: {
+    label: 'Risk per trade (%)',
+    kind: 'pct',
+    unit: '%',
+    defaultOp: 'lte',
+    defaultLimit: 0.01,
+    group: 'Risk',
+    special: 'breaches',
+  },
+  losing_streak: {
+    label: 'Losing streak (count)',
+    kind: 'int',
+    unit: 'losses',
+    defaultOp: 'lte',
+    defaultLimit: 3,
+    group: 'Risk',
+    special: 'streak',
+  },
+  formula: {
+    label: 'Custom formula',
+    kind: 'num',
+    unit: '',
+    defaultOp: 'gte',
+    defaultLimit: 1,
+    group: 'Other',
+    special: 'formula',
+  },
+  guideline: {
+    label: 'Guideline (display only)',
+    kind: null,
+    unit: null,
+    defaultOp: 'gte',
+    defaultLimit: null,
+    group: 'Other',
+  },
+};
+
+export function customMetricOptions() {
+  return Object.entries(CUSTOM_METRIC_DEFS).map(([value, def]) => ({
+    value,
+    label: def.label,
+    kind: def.kind,
+    unit: def.unit,
+    defaultOp: def.defaultOp,
+    defaultLimit: def.defaultLimit,
+    group: def.group,
+    special: def.special || null,
+  }));
+}
+
 export function customRuleApplies(rule, track) {
   if (!rule || rule.enabled === false) return false;
   const tracks = rule.tracks || 'both';
   if (tracks === 'both') return true;
   return tracks === track;
+}
+
+export function compareMetric(actual, limit, operator = 'gte') {
+  if (actual == null || !Number.isFinite(Number(actual))) return false;
+  if (!Number.isFinite(Number(limit))) return false;
+  const a = Number(actual);
+  const l = Number(limit);
+  return operator === 'lte' ? a <= l : a >= l;
+}
+
+export function tradeOutcomeStats(trades) {
+  let wins = 0;
+  let losses = 0;
+  let grossWin = 0;
+  let grossLoss = 0;
+  let totalPnl = 0;
+  for (const t of trades || []) {
+    const pnl = Number(t.pnl_usd) || 0;
+    totalPnl += pnl;
+    if (t.result === 'win') {
+      wins += 1;
+      grossWin += Math.max(0, pnl);
+    } else if (t.result === 'loss') {
+      losses += 1;
+      grossLoss += Math.abs(pnl);
+    }
+  }
+  const decided = wins + losses;
+  return {
+    tradeCount: (trades || []).length,
+    wins,
+    losses,
+    grossWin,
+    grossLoss,
+    winRate: decided > 0 ? wins / decided : null,
+    profitFactor: grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Number.POSITIVE_INFINITY : null),
+    totalPnl,
+  };
+}
+
+/** Build allowlisted vars for custom formula evaluation. */
+export function buildFormulaVars({
+  days,
+  base,
+  dailyPct,
+  overallPct,
+  ddPct,
+  riskBreaches,
+  outcomes,
+  totalPnlPct,
+}) {
+  const pf = outcomes?.profitFactor;
+  return {
+    history_days: days,
+    trade_count: outcomes?.tradeCount ?? 0,
+    win_rate: outcomes?.winRate,
+    profit_factor: Number.isFinite(pf) ? pf : null,
+    total_pnl_pct: totalPnlPct,
+    daily_loss_pct: dailyPct,
+    overall_loss_pct: overallPct,
+    max_dd_pct: ddPct,
+    risk_breaches: riskBreaches ?? 0,
+    wins: outcomes?.wins ?? 0,
+    losses: outcomes?.losses ?? 0,
+    gross_win: outcomes?.grossWin ?? 0,
+    gross_loss: outcomes?.grossLoss ?? 0,
+    total_pnl: outcomes?.totalPnl ?? 0,
+    base: base ?? 0,
+  };
 }
 
 export function isRuleEnabled(config, ruleId) {
@@ -311,51 +512,112 @@ export function evaluateRiskEligibility({
     if (!ready) failed.push(RISK_RULE_IDS.PERF);
   }
 
+  const outcomes = tradeOutcomeStats(trades);
+  metrics.trade_count = outcomes.tradeCount;
+  metrics.win_rate = outcomes.winRate;
+  metrics.profit_factor = Number.isFinite(outcomes.profitFactor) ? outcomes.profitFactor : null;
+  metrics.total_pnl_pct = base > 0 ? outcomes.totalPnl / base : null;
+
   for (const custom of config.custom_rules || []) {
     if (!customRuleApplies(custom, track)) continue;
     const metric = custom.metric || 'guideline';
-    if (metric === 'guideline') {
-      rules.push({
-        id: custom.id,
-        pass: true,
-        actual: null,
-        limit: null,
-        label: custom.label,
-        limitText: custom.limit_text || null,
-        guideline: true,
-      });
+    const def = CUSTOM_METRIC_DEFS[metric];
+    if (metric === 'guideline' || !def) {
+      if (metric === 'guideline') {
+        rules.push({
+          id: custom.id,
+          pass: true,
+          actual: null,
+          limit: null,
+          label: custom.label,
+          limitText: custom.limit_text || null,
+          guideline: true,
+        });
+      }
       continue;
     }
     const limit = Number(custom.limit);
+    const operator = custom.operator === 'lte' || custom.operator === 'gte'
+      ? custom.operator
+      : (def.defaultOp || 'gte');
     let pass = true;
     let actual = null;
     let displayLimit = Number.isFinite(limit) ? limit : null;
-    if (metric === 'history_days') {
-      actual = days;
-      pass = Number.isFinite(limit) && days >= limit;
-    } else if (metric === 'daily_loss_pct') {
-      actual = dailyPct;
-      pass = dailyPct != null && Number.isFinite(limit) && dailyPct <= limit;
-    } else if (metric === 'overall_loss_pct') {
-      actual = overallPct;
-      pass = overallPct != null && Number.isFinite(limit) && overallPct <= limit;
-    } else if (metric === 'max_dd_pct') {
-      actual = ddPct;
-      pass = ddPct != null && Number.isFinite(limit) && ddPct <= limit;
-    } else if (metric === 'risk_per_trade_pct') {
+
+    if (metric === 'history_days') actual = days;
+    else if (metric === 'trade_count') actual = outcomes.tradeCount;
+    else if (metric === 'win_rate') actual = outcomes.winRate;
+    else if (metric === 'profit_factor') {
+      actual = outcomes.profitFactor;
+      if (actual === Number.POSITIVE_INFINITY) {
+        pass = Number.isFinite(limit);
+        actual = null;
+        displayLimit = Number.isFinite(limit) ? limit : null;
+        rules.push({
+          id: custom.id, pass, actual: Number.POSITIVE_INFINITY, limit: displayLimit,
+          label: custom.label, metric, operator,
+        });
+        if (!pass) failed.push(custom.id);
+        continue;
+      }
+    } else if (metric === 'total_pnl_pct') actual = metrics.total_pnl_pct;
+    else if (metric === 'daily_loss_pct') actual = dailyPct;
+    else if (metric === 'overall_loss_pct') actual = overallPct;
+    else if (metric === 'max_dd_pct') actual = ddPct;
+    else if (metric === 'risk_per_trade_pct') {
       const customBreaches = riskPerTradeBreaches(trades, base, avgL, Number.isFinite(limit) ? limit : 0.01);
       actual = customBreaches.length;
       displayLimit = 0;
       pass = customBreaches.length === 0;
-    } else if (metric === 'losing_streak') {
-      if (track !== 'master' && custom.tracks !== 'both' && custom.tracks !== 'master') continue;
-      const streakFail = hasLosingStreakOf(trades, Number.isFinite(limit) ? limit : 3);
-      actual = streakFail ? 1 : 0;
-      displayLimit = 0;
+      rules.push({
+        id: custom.id, pass, actual, limit: displayLimit,
+        label: custom.label, metric, operator: 'lte',
+      });
+      if (!pass) failed.push(custom.id);
+      continue;
+    }     else if (metric === 'losing_streak') {
+      const streakLimit = Number.isFinite(limit) ? limit : 3;
+      const streakFail = hasLosingStreakOf(trades, streakLimit);
+      actual = streakFail ? streakLimit : 0;
+      displayLimit = streakLimit;
       pass = !streakFail;
+      rules.push({
+        id: custom.id, pass, actual, limit: displayLimit,
+        label: custom.label, metric, operator: 'lte',
+      });
+      if (!pass) failed.push(custom.id);
+      continue;
+    } else if (metric === 'formula') {
+      const formulaVars = buildFormulaVars({
+        days,
+        base,
+        dailyPct,
+        overallPct,
+        ddPct,
+        riskBreaches: breaches.length,
+        outcomes,
+        totalPnlPct: metrics.total_pnl_pct,
+      });
+      const evaluated = evaluateFormulaExpr(custom.formula || '', formulaVars);
+      actual = evaluated.ok ? evaluated.value : null;
+      pass = evaluated.ok && compareMetric(actual, limit, operator);
+      rules.push({
+        id: custom.id,
+        pass,
+        actual,
+        limit: displayLimit,
+        label: custom.label,
+        metric,
+        operator,
+        formula: custom.formula || '',
+      });
+      if (!pass) failed.push(custom.id);
+      continue;
     } else {
       continue;
     }
+
+    pass = compareMetric(actual, limit, operator);
     rules.push({
       id: custom.id,
       pass,
@@ -363,6 +625,7 @@ export function evaluateRiskEligibility({
       limit: displayLimit,
       label: custom.label,
       metric,
+      operator,
     });
     if (!pass) failed.push(custom.id);
   }
