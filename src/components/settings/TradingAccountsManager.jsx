@@ -26,8 +26,8 @@ import {
   normalizePlatform,
   normalizeRiskTrack,
   riskTrackLabel,
-  MAX_TRADING_ACCOUNTS,
 } from '../../lib/accounts';
+import { useAppData } from '../../context/AppDataContext';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
   msgError, msgSuccess, sectionLabel, select,
@@ -353,6 +353,7 @@ function ReviewStep({ form }) {
 
 export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSaved }) {
   const { alert, confirm } = useDialog();
+  const { limits } = useAppData();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState(() => (isEdit ? accountToForm(account) : EMPTY_FORM));
   const [busy, setBusy] = useState(false);
@@ -517,8 +518,8 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           });
         }
       } else {
-        if (tradingAccounts.length >= MAX_TRADING_ACCOUNTS) {
-          throw new Error(`You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts.`);
+        if (tradingAccounts.length >= limits.maxTradingAccounts) {
+          throw new Error(`You can create at most ${limits.maxTradingAccounts} trading accounts.`);
         }
         const color = ACCOUNT_COLORS[tradingAccounts.length % ACCOUNT_COLORS.length];
         const created = await insertTradingAccount({
@@ -1171,13 +1172,14 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
     await refreshInvestorStatus();
   }
 
-  const atAccountLimit = tradingAccounts.length >= MAX_TRADING_ACCOUNTS;
+  const { limits } = useAppData();
+  const atAccountLimit = tradingAccounts.length >= limits.maxTradingAccounts;
 
   async function handleAddAccount() {
     if (atAccountLimit) {
       await alert({
         title: 'Account limit reached',
-        message: `You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts. Delete an existing account to add a new one.`,
+        message: `You can create at most ${limits.maxTradingAccounts} trading accounts. Delete an existing account to add a new one.`,
         confirmLabel: 'Got it',
         tone: 'danger',
       });
@@ -1192,12 +1194,12 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
         <p className="text-sm text-zinc-500">
           {tradingAccounts.length === 0
             ? 'Add an account and choose EA sync or investor password.'
-            : `${tradingAccounts.length} of ${MAX_TRADING_ACCOUNTS} accounts · sync, share, and set your default`}
+            : `${tradingAccounts.length} of ${limits.maxTradingAccounts} accounts · sync, share, and set your default`}
         </p>
         <button
           className={btnPrimary}
           type="button"
-          title={atAccountLimit ? `Limit is ${MAX_TRADING_ACCOUNTS} accounts per user` : 'Add a trading account'}
+          title={atAccountLimit ? `Limit is ${limits.maxTradingAccounts} accounts per user` : 'Add a trading account'}
           onClick={() => void handleAddAccount()}
         >
           Add account

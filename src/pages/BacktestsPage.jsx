@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { createBacktest, deleteBacktest, listBacktests, MAX_BACKTESTS } from '../api/backtests';
+import { createBacktest, deleteBacktest, listBacktests } from '../api/backtests';
+import { useAppData } from '../context/AppDataContext';
 import DeleteConfirmModal from '../components/modals/DeleteConfirmModal';
 import { useDialog } from '../context/DialogContext';
 import { fmtPnlStrict } from '../lib/format';
@@ -219,13 +220,15 @@ export default function BacktestsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
 
-  const atBacktestLimit = rows.length >= MAX_BACKTESTS;
+  const { limits } = useAppData();
+  const maxBacktests = limits.maxBacktests;
+  const atBacktestLimit = rows.length >= maxBacktests;
 
   async function handleAddStrategy() {
     if (atBacktestLimit) {
       await alert({
         title: 'Strategy limit reached',
-        message: `You can create at most ${MAX_BACKTESTS} backtesting strategies. Delete an existing strategy to add a new one.`,
+        message: `You can create at most ${maxBacktests} backtesting strategies. Delete an existing strategy to add a new one.`,
         confirmLabel: 'Got it',
         tone: 'danger',
       });
@@ -286,7 +289,7 @@ export default function BacktestsPage() {
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             {rows.length === 0
               ? 'Create a strategy, then open it to upload an MT5 HTML report to analyze your performance.'
-              : `${rows.length} of ${MAX_BACKTESTS} strategies · upload an MT5 HTML report on each strategy`}
+              : `${rows.length} of ${maxBacktests} strategies · upload an MT5 HTML report on each strategy`}
           </p>
         </div>
         
@@ -323,7 +326,7 @@ export default function BacktestsPage() {
           <button
             className={btnPrimary}
             type="button"
-            title={atBacktestLimit ? `Limit is ${MAX_BACKTESTS} strategies per user` : 'Add a strategy'}
+            title={atBacktestLimit ? `Limit is ${maxBacktests} strategies per user` : 'Add a strategy'}
             onClick={() => void handleAddStrategy()}
           >
             + Add Strategy

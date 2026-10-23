@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { deleteTradingAccount } from '../api';
 import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
-import { accountTypeLabel, MAX_TRADING_ACCOUNTS, pnlDenominationLabel } from '../lib/accounts';
+import { accountTypeLabel, pnlDenominationLabel } from '../lib/accounts';
 import { resolveSiacStatus } from '../lib/siacEligibilityUi';
 import { AccountFormModal } from '../components/settings/TradingAccountsManager';
 import { SiacStatusPill } from '../components/settings/SiacChecklist';
@@ -128,6 +128,7 @@ export default function AccountsPage() {
   const { alert, confirm } = useDialog();
   const {
     tradingAccounts,
+    limits,
     refreshTradingAccounts,
     refreshTrades,
   } = useAppData();
@@ -141,10 +142,10 @@ export default function AccountsPage() {
   }
 
   async function handleAddAccount() {
-    if (tradingAccounts.length >= MAX_TRADING_ACCOUNTS) {
+    if (tradingAccounts.length >= limits.maxTradingAccounts) {
       await alert({
         title: 'Account limit reached',
-        message: `You can create at most ${MAX_TRADING_ACCOUNTS} trading accounts. Delete an existing account to add a new one.`,
+        message: `You can create at most ${limits.maxTradingAccounts} trading accounts. Delete an existing account to add a new one.`,
         confirmLabel: 'Got it',
         tone: 'danger',
       });

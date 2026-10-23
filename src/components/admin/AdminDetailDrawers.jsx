@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { LuArrowLeft, LuX } from 'react-icons/lu';
 import { adminGetAccountDetail, adminGetUserDetail } from '../../api/admin';
 import {
-  btnDanger, btnGhost, btnOutline, btnSm, card, emptyState, msgError, tableTd, tableTh,
+  btnDanger, btnGhost, btnOutline, btnSm, card, emptyState, input, label, msgError, msgSuccess, tableTd, tableTh,
 } from '../../lib/ui';
 
 function fmtMoney(value) {
@@ -102,6 +102,124 @@ function Section({ title, children, action }) {
   );
 }
 
+function limitFieldValue(value) {
+  return value == null ? '' : String(value);
+}
+
+/** Blank → null (use platform default); otherwise a whole number 0–1000. */
+function parseOverride(value, name) {
+  if (String(value).trim() === '') return null;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 1000) {
+    throw new Error(`${name} must be blank or a whole number between 0 and 1000.`);
+  }
+  return n;
+}
+
+function UserLimitsSection({ userId, limitRow, defaultLimits, onSaveLimits }) {
+  const [form, setForm] = useState({ maxTradingAccounts: '', maxBacktests: '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const accountOverride = limitRow?.max_trading_accounts_override;
+  const backtestOverride = limitRow?.max_backtests_override;
+  const hasOverride = accountOverride != null || backtestOverride != null;
+
+  useEffect(() => {
+    setForm({
+      maxTradingAccounts: limitFieldValue(accountOverride),
+      maxBacktests: limitFieldValue(backtestOverride),
+    });
+  }, [userId, accountOverride, backtestOverride]);
+
+  async function save(next) {
+    setMsg(null);
+    setBusy(true);
+    try {
+      await onSaveLimits(userId, next);
+      setMsg({ type: 'success', text: 'Limits saved.' });
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message || 'Could not save limits.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    try {
+      await save({
+        maxTradingAccounts: parseOverride(form.maxTradingAccounts, 'Trading accounts'),
+        maxBacktests: parseOverride(form.maxBacktests, 'Backtesting strategies'),
+      });
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+  }
+
+  if (!onSaveLimits) return null;
+
+  return (
+    <Section title="Limits">
+      <form className={`${card} space-y-4 p-4`} onSubmit={handleSave}>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Leave blank to use the platform default.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className={label} htmlFor="user-limit-accounts">
+              Trading accounts <span className="font-normal text-zinc-400">({limitRow?.account_count ?? 0} used)</span>
+            </label>
+            <input
+              id="user-limit-accounts"
+              className={input}
+              type="number"
+              min={0}
+              max={1000}
+              step={1}
+              placeholder={defaultLimits ? `Default (${defaultLimits.maxTradingAccounts})` : 'Default'}
+              value={form.maxTradingAccounts}
+              onChange={(e) => setForm((f) => ({ ...f, maxTradingAccounts: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className={label} htmlFor="user-limit-backtests">
+              Backtesting strategies <span className="font-normal text-zinc-400">({limitRow?.backtest_count ?? 0} used)</span>
+            </label>
+            <input
+              id="user-limit-backtests"
+              className={input}
+              type="number"
+              min={0}
+              max={1000}
+              step={1}
+              placeholder={defaultLimits ? `Default (${defaultLimits.maxBacktests})` : 'Default'}
+              value={form.maxBacktests}
+              onChange={(e) => setForm((f) => ({ ...f, maxBacktests: e.target.value }))}
+            />
+          </div>
+        </div>
+        {msg ? <p className={msg.type === 'error' ? msgError : msgSuccess}>{msg.text}</p> : null}
+        <div className="flex flex-wrap justify-end gap-2">
+          {hasOverride ? (
+            <button
+              className={btnGhost}
+              type="button"
+              disabled={busy}
+              onClick={() => void save({ maxTradingAccounts: null, maxBacktests: null })}
+            >
+              Reset to default
+            </button>
+          ) : null}
+          <button className={btnSm} type="submit" disabled={busy}>
+            {busy ? 'Saving…' : 'Save limits'}
+          </button>
+        </div>
+      </form>
+    </Section>
+  );
+}
+
 export function AdminUserDetailDrawer({
   userId,
   onClose,
@@ -109,6 +227,9 @@ export function AdminUserDetailDrawer({
   onToggleRole,
   onDeleteUser,
   busyId,
+  limitRow,
+  defaultLimits,
+  onSaveLimits,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -183,6 +304,13 @@ export function AdminUserDetailDrawer({
               { label: 'Trades', value: summary.trade_count ?? 0 },
               { label: 'Total PnL', value: fmtMoney(summary.total_pnl) },
             ]}
+          />
+
+          <UserLimitsSection
+            userId={profile.id}
+            limitRow={limitRow}
+            defaultLimits={defaultLimits}
+            onSaveLimits={onSaveLimits}
           />
 
           <Section title={`Accounts (${accounts.length})`}>

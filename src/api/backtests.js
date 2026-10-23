@@ -1,6 +1,7 @@
 import { SUPABASE_URL, authHeaders, getToken, getUserId, authFetch } from './auth';
+import { limitErrorMessage } from '../lib/limits';
 
-/** Max strategy backtests a single user may create. */
+/** Fallback cap; the effective per-user limit is admin-configurable (see api/limits). */
 export const MAX_BACKTESTS = 12;
 
 const BACKTEST_SELECT = [
@@ -95,10 +96,7 @@ export async function fetchBacktestDaily(backtestId) {
 
 export async function createBacktest({ name, currency, reportMeta, dailyRows }) {
   const uid = getUserId();
-  const existing = await listBacktests();
-  if ((existing || []).length >= MAX_BACKTESTS) {
-    throw new Error(`You can create at most ${MAX_BACKTESTS} backtesting strategies.`);
-  }
+  // Per-user cap is enforced by a DB trigger (admin-configurable).
   const parent = {
     user_id: uid,
     name: String(name || 'Strategy backtest').trim() || 'Strategy backtest',
@@ -125,9 +123,8 @@ export async function createBacktest({ name, currency, reportMeta, dailyRows }) 
   });
   if (!createdRes.ok) {
     const err = await restError(createdRes, 'Could not save backtest.');
-    if (/backtest limit reached|at most \d+ backtesting/i.test(err.message || '')) {
-      throw new Error(`You can create at most ${MAX_BACKTESTS} backtesting strategies.`);
-    }
+    const limitMsg = limitErrorMessage(err.message);
+    if (limitMsg) throw new Error(limitMsg);
     throw err;
   }
   const createdRows = await createdRes.json();

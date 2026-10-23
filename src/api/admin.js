@@ -108,3 +108,4 @@ export async function adminGetAccountDetail(accountId) {
 }
 
 export { fetchSiacRuleConfig, adminUpdateSiacRuleConfig } from './siac';
+export { adminFetchAppLimits, adminUpdateAppLimits, adminSetUserLimits } from './limits';

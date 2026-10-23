@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { fetchSteps, fetchTradingAccounts, fetchJournalBundle } from '../api';
+import { DEFAULT_LIMITS, fetchMyLimits } from '../api/limits';
 import {
   resolveTradeAccount,
   buildAccountLookups,
@@ -54,6 +55,7 @@ export function AppDataProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [userSteps, setUserSteps] = useState([]);
   const [tradingAccounts, setTradingAccounts] = useState([]);
+  const [limits, setLimits] = useState(DEFAULT_LIMITS);
   const [journal, setJournal] = useState(EMPTY_JOURNAL);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState(null);
@@ -124,6 +126,16 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  const refreshLimits = useCallback(async () => {
+    try {
+      const next = await fetchMyLimits();
+      if (!aliveRef.current) return;
+      setLimits(next);
+    } catch {
+      // Keep fallback defaults; the DB trigger still enforces the real cap.
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -133,6 +145,7 @@ export function AppDataProvider({ children }) {
         if (!cancelled && aliveRef.current) {
           setUserSteps([]);
           setTradingAccounts([]);
+          setLimits(DEFAULT_LIMITS);
           setJournal(EMPTY_JOURNAL);
           setViewModeState('portfolio');
           setActiveAccountIdState('');
@@ -146,7 +159,7 @@ export function AppDataProvider({ children }) {
       if (firstLoad && aliveRef.current) setDataLoading(true);
       try {
         const jobs = [refreshJournal()];
-        if (firstLoad) jobs.push(refreshTradingAccounts());
+        if (firstLoad) jobs.push(refreshTradingAccounts(), refreshLimits());
         await Promise.all(jobs);
         initialDoneRef.current = true;
       } finally {
@@ -161,7 +174,7 @@ export function AppDataProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, refreshJournal, refreshSteps, refreshTradingAccounts]);
+  }, [isAuthenticated, refreshJournal, refreshSteps, refreshTradingAccounts, refreshLimits]);
 
   const setViewMode = useCallback((mode) => {
     setViewModeState(mode);
@@ -208,6 +221,7 @@ export function AppDataProvider({ children }) {
     journalAccounts: journal.accounts,
     tradesEpoch,
     tradingAccounts,
+    limits,
     dataLoading,
     dataError,
     viewMode,
@@ -222,6 +236,7 @@ export function AppDataProvider({ children }) {
     refreshTrades,
     refreshSteps,
     refreshTradingAccounts,
+    refreshLimits,
     setActiveAccountByName: (name) => {
       if (!name) {
         setViewMode('portfolio');
@@ -236,6 +251,7 @@ export function AppDataProvider({ children }) {
     journal,
     tradesEpoch,
     tradingAccounts,
+    limits,
     dataLoading,
     dataError,
     viewMode,
@@ -249,6 +265,7 @@ export function AppDataProvider({ children }) {
     refreshTrades,
     refreshSteps,
     refreshTradingAccounts,
+    refreshLimits,
   ]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

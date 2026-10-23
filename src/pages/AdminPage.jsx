@@ -7,6 +7,7 @@ import {
   LuMenu,
   LuRefreshCw,
   LuShield,
+  LuSlidersHorizontal,
   LuUsers,
   LuWallet,
   LuX,
@@ -25,8 +26,11 @@ import {
   adminRevokeSyncKey,
   adminFetchTeams,
   adminDeleteTeam,
+  adminFetchAppLimits,
+  adminSetUserLimits,
 } from '../api/admin';
 import SiacRulesAdminPanel from '../components/admin/SiacRulesAdminPanel';
+import AccountLimitsAdminPanel from '../components/admin/AccountLimitsAdminPanel';
 import { AdminAccountDetailDrawer, AdminUserDetailDrawer } from '../components/admin/AdminDetailDrawers';
 import {
   appShell, btnDanger, btnOutline, btnSm, card, cardHd, cardTitle,
@@ -39,6 +43,7 @@ const NAV = [
   { id: 'teams', label: 'Teams', icon: LuUsersRound, group: 'People' },
   { id: 'accounts', label: 'Accounts', icon: LuWallet, group: 'Trading' },
   { id: 'sync', label: 'Sync keys', icon: LuKeyRound, group: 'Trading' },
+  { id: 'limits', label: 'Limits', icon: LuSlidersHorizontal, group: 'Trading' },
   { id: 'siac', label: 'SIAC rules', icon: LuShield, group: 'Eligibility' },
 ];
 
@@ -48,6 +53,7 @@ const PAGE_META = {
   teams: { title: 'Teams', subtitle: 'Leaderboard teams across the platform' },
   accounts: { title: 'Trading accounts', subtitle: 'All linked broker / EA accounts' },
   sync: { title: 'Sync keys', subtitle: 'Active MT5 / EA sync credentials' },
+  limits: { title: 'Limits', subtitle: 'How many accounts and strategies each user can create' },
   siac: { title: 'SIAC rules', subtitle: 'Eligibility thresholds and labels' },
 };
 
@@ -63,6 +69,24 @@ function StatCard({ label, value, onClick }) {
         {value ?? '—'}
       </div>
     </button>
+  );
+}
+
+function UsageCell({ used, override, fallback }) {
+  const limit = override ?? fallback;
+  return (
+    <span className="inline-flex items-center gap-1.5 tabular-nums">
+      {used ?? 0}
+      {limit != null ? <span className="text-zinc-400 dark:text-zinc-500">/ {limit}</span> : null}
+      {override != null ? (
+        <span
+          className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+          title="Custom limit for this user"
+        >
+          custom
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -173,6 +197,7 @@ export default function AdminPage() {
   const [accounts, setAccounts] = useState([]);
   const [syncKeys, setSyncKeys] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [appLimits, setAppLimits] = useState(null);
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [detailUserId, setDetailUserId] = useState(null);
@@ -194,18 +219,20 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, usersData, accountsData, keysData, teamsData] = await Promise.all([
+      const [statsData, usersData, accountsData, keysData, teamsData, limitsData] = await Promise.all([
         adminPlatformStats(),
         adminListUsers(),
         adminFetchTradingAccounts(),
         adminFetchSyncKeys(),
         adminFetchTeams().catch(() => []),
+        adminFetchAppLimits().catch(() => null),
       ]);
       setStats(statsData);
       setUsers(usersData || []);
       setAccounts(accountsData || []);
       setSyncKeys(keysData || []);
       setTeams(teamsData || []);
+      setAppLimits(limitsData);
     } catch (e) {
       setError(e.message || 'Could not load admin data. Run backend/schema_profiles_admin.sql in Supabase.');
     } finally {
@@ -255,6 +282,11 @@ export default function AdminPage() {
     accounts: accounts.length,
     sync: syncKeys.length,
   }), [users.length, teams.length, accounts.length, syncKeys.length]);
+
+  const limitOverrideCount = useMemo(
+    () => users.filter((u) => u.max_trading_accounts_override != null || u.max_backtests_override != null).length,
+    [users],
+  );
 
   const page = PAGE_META[activeTab] || PAGE_META.overview;
   const showSearch = ['users', 'accounts', 'sync', 'teams'].includes(activeTab);
@@ -353,6 +385,11 @@ export default function AdminPage() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function handleSaveUserLimits(userId, nextLimits) {
+    await adminSetUserLimits(userId, nextLimits);
+    await loadAll();
   }
 
   async function handleSignOut() {
@@ -483,6 +520,14 @@ export default function AdminPage() {
               <>
                 {activeTab === 'siac' && <SiacRulesAdminPanel />}
 
+                {activeTab === 'limits' && (
+                  <AccountLimitsAdminPanel
+                    limits={appLimits}
+                    overrideCount={limitOverrideCount}
+                    onSaved={setAppLimits}
+                  />
+                )}
+
                 {activeTab === 'overview' && stats && (
                   <div className="grid flex-1 content-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Users" value={stats.total_users} onClick={() => setActiveTab('users')} />
@@ -504,6 +549,7 @@ export default function AdminPage() {
                             <th className={tableTh}>User</th>
                             <th className={tableTh}>Role</th>
                             <th className={tableTh}>Accounts</th>
+                            <th className={tableTh}>Backtests</th>
                             <th className={tableTh}>Keys</th>
                             <th className={`${tableTh} text-right`}>Actions</th>
                           </tr>
@@ -529,7 +575,20 @@ export default function AdminPage() {
                                   {row.role}
                                 </span>
                               </td>
-                              <td className={tableTd}>{row.account_count}</td>
+                              <td className={tableTd}>
+                                <UsageCell
+                                  used={row.account_count}
+                                  override={row.max_trading_accounts_override}
+                                  fallback={appLimits?.maxTradingAccounts}
+                                />
+                              </td>
+                              <td className={tableTd}>
+                                <UsageCell
+                                  used={row.backtest_count}
+                                  override={row.max_backtests_override}
+                                  fallback={appLimits?.maxBacktests}
+                                />
+                              </td>
                               <td className={tableTd}>{row.sync_key_count}</td>
                               <td className={`${tableTd} text-right`} onClick={(e) => e.stopPropagation()}>
                                 <div className="flex justify-end gap-1">
@@ -723,6 +782,9 @@ export default function AdminPage() {
           onOpenAccount={openAccountDetail}
           onToggleRole={handleToggleRoleFromDetail}
           onDeleteUser={handleDeleteUserFromDetail}
+          limitRow={userById[detailUserId]}
+          defaultLimits={appLimits}
+          onSaveLimits={handleSaveUserLimits}
         />
       ) : null}
 

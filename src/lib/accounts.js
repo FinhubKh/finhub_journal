@@ -23,7 +23,7 @@ export const RISK_TRACKS = [
   { value: 'ea', label: 'EA / ATS' },
 ];
 
-/** Max trading accounts a single user may create. */
+/** Fallback cap; the effective per-user limit is admin-configurable (see api/limits). */
 export const MAX_TRADING_ACCOUNTS = 2;
 
 export function normalizePlatform(value) {
