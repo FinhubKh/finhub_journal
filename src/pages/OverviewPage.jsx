@@ -5,8 +5,9 @@ import { fetchDailyPnlByYear } from '../api';
 import { viewPnlDenomination, platformShort } from '../lib/accounts';
 import { fmtPnlStrict, fmtBalance } from '../lib/format';
 import { overridesToMap } from '../lib/dailyPnl';
+import { AUTO_SYNC_HINT } from '../lib/syncStatus';
 import {
-  btnGhost, btnOutline, card, dashboardPageWideFull,
+  btnGhost, btnOutline, btnPrimary, card, dashboardPageWideFull,
 } from '../lib/ui';
 import AccountViewDropdown from '../components/layout/AccountViewDropdown';
 import EquityChart from '../components/dashboard/EquityChart';
@@ -62,7 +63,7 @@ function formatPf(value, infinite) {
   return n.toFixed(2);
 }
 
-function OverviewHeader({ activeAccount, viewMode, onOpenEligibility }) {
+function OverviewHeader({ activeAccount, viewMode, denomination, onOpenEligibility }) {
   const showSiac = viewMode === 'account' && Boolean(activeAccount);
   const isAccount = viewMode === 'account' && Boolean(activeAccount);
   const subtitle = isAccount
@@ -89,6 +90,14 @@ function OverviewHeader({ activeAccount, viewMode, onOpenEligibility }) {
             >
               {isAccount ? activeAccount.name : 'Portfolio'}
             </span>
+            {denomination ? (
+              <span
+                className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                title={isAccount ? 'Account currency' : 'Portfolio totals are shown in USD'}
+              >
+                {denomination}
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 truncate text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p>
         </div>
@@ -413,6 +422,90 @@ function EmptyOverview({ onOpenAccounts }) {
   );
 }
 
+function GettingStartedStep({ index, state, title, children, action }) {
+  const done = state === 'done';
+  const current = state === 'current';
+  return (
+    <li className={`flex gap-3 rounded-xl px-3 py-3 sm:px-4 ${current ? 'bg-violet-50/70 ring-1 ring-violet-200 dark:bg-violet-950/30 dark:ring-violet-900/60' : ''}`}>
+      <span
+        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+          done
+            ? 'bg-violet-600 text-white'
+            : current
+              ? 'bg-white text-violet-700 ring-2 ring-violet-500 dark:bg-zinc-900 dark:text-violet-300'
+              : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500'
+        }`}
+        aria-hidden
+      >
+        {done ? '✓' : index}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={`text-sm font-semibold ${done ? 'text-zinc-400 line-through dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>
+          {title}
+          <span className="sr-only">{done ? ' (done)' : current ? ' (next step)' : ''}</span>
+        </p>
+        {!done ? (
+          <div className="mt-1 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{children}</div>
+        ) : null}
+        {current && action ? <div className="mt-3">{action}</div> : null}
+      </div>
+    </li>
+  );
+}
+
+/** First-run checklist: shown until the portfolio has any trades or cashflow. */
+function GettingStarted({ firstAccount, onAddAccount, onOpenAccount, onOpenTab }) {
+  const hasAccount = Boolean(firstAccount);
+  return (
+    <div className={`${card} px-4 py-5 sm:px-6 sm:py-6`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-400">
+        Getting started
+      </p>
+      <h2 className="mt-1 text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+        {hasAccount ? 'One more step — pull your trades' : 'Set up your journal in 2 minutes'}
+      </h2>
+      <ol className="mt-4 space-y-1.5">
+        <GettingStartedStep
+          index={1}
+          state={hasAccount ? 'done' : 'current'}
+          title="Connect your trading account"
+          action={(
+            <button className={btnPrimary} type="button" onClick={onAddAccount}>
+              Add account
+            </button>
+          )}
+        >
+          Use your MT4 / MT5 <strong className="font-semibold text-zinc-700 dark:text-zinc-300">investor password</strong>.
+          It&apos;s read-only — we can see your history but can never place or close trades.
+        </GettingStartedStep>
+        <GettingStartedStep
+          index={2}
+          state={hasAccount ? 'current' : 'upcoming'}
+          title="Pull your trade history"
+          action={hasAccount ? (
+            <button className={btnPrimary} type="button" onClick={() => onOpenAccount(firstAccount.id)}>
+              Open {firstAccount.name}
+            </button>
+          ) : null}
+        >
+          Press Sync once to import your full history. After that your account {AUTO_SYNC_HINT} — no need to come back and press it.
+        </GettingStartedStep>
+        <GettingStartedStep index={3} state="upcoming" title="Put your stats to work">
+          Check{' '}
+          <button type="button" className="font-medium text-violet-700 underline-offset-2 hover:underline dark:text-violet-300" onClick={() => onOpenTab('leaderboard')}>
+            SIAC eligibility and the leaderboard
+          </button>
+          , or set up your{' '}
+          <button type="button" className="font-medium text-violet-700 underline-offset-2 hover:underline dark:text-violet-300" onClick={() => onOpenTab('checklist')}>
+            pre-trade checklist
+          </button>
+          .
+        </GettingStartedStep>
+      </ol>
+    </div>
+  );
+}
+
 function StrategyOverviewSection({
   stats,
   daily,
@@ -448,6 +541,8 @@ function StrategyOverviewSection({
   const pfNum = parseFloat(pf);
   const pfPositive = !Number.isNaN(pfNum) && (pfNum >= 1 || pfInfinite);
 
+  const expectancy = Number(stats?.expectancy) || 0;
+  const avgR = Number(stats?.avgR) || 0;
   const trueMaxDd = Number(stats?.maxDD) || 0;
   const trueMaxDdPercent = capitalBase > 0 && trueMaxDd > 0
     ? Number(((trueMaxDd / capitalBase) * 100).toFixed(1))
@@ -533,7 +628,11 @@ function StrategyOverviewSection({
         <StatTile
           label="Current balance"
           value={fmtBalance(currentBalance, denomination)}
-          hint="Deposits − withdrawals + trade PnL"
+          hint={
+            withdrawals > 0
+              ? `In ${fmtBalance(deposits, denomination)} · out ${fmtBalance(withdrawals, denomination)}`
+              : `Deposited ${fmtBalance(deposits || capitalBase, denomination)}`
+          }
         />
         <StatTile
           label="Trade PnL"
@@ -542,13 +641,15 @@ function StrategyOverviewSection({
           tone={totalPnl >= 0 ? 'positive' : 'negative'}
         />
         <StatTile
-          label="Deposits"
-          value={fmtBalance(deposits || (withdrawals > 0 ? 0 : capitalBase), denomination)}
-          hint={
-            withdrawals > 0
-              ? `Withdrawn ${fmtBalance(withdrawals, denomination)}`
-              : 'Cash transferred in'
-          }
+          label="Max drawdown"
+          value={trueMaxDd > 0 ? fmtBalance(trueMaxDd, denomination) : '—'}
+          hint={trueMaxDdPercent > 0 ? `${trueMaxDdPercent}% of capital` : 'Peak-to-trough on closed trades'}
+        />
+        <StatTile
+          label="Expectancy"
+          value={trades > 0 ? fmtPnlStrict(expectancy, denomination) : '—'}
+          hint={avgR ? `Per trade · avg ${avgR > 0 ? '+' : ''}${avgR.toFixed(2)}R` : 'Average result per trade'}
+          tone={trades > 0 ? (expectancy >= 0 ? 'positive' : 'negative') : 'neutral'}
         />
         <StatTile
           label="Profit factor"
@@ -560,17 +661,11 @@ function StrategyOverviewSection({
           label="Win rate"
           value={trades > 0 ? `${wr}%` : '—'}
           hint={trades > 0 ? `${trades} closed` : 'No closed trades'}
-          tone={trades > 0 ? (wr >= 50 ? 'positive' : 'negative') : 'neutral'}
         />
         <StatTile
           label="Trades"
           value={trades || '—'}
           hint={`${daily?.length || 0} trading days`}
-        />
-        <StatTile
-          label="Currency"
-          value={denomination.toUpperCase()}
-          hint={isAccountView ? (activeAccount.broker || activeAccount.name) : 'Portfolio (USD)'}
         />
       </div>
 
@@ -690,6 +785,7 @@ export default function OverviewPage() {
       <OverviewHeader
         activeAccount={activeAccount}
         viewMode={viewMode}
+        denomination={denomination}
         onOpenEligibility={() => setActiveSection('eligibility')}
       />
 
@@ -699,7 +795,16 @@ export default function OverviewPage() {
         <>
           {!hasActivity && (
             <div className="mb-5 shrink-0">
-              <EmptyOverview onOpenAccounts={() => navigate('/dashboard/accounts')} />
+              {viewMode === 'portfolio' || tradingAccounts.length === 0 ? (
+                <GettingStarted
+                  firstAccount={tradingAccounts[0] || null}
+                  onAddAccount={() => navigate('/dashboard/accounts?add=1')}
+                  onOpenAccount={(id) => navigate(`/dashboard/accounts/${id}`)}
+                  onOpenTab={(tab) => navigate('/dashboard', { state: { tab } })}
+                />
+              ) : (
+                <EmptyOverview onOpenAccounts={() => navigate('/dashboard/accounts')} />
+              )}
             </div>
           )}
 

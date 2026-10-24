@@ -56,9 +56,9 @@ function ProgressTrack({ current, total, onJump }) {
               onClick={() => onJump(i)}
               className={`h-2.5 flex-1 min-w-8 rounded-full transition-all duration-300 ${
                 active
-                  ? 'scale-y-125 bg-violet-600 dark:bg-emerald-500'
+                  ? 'scale-y-125 bg-violet-600 dark:bg-violet-500'
                   : done
-                    ? 'bg-violet-300 dark:bg-emerald-800'
+                    ? 'bg-violet-300 dark:bg-violet-800'
                     : 'bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700'
               }`}
             />
@@ -175,7 +175,7 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
             aria-labelledby={`investor-step-${step.n}-title`}
           >
             <div className="flex items-start gap-4 p-5 sm:p-6">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-lg font-bold text-white shadow-sm shadow-violet-600/25 dark:bg-emerald-600 dark:shadow-emerald-900/40">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-lg font-bold text-white shadow-sm shadow-violet-600/25 dark:bg-violet-600 dark:shadow-violet-900/40">
                 {step.n}
               </span>
               <div className="min-w-0 flex-1 pt-0.5">
@@ -189,7 +189,7 @@ export default function InvestorGuideCard({ defaultOpen = true, standalone = fal
                   {step.desc}
                 </p>
                 {step.tip ? (
-                  <p className="mt-3 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-xs leading-relaxed text-violet-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+                  <p className="mt-3 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-xs leading-relaxed text-violet-800 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-300">
                     Tip: {step.tip}
                   </p>
                 ) : null}

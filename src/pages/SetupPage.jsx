@@ -45,7 +45,7 @@ export default function SetupPage() {
   return (
     <div className={`${dashboardPageWideFull} flex min-h-0 flex-col`}>
       <header className="mb-5 shrink-0 animate-install-fade-up">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-emerald-400">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">
           MetaTrader connection
         </p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -66,7 +66,7 @@ export default function SetupPage() {
                 key={item.id}
                 className={`group relative cursor-pointer overflow-hidden rounded-2xl border px-4 py-4 transition duration-200 ${
                   active
-                    ? 'border-violet-400 bg-white shadow-sm ring-2 ring-violet-200 dark:border-emerald-500 dark:bg-zinc-900 dark:ring-emerald-900/50'
+                    ? 'border-violet-400 bg-white shadow-sm ring-2 ring-violet-200 dark:border-violet-500 dark:bg-zinc-900 dark:ring-violet-900/50'
                     : 'border-zinc-200 bg-white/80 hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/70 dark:hover:border-zinc-700 dark:hover:bg-zinc-900'
                 }`}
               >
@@ -82,7 +82,7 @@ export default function SetupPage() {
                   <span
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
                       active
-                        ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/25 dark:bg-emerald-600 dark:shadow-emerald-900/40'
+                        ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/25 dark:bg-violet-600 dark:shadow-violet-900/40'
                         : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400'
                     }`}
                   >
@@ -92,7 +92,7 @@ export default function SetupPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{item.title}</p>
                       {item.badge ? (
-                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
                           {item.badge}
                         </span>
                       ) : null}
@@ -100,7 +100,7 @@ export default function SetupPage() {
                     <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{item.desc}</p>
                     <p
                       className={`mt-2 text-[11px] font-semibold uppercase tracking-wider ${
-                        active ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-500'
+                        active ? 'text-violet-600 dark:text-violet-400' : 'text-zinc-400 dark:text-zinc-500'
                       }`}
                     >
                       {item.meta}
@@ -109,7 +109,7 @@ export default function SetupPage() {
                   <span
                     className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition ${
                       active
-                        ? 'border-violet-600 bg-violet-600 dark:border-emerald-500 dark:bg-emerald-500'
+                        ? 'border-violet-600 bg-violet-600 dark:border-violet-500 dark:bg-violet-500'
                         : 'border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-900'
                     }`}
                     aria-hidden

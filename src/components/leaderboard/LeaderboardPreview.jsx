@@ -75,7 +75,7 @@ function PodiumCard({ entry, rank }) {
       </div>
       <div
         className={`mt-4 text-2xl font-extrabold tracking-tight tabular-nums ${
-          entry.totalPnl >= 0 ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'
+          entry.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
         }`}
       >
         {fmtPnlStrict(entry.totalPnl, entry.pnlDenomination)}
@@ -155,7 +155,7 @@ function LandingLeaderboardTable({ entries }) {
                         <Link
                           to={`/share/${e.shareToken}`}
                           className={`text-sm font-bold tabular-nums ${
-                            e.totalPnl >= 0 ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'
+                            e.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                           }`}
                         >
                           {fmtPnlStrict(e.totalPnl, e.pnlDenomination)}
@@ -299,7 +299,7 @@ export default function LeaderboardPreview({
                   </div>
                   <div
                     className={`text-sm font-bold tabular-nums ${
-                      e.totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'
+                      e.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'
                     }`}
                   >
                     {fmtPnlStrict(e.totalPnl, e.pnlDenomination)}

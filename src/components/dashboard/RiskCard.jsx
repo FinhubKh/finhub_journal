@@ -79,7 +79,7 @@ export default function RiskCard({ overview, daily, denomination = 'usd', fill =
           </div>
           <div>
             <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Expectancy</p>
-            <p className={`mt-0.5 text-base font-bold ${expectancy >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            <p className={`mt-0.5 text-base font-bold ${expectancy >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {expectancy !== 0 ? fmtPnlStrict(expectancy, denomination) : '—'}
             </p>
             <p className="mt-0.5 text-[10px] font-medium text-zinc-400">Per trade</p>

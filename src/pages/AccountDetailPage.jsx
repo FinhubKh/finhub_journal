@@ -24,24 +24,11 @@ import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
 import { accountTypeLabel, pnlDenominationLabel, normalizePlatform, platformLabel, platformShort } from '../lib/accounts';
 import { invalidateLeaderboardCache } from '../lib/leaderboardCache';
+import { formatSyncAgo, formatSyncExact } from '../lib/syncStatus';
 import {
   btnDanger, btnGhost, btnOutline, btnSm, card, cardBody, cardHd, cardTitle,
   dashboardPageWideFull, emptyState, sectionLabel,
 } from '../lib/ui';
-
-function formatLastSynced(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
 
 function Panel({ eyebrow, title, badge, children, danger = false, icon = null }) {
   return (
@@ -380,9 +367,12 @@ export default function AccountDetailPage() {
               Install the Finhub EA on MetaTrader 5 and paste a sync key. Best if you keep the terminal open locally.
             </p>
             {hasSyncKey ? (
-              <p className={`mt-3 text-xs font-medium ${syncMeta?.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
+              <p
+                className={`mt-3 text-xs font-medium ${syncMeta?.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}
+                title={formatSyncExact(syncMeta?.last_synced_at)}
+              >
                 {syncMeta?.last_synced_at
-                  ? `Last synced: ${formatLastSynced(syncMeta.last_synced_at)}`
+                  ? `Last synced: ${formatSyncAgo(syncMeta.last_synced_at)}`
                   : 'Not synced yet'}
               </p>
             ) : null}

@@ -11,6 +11,10 @@ const AppDataContext = createContext(null);
 
 const VIEW_KEY = 'nxuu_view_mode';
 const ACCOUNT_KEY = 'nxuu_active_account_id';
+// The bridge auto-syncs trades server-side; re-pull when the tab is visible again
+// (throttled) and periodically while it stays open.
+const BACKGROUND_REFRESH_MIN_MS = 60_000;
+const BACKGROUND_REFRESH_INTERVAL_MS = 5 * 60_000;
 
 const EMPTY_JOURNAL = {
   stats: null,
@@ -64,6 +68,7 @@ export function AppDataProvider({ children }) {
   const [tradesEpoch, setTradesEpoch] = useState(0);
   const aliveRef = useRef(true);
   const initialDoneRef = useRef(false);
+  const lastJournalAtRef = useRef(0);
 
   useEffect(() => {
     aliveRef.current = true;
@@ -89,6 +94,7 @@ export function AppDataProvider({ children }) {
         },
         accounts: Array.isArray(data?.accounts) ? data.accounts : [],
       });
+      lastJournalAtRef.current = Date.now();
       setDataError(null);
     } catch (e) {
       console.error(e);
@@ -175,6 +181,23 @@ export function AppDataProvider({ children }) {
       cancelled = true;
     };
   }, [isAuthenticated, refreshJournal, refreshSteps, refreshTradingAccounts, refreshLimits]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    function refreshIfStale() {
+      if (document.visibilityState !== 'visible' || !initialDoneRef.current) return;
+      if (Date.now() - lastJournalAtRef.current < BACKGROUND_REFRESH_MIN_MS) return;
+      void refreshTrades();
+    }
+    const timer = window.setInterval(refreshIfStale, BACKGROUND_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', refreshIfStale);
+    window.addEventListener('focus', refreshIfStale);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshIfStale);
+      window.removeEventListener('focus', refreshIfStale);
+    };
+  }, [isAuthenticated, refreshTrades]);
 
   const setViewMode = useCallback((mode) => {
     setViewModeState(mode);

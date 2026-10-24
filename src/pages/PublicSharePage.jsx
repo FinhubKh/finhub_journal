@@ -49,7 +49,7 @@ const TABS = [
 /* --- Stat tile ----------------------------------------------------- */
 function StatTile({ label, value, tone = 'neutral' }) {
   const toneClass =
-    tone === 'positive' ? 'text-violet-600 dark:text-emerald-400'
+    tone === 'positive' ? 'text-emerald-600 dark:text-emerald-400'
     : tone === 'negative' ? 'text-rose-600 dark:text-rose-400'
     : 'text-zinc-900 dark:text-zinc-100';
   return (
@@ -73,7 +73,7 @@ function TabBar({ active, onSelect }) {
             onClick={() => onSelect(tab.id)}
             className={`relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition ${
               isActive
-                ? 'border-b-2 border-violet-600 dark:border-emerald-400 text-violet-700 dark:text-emerald-300 font-semibold'
+                ? 'border-b-2 border-violet-600 dark:border-violet-400 text-violet-700 dark:text-violet-300 font-semibold'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
             }`}
           >
@@ -210,7 +210,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                     <td className={`${tableTd} text-right tabular-nums`}>{fmtLot(t.lot_size)}</td>
                     <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
                     <td className={`${tableTd} text-right tabular-nums`}>{fmtTradeR(t, avgLoss)}</td>
-                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {fmtPnlStrict(t.pnl_usd, denomination)}
                     </td>
                     <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
@@ -267,7 +267,7 @@ function TradeLogView({ trades, denomination, isLoggedIn, page, setPage, totalPa
                 <td className={`${tableTd} capitalize`}>{t.direction || '—'}</td>
                 <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
                 <td className={`${tableTd} text-right tabular-nums`}>{fmtTradeR(t, avgLoss)}</td>
-                <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                   {fmtPnlStrict(t.pnl_usd, denomination)}
                 </td>
                 <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>
@@ -409,7 +409,7 @@ export default function PublicSharePage() {
       <main className={`${dashboardPageWide} !pt-6`}>
         {/* Account identity */}
         <div className="mb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-violet-600 dark:text-emerald-400">Shared trading account</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">Shared trading account</p>
           <div className="mt-1 flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">{account.name}</h1>
             <PublicRiskBadge account={account} />
@@ -467,7 +467,7 @@ export default function PublicSharePage() {
                         <button
                           type="button"
                           onClick={() => setActiveTab('log')}
-                          className="text-xs font-semibold text-violet-600 dark:text-emerald-400 hover:underline"
+                          className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline"
                         >
                           View all {trades.length} trades →
                         </button>
@@ -497,7 +497,7 @@ export default function PublicSharePage() {
                                   <td className={`${tableTd} text-right tabular-nums`}>{fmtLot(t.lot_size)}</td>
                                   <td className={tableTd}><span className={tradeResultBadge(t.result)}>{t.result}</span></td>
                                   <td className={`${tableTd} text-right tabular-nums`}>{fmtTradeR(t, avgLoss)}</td>
-                                  <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                  <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                     {fmtPnlStrict(t.pnl_usd, denomination)}
                                   </td>
                                 </tr>

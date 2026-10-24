@@ -5,37 +5,9 @@ import { listInvestorCredentialsStatus, listAccountSyncKeys, runInvestorSyncAndW
 import { useAppData } from '../../context/AppDataContext';
 import { useDialog } from '../../context/DialogContext';
 import { platformShort } from '../../lib/accounts';
+import { AUTO_SYNC_HINT, formatSyncAgo, formatSyncExact, isAutoRetryError } from '../../lib/syncStatus';
 import { btnOutline } from '../../lib/ui';
 import SyncLoadingModal, { syncStageLabel } from './SyncLoadingModal';
-
-function formatSyncTime(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function formatSyncTimeShort(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  if (diffMs >= 0 && diffMs < 60_000) return 'Just now';
-  if (diffMs >= 0 && diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
-  if (diffMs >= 0 && diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}h ago`;
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function findStatus(rows, accountId) {
   return rows.find((r) => r.trading_account_id === accountId) || null;
@@ -48,7 +20,7 @@ function findStatus(rows, accountId) {
 export default function SyncNowButton({ size = 'md', className = '', variant = 'default' }) {
   const navigate = useNavigate();
   const { alert } = useDialog();
-  const { viewMode, activeAccount, refreshTrades } = useAppData();
+  const { viewMode, activeAccount, refreshTrades, tradesEpoch } = useAppData();
   const [busy, setBusy] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -94,13 +66,14 @@ export default function SyncNowButton({ size = 'md', className = '', variant = '
     }
   }, [viewMode, activeAccount?.id]);
 
+  // tradesEpoch bumps on refresh (incl. tab focus), so background auto-syncs show up here too.
   useEffect(() => {
     let cancelled = false;
     void reloadStatus(() => !cancelled);
     return () => {
       cancelled = true;
     };
-  }, [reloadStatus]);
+  }, [reloadStatus, tradesEpoch]);
 
   useEffect(() => () => {
     syncAbortRef.current?.abort();
@@ -124,7 +97,7 @@ export default function SyncNowButton({ size = 'md', className = '', variant = '
         const keyRow = findStatus(keys, activeAccount.id);
         setEaSyncMeta(keyRow);
         if (keyRow?.last_synced_at) {
-          toast.success(`Last EA sync: ${formatSyncTime(keyRow.last_synced_at)}. Attach the EA on a chart to pull new trades.`);
+          toast.success(`Last EA sync: ${formatSyncAgo(keyRow.last_synced_at)}. Attach the EA on a chart to pull new trades.`);
         } else {
           await alert({
             title: 'EA sync has not run yet',
@@ -212,6 +185,13 @@ export default function SyncNowButton({ size = 'md', className = '', variant = '
         </span>
       );
       syncMetaShort = syncStageLabel(investorStatus?.sync_stage, activeAccount?.platform);
+    } else if (investorStatus?.last_sync_error && isAutoRetryError(investorStatus.last_sync_error)) {
+      statusLine = (
+        <span className="text-amber-600 dark:text-amber-400" title={investorStatus.last_sync_error}>
+          Sync server hiccup — retrying automatically
+        </span>
+      );
+      syncMetaShort = 'Retrying';
     } else if (investorStatus?.last_sync_error) {
       statusLine = (
         <span className="text-rose-600 dark:text-rose-400" title={investorStatus.last_sync_error}>
@@ -220,26 +200,26 @@ export default function SyncNowButton({ size = 'md', className = '', variant = '
       );
       syncMetaShort = 'Failed';
     } else if (investorStatus?.last_synced_at) {
-      const when = formatSyncTime(investorStatus.last_synced_at);
+      const when = formatSyncAgo(investorStatus.last_synced_at);
       statusLine = (
-        <span className="text-zinc-500 dark:text-zinc-400">
-          Last synced: {when}
+        <span className="text-zinc-500 dark:text-zinc-400" title={formatSyncExact(investorStatus.last_synced_at)}>
+          Synced {when} · {AUTO_SYNC_HINT}
         </span>
       );
-      syncMetaShort = formatSyncTimeShort(investorStatus.last_synced_at) || when;
+      syncMetaShort = when;
     } else {
       statusLine = <span className="text-zinc-400">Not synced yet</span>;
       syncMetaShort = 'Never';
     }
   } else if (singleAccount && !loadingStatus && isEaAccount) {
     if (eaSyncMeta?.last_synced_at) {
-      const when = formatSyncTime(eaSyncMeta.last_synced_at);
+      const when = formatSyncAgo(eaSyncMeta.last_synced_at);
       statusLine = (
-        <span className="text-zinc-500 dark:text-zinc-400">
+        <span className="text-zinc-500 dark:text-zinc-400" title={formatSyncExact(eaSyncMeta.last_synced_at)}>
           Last EA sync: {when}
         </span>
       );
-      syncMetaShort = formatSyncTimeShort(eaSyncMeta.last_synced_at) || when;
+      syncMetaShort = when;
     } else {
       statusLine = <span className="text-zinc-400">EA not synced yet — attach it on a chart</span>;
       syncMetaShort = 'Never';

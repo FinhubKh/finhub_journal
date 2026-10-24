@@ -126,7 +126,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
           <div className="grid grid-cols-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950/80 text-center text-xs">
             <div className="border-r border-zinc-200 dark:border-zinc-800 p-3">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total PnL</div>
-              <div className={`mt-0.5 text-sm font-black tabular-nums ${totalPnlUsd >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              <div className={`mt-0.5 text-sm font-black tabular-nums ${totalPnlUsd >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {fmtPnlStrict(totalPnlUsd)}
               </div>
             </div>
@@ -206,7 +206,7 @@ export default function TeamDetailsModal({ teamId, isOpen, onClose }) {
                       </td>
                       <td
                         className={`${tableTd} text-right tabular-nums font-bold ${
-                          m.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                          m.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                         }`}
                       >
                         {fmtPnlStrict(m.totalPnl, m.pnlDenomination)}

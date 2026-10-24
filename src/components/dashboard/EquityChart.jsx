@@ -143,7 +143,7 @@ export default function EquityChart({ daily, trades, denomination = 'usd', initi
           <div className="flex items-center gap-2">
             {action}
             {!empty && lastVal != null && (
-              <span className={`text-sm font-semibold sm:inline ${lastVal >= initialDeposit ? 'text-violet-600 dark:text-violet-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              <span className={`text-sm font-semibold sm:inline ${lastVal >= initialDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {fmtPnlStrict(lastVal, denom)}
               </span>
             )}

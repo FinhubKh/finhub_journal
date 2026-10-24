@@ -8,20 +8,12 @@ import PasswordInput from '../common/PasswordInput';
 import BrokerServerFields from './BrokerServerFields';
 import CustomDropdown from '../common/CustomDropdown';
 import { PLATFORMS, platformLabel, normalizePlatform } from '../../lib/accounts';
+import { AUTO_SYNC_HINT, formatSyncAgo, formatSyncExact, isAutoRetryError } from '../../lib/syncStatus';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, input, label, msgError, sectionLabel, select,
 } from '../../lib/ui';
 
 const formSelectBtn = `${select} inline-flex items-center justify-between gap-2 text-left font-normal`;
-
-function formatLastSynced(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-  });
-}
 
 function StatusBadge({ ok, okLabel, idleLabel }) {
   return (
@@ -207,10 +199,19 @@ export default function InvestorSyncPanel({ account, status, onChanged, compact 
           <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
             {status.broker_server} · login {status.login}
           </p>
-          <p className={`mt-2 text-xs font-medium ${status.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
-            {status.last_synced_at ? `Last synced: ${formatLastSynced(status.last_synced_at)}` : 'Not synced yet'}
+          <p
+            className={`mt-2 text-xs font-medium ${status.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}
+            title={formatSyncExact(status.last_synced_at)}
+          >
+            {status.last_synced_at
+              ? `Synced ${formatSyncAgo(status.last_synced_at)} · ${AUTO_SYNC_HINT}`
+              : 'Not synced yet'}
           </p>
-          {status.last_sync_error ? (
+          {status.last_sync_error && isAutoRetryError(status.last_sync_error) ? (
+            <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400" title={status.last_sync_error}>
+              Sync server hiccup — retrying automatically. Nothing to fix on your side.
+            </p>
+          ) : status.last_sync_error ? (
             <p className="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">Last sync failed: {status.last_sync_error}</p>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">

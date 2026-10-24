@@ -151,7 +151,7 @@ function MonthCard({ year, month, days, denomination, onSelect }) {
         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{MONTHS_SHORT[month - 1]}</div>
         {hasActivity && (
           <div className="text-right text-[10px] leading-tight">
-            <div className={totals.pnl >= 0 ? 'font-semibold text-violet-600 dark:text-emerald-400' : 'font-semibold text-rose-600 dark:text-rose-400'}>
+            <div className={totals.pnl >= 0 ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'font-semibold text-rose-600 dark:text-rose-400'}>
               {fmtPnlStrict(totals.pnl, denomination)}
             </div>
             <div className="text-zinc-400">{totals.trades} trade{totals.trades !== 1 ? 's' : ''}</div>
@@ -186,7 +186,7 @@ function YearView({ year, yearDays, denomination, availableYears, onYearChange, 
         </div>
         {totals.trades > 0 && (
           <div className="flex items-center gap-4 text-sm">
-            <span className={`font-bold tabular-nums ${totals.pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            <span className={`font-bold tabular-nums ${totals.pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {fmtPnlStrict(totals.pnl, denomination)}
             </span>
             <span className="text-zinc-400 dark:text-zinc-500">{totals.trades} trades · {wr}% WR</span>
@@ -251,7 +251,7 @@ function MonthDetailView({ year, month, monthDays, denomination, onBack, onPrevM
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {statItems.map(({ value, label, coloredPnl, hasColor }) => (
           <div key={label} className={`${card} p-4 text-center`}>
-            <div className={`text-xl font-bold tracking-tight ${hasColor ? (coloredPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : 'text-zinc-900 dark:text-zinc-100'}`}>{value}</div>
+            <div className={`text-xl font-bold tracking-tight ${hasColor ? (coloredPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : 'text-zinc-900 dark:text-zinc-100'}`}>{value}</div>
             <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
           </div>
         ))}
@@ -267,7 +267,7 @@ function MonthDetailView({ year, month, monthDays, denomination, onBack, onPrevM
                 {WEEK_DAYS.map((d) => (
                   <div key={d} className={`py-1 text-center text-xs font-semibold ${d === 'Sat' || d === 'Sun' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400 dark:text-zinc-500'}`}>{d}</div>
                 ))}
-                <div className="py-1 text-center text-xs font-semibold text-violet-600 dark:text-emerald-400">Week</div>
+                <div className="py-1 text-center text-xs font-semibold text-violet-600 dark:text-violet-400">Week</div>
               </div>
               <div className="space-y-2">
                 {weeks.map((week) => (
@@ -288,7 +288,7 @@ function MonthDetailView({ year, month, monthDays, denomination, onBack, onPrevM
                             <span className={`text-xs font-medium ${weekend ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-300'}`}>{dayNum}</span>
                           </span>
                           {active && (
-                            <span className={`mt-auto text-xs font-bold whitespace-nowrap truncate ${dayPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            <span className={`mt-auto text-xs font-bold whitespace-nowrap truncate ${dayPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                               {fmtPnlStrict(dayPnl, denomination)}
                             </span>
                           )}
@@ -302,7 +302,7 @@ function MonthDetailView({ year, month, monthDays, denomination, onBack, onPrevM
                         : 'border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/30'
                     }`}>
                       <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate">{weekRangeLabel(week.days)}</span>
-                      <span className={`mt-1 text-sm font-bold whitespace-nowrap truncate ${!week.weekActive ? 'text-zinc-400 dark:text-zinc-500' : week.weekPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      <span className={`mt-1 text-sm font-bold whitespace-nowrap truncate ${!week.weekActive ? 'text-zinc-400 dark:text-zinc-500' : week.weekPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                         {week.weekActive ? fmtPnlStrict(week.weekPnl, denomination) : '—'}
                       </span>
                       {week.weekTrades > 0 && <span className="mt-0.5 text-[9px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap truncate">{week.weekTrades} trades</span>}

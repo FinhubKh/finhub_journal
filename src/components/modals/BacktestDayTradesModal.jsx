@@ -66,7 +66,7 @@ export default function BacktestDayTradesModal({
                 {sorted.length} trade{sorted.length !== 1 ? 's' : ''}
               </span>
               {' · '}
-              <span className={`font-semibold tabular-nums ${dayPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              <span className={`font-semibold tabular-nums ${dayPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {fmtPnlStrict(dayPnl, denomination)}
               </span>
             </p>
@@ -110,7 +110,7 @@ export default function BacktestDayTradesModal({
                     <td className={tableTd}>
                       <span className={tradeResultBadge(t.result)}>{t.result}</span>
                     </td>
-                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    <td className={`${tableTd} text-right tabular-nums font-medium ${Number(t.pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {fmtPnlStrict(t.pnl_usd, denomination)}
                     </td>
                     <td className={`${tableTd} capitalize`}>{t.session || '—'}</td>

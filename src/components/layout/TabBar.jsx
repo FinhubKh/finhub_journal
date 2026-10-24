@@ -14,9 +14,9 @@ const SHOW_SETUP_TAB = false;
 const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', short: 'Home', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="9" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="6.5" y="5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" /><rect x="11" y="2" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" /></svg> },
   { id: 'log', label: 'Log', short: 'Log', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.4" /><path d="M6 6h4M6 9h4M6 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
-  { id: 'calendar', label: 'Calendar', short: 'Cal', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
+  { id: 'calendar', label: 'Calendar', short: 'Calendar', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 2v2M11 2v2M2 7h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> },
   { id: 'backtests', label: 'Backtest', short: 'BT', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M5 10.5l2-3 2 1.5 2.5-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11.5 5.5h1.5V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
-  { id: 'checklist', label: 'Checklist', short: 'List', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
+  { id: 'checklist', label: 'Checklist', short: 'Checklist', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M6 8l1.5 1.5L10 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   { id: 'compound', label: 'Compound', short: 'Cmp', icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12.5L6.5 7l2.5 3 4-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 4h2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg> },
   ...(SHOW_AI_ADVISOR_TAB ? [{
     id: 'ai-advisor',
@@ -175,7 +175,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
       expanded ? 'justify-start gap-3 px-3' : 'justify-center gap-0'
     } ${
       active
-        ? 'bg-violet-100 text-violet-700 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border dark:border-emerald-500/30'
+        ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400 dark:border dark:border-violet-500/30'
         : 'bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-200'
     }`;
 
@@ -199,7 +199,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
                   type="button"
                   className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-[11px] font-medium ${
                     activeTab === tab.id
-                      ? 'bg-violet-100 text-violet-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                      ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400'
                       : 'bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300'
                   }`}
                   onClick={() => {
@@ -259,7 +259,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
               title={tab.label}
               className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ${
                 activeTab === tab.id
-                  ? 'text-violet-700 dark:text-emerald-400'
+                  ? 'text-violet-700 dark:text-violet-400'
                   : 'text-zinc-400 dark:text-zinc-500'
               }`}
               onClick={() => {
@@ -275,7 +275,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             type="button"
             className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ${
               moreOpen || moreActive
-                ? 'text-violet-700 dark:text-emerald-400'
+                ? 'text-violet-700 dark:text-violet-400'
                 : 'text-zinc-400 dark:text-zinc-500'
             }`}
             aria-expanded={moreOpen}
@@ -323,7 +323,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
             title={tab.id === 'ai-advisor' ? 'AI Advisor' : tab.label}
             onClick={() => onSwitchTab(tab.id)}
           >
-            <span className={activeTab === tab.id ? 'text-violet-600 dark:text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
+            <span className={activeTab === tab.id ? 'text-violet-600 dark:text-violet-400' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}>{tab.icon}</span>
             {expanded ? <span className="truncate">{tab.label}</span> : null}
           </button>
         ))}
@@ -375,7 +375,7 @@ export default function TabBar({ activeTab, onSwitchTab }) {
         aria-valuenow={width}
         tabIndex={0}
         className={`absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none transition ${
-          dragging ? 'bg-violet-400/70 dark:bg-emerald-500/60' : 'bg-transparent hover:bg-violet-300/50 dark:hover:bg-emerald-500/40'
+          dragging ? 'bg-violet-400/70 dark:bg-violet-500/60' : 'bg-transparent hover:bg-violet-300/50 dark:hover:bg-violet-500/40'
         }`}
         onPointerDown={startDrag}
         onKeyDown={(e) => {

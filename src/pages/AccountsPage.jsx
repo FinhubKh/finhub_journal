@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { deleteTradingAccount } from '../api';
 import { useAppData } from '../context/AppDataContext';
@@ -135,6 +135,7 @@ export default function AccountsPage() {
 
   const [modal, setModal] = useState(null);
   const [busyId, setBusyId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   async function handleSaved() {
     await refreshTradingAccounts();
@@ -153,6 +154,13 @@ export default function AccountsPage() {
     }
     setModal({ mode: 'add' });
   }
+
+  // Deep link from the Overview "Getting started" checklist.
+  useEffect(() => {
+    if (searchParams.get('add') !== '1') return;
+    setSearchParams({}, { replace: true });
+    void handleAddAccount();
+  }, [searchParams]);
 
   async function handleDelete(account) {
     const ok = await confirm({

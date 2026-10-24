@@ -91,7 +91,7 @@ export default function HighlightsCard({ overview, daily, denomination = 'usd', 
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <div>
             <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">Best trade</p>
-            <p className="mt-0.5 text-base font-bold text-violet-600 dark:text-emerald-400">
+            <p className="mt-0.5 text-base font-bold text-emerald-600 dark:text-emerald-400">
               {bestTrade > 0 ? fmtPnlStrict(bestTrade, denomination) : '—'}
             </p>
           </div>

@@ -28,6 +28,7 @@ import {
   riskTrackLabel,
 } from '../../lib/accounts';
 import { useAppData } from '../../context/AppDataContext';
+import { formatSyncAgo, formatSyncExact } from '../../lib/syncStatus';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
   msgError, msgSuccess, sectionLabel, select,
@@ -53,7 +54,7 @@ const EMPTY_FORM = {
   pnlDenomination: 'usd',
   platform: 'mt5',
   riskTrack: '',
-  syncMode: 'ea',
+  syncMode: 'investor',
   brokerId: '',
   serverChoice: '',
   customServer: '',
@@ -71,20 +72,6 @@ function accountToForm(account) {
     platform: normalizePlatform(account.platform),
     riskTrack: normalizeRiskTrack(account.risk_track) || '',
   };
-}
-
-function formatLastSynced(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 }
 
 function Badge({ children, tone = 'neutral' }) {
@@ -230,6 +217,29 @@ function SyncModeStep({ form, setField }) {
     <div className="grid gap-2 sm:grid-cols-2">
       <label
         className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
+          form.syncMode === 'investor' ? selected : idle
+        }`}
+      >
+        <input
+          type="radio"
+          className="sr-only"
+          name="syncMode"
+          value="investor"
+          checked={form.syncMode === 'investor'}
+          onChange={() => setField('syncMode', 'investor')}
+        />
+        <p className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          Investor password
+          <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+            Recommended
+          </span>
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+          Read-only MetaTrader login. We pull closed trades and keep them synced — nothing to install, your PC can be off.
+        </p>
+      </label>
+      <label
+        className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
           form.syncMode === 'ea' ? selected : idle
         }`}
       >
@@ -243,25 +253,7 @@ function SyncModeStep({ form, setField }) {
         />
         <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">EA sync key</p>
         <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Install the EA on your MT5 and paste a sync key. Best if you keep MT5 open locally.
-        </p>
-      </label>
-      <label
-        className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-          form.syncMode === 'investor' ? selected : idle
-        }`}
-      >
-        <input
-          type="radio"
-          className="sr-only"
-          name="syncMode"
-          value="investor"
-          checked={form.syncMode === 'investor'}
-          onChange={() => setField('syncMode', 'investor')}
-        />
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Investor password</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Read-only MetaTrader login. We pull closed trades for you — no EA install on your PC.
+          Advanced: install the EA on your MT5 and paste a sync key. Only syncs while your MT5 stays open.
         </p>
       </label>
     </div>
@@ -277,7 +269,7 @@ function createWizardSteps(syncMode, platform = 'mt5') {
       title: `How should we sync ${plat}?`,
       hint: normalizePlatform(platform) === 'mt4'
         ? 'MT4 uses investor-password cloud sync.'
-        : 'Pick EA if you run MetaTrader locally, or investor password for hands-off sync.',
+        : 'Investor password is the easiest — hands-off sync. Pick EA only if you keep MetaTrader running locally.',
     },
   ];
   if (syncMode === 'investor' || normalizePlatform(platform) === 'mt4') {
@@ -1062,8 +1054,11 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
                   : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
               </p>
               {hasSyncKey ? (
-                <p className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}>
-                  {lastSyncedAt ? `Last synced: ${formatLastSynced(lastSyncedAt)}` : 'Not synced yet'}
+                <p
+                  className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}
+                  title={formatSyncExact(lastSyncedAt)}
+                >
+                  {lastSyncedAt ? `Last synced: ${formatSyncAgo(lastSyncedAt)}` : 'Not synced yet'}
                 </p>
               ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-2">

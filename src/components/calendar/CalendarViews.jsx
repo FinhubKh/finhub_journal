@@ -90,7 +90,7 @@ function MonthPickerCard({ year, month, days, overrideMap, useOverrides, denomin
         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{MONTHS_SHORT[month - 1]}</div>
         {hasActivity && (
           <div className="text-right text-[10px] leading-tight">
-            <div className={totalPnl >= 0 ? 'font-semibold text-violet-600' : 'font-semibold text-rose-600'}>{fmtPnlStrict(totalPnl, denomination)}</div>
+            <div className={totalPnl >= 0 ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'font-semibold text-rose-600'}>{fmtPnlStrict(totalPnl, denomination)}</div>
             <div className="text-zinc-400">{totalTrades} trade{totalTrades !== 1 ? 's' : ''}</div>
           </div>
         )}
@@ -218,14 +218,14 @@ export function MonthDetailView({
         <CalendarStatCard
           value={hasActivity ? fmtPnlStrict(totalPnl, denomination) : '—'}
           label="Monthly PnL"
-          valueClass={totalPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
+          valueClass={totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}
         />
         <CalendarStatCard value={hasActivity ? totalTrades : '—'} label="Trades" />
         <CalendarStatCard value={totals.actualTrades > 0 ? `${wr}%` : '—'} label="Win Rate" />
         <CalendarStatCard
           value={bestWeek ? fmtPnlStrict(bestWeek.weekPnl, denomination) : '—'}
           label={bestWeek ? `Best week (${weekRangeLabel(bestWeek.days)})` : 'Best week'}
-          valueClass={bestWeek && bestWeek.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}
+          valueClass={bestWeek && bestWeek.weekPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}
         />
       </div>
 
@@ -281,7 +281,7 @@ export function MonthDetailView({
                             {manual && <span className="text-[9px] font-bold text-violet-600">M</span>}
                           </span>
                           {active && (
-                            <span className={`mt-auto text-xs font-bold whitespace-nowrap truncate ${dayPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+                            <span className={`mt-auto text-xs font-bold whitespace-nowrap truncate ${dayPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>
                               {fmtPnlStrict(dayPnl, denomination)}
                             </span>
                           )}
@@ -334,7 +334,7 @@ export function MonthDetailView({
                           : 'border-rose-200 bg-rose-50'
                     }`}>
                       <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate">{weekRangeLabel(week.days)}</span>
-                      <span className={`mt-1 text-sm font-bold whitespace-nowrap truncate ${!week.weekActive ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>
+                      <span className={`mt-1 text-sm font-bold whitespace-nowrap truncate ${!week.weekActive ? 'text-zinc-400' : week.weekPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>
                         {week.weekActive ? fmtPnlStrict(week.weekPnl, denomination) : '—'}
                       </span>
                       {week.weekTrades > 0 && (

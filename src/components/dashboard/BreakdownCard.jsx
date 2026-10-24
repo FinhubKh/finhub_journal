@@ -116,7 +116,7 @@ export default function BreakdownCard({ breakdown, denomination = 'usd', fill = 
                   <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                     {kind === 'outcome' ? `${count} Trades` : `${wr}% WR`}
                   </span>
-                  <span className={`font-semibold tabular-nums ${pnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  <span className={`font-semibold tabular-nums ${pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {fmtPnlStrict(pnl, denomination)}
                   </span>
                   {kind !== 'outcome' && (

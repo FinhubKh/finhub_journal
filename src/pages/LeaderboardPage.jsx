@@ -93,9 +93,9 @@ function GlobalLeaderboardTable({ entries, sort, embedded, siacMode = false }) {
               <th className={`${tableTh} w-14 text-zinc-500 dark:text-zinc-400`}>#</th>
               <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Trader</th>
               <th className={`${tableTh} text-zinc-500 dark:text-zinc-400`}>Account</th>
-              <th className={`${tableTh} text-right ${sort === 'pnl' ? 'text-violet-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>Net PnL</th>
-              <th className={`${tableTh} text-right ${sort === 'wr' ? 'text-violet-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>Win rate</th>
-              <th className={`${tableTh} text-right ${sort === 'pf' ? 'text-violet-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>PF</th>
+              <th className={`${tableTh} text-right ${sort === 'pnl' ? 'text-violet-700 dark:text-violet-400' : 'text-zinc-500 dark:text-zinc-400'}`}>Net PnL</th>
+              <th className={`${tableTh} text-right ${sort === 'wr' ? 'text-violet-700 dark:text-violet-400' : 'text-zinc-500 dark:text-zinc-400'}`}>Win rate</th>
+              <th className={`${tableTh} text-right ${sort === 'pf' ? 'text-violet-700 dark:text-violet-400' : 'text-zinc-500 dark:text-zinc-400'}`}>PF</th>
               <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Trades</th>
               <th className={`${tableTh} text-right`}> </th>
             </tr>
@@ -138,7 +138,7 @@ function GlobalLeaderboardTable({ entries, sort, embedded, siacMode = false }) {
                   </td>
                   <td
                     className={`${tableTd} text-right tabular-nums font-bold ${
-                      e.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                      e.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}
                   >
                     {fmtPnlStrict(e.totalPnl, e.pnlDenomination)}
@@ -150,7 +150,7 @@ function GlobalLeaderboardTable({ entries, sort, embedded, siacMode = false }) {
                     {e.shareToken ? (
                       <Link
                         to={`/share/${e.shareToken}`}
-                        className="text-xs font-semibold text-violet-600 dark:text-emerald-400 transition hover:underline"
+                        className="text-xs font-semibold text-violet-600 dark:text-violet-400 transition hover:underline"
                       >
                         View
                       </Link>
@@ -190,7 +190,7 @@ function TeamLeaderboardTable({ teams, onSelectTeam }) {
               <th className={`${tableTh} text-center text-zinc-500 dark:text-zinc-400`}>Members</th>
               <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Win Rate</th>
               <th className={`${tableTh} text-right text-zinc-500 dark:text-zinc-400`}>Trades</th>
-              <th className={`${tableTh} text-right text-violet-700 dark:text-emerald-400`}>Combined PnL</th>
+              <th className={`${tableTh} text-right text-violet-700 dark:text-violet-400`}>Combined PnL</th>
               <th className={`${tableTh} text-right`}> </th>
             </tr>
           </thead>
@@ -219,7 +219,7 @@ function TeamLeaderboardTable({ teams, onSelectTeam }) {
                       />
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-extrabold text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-emerald-400 transition">
+                          <span className="font-extrabold text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">
                             {t.teamName}
                           </span>
                           <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600 dark:text-zinc-400">
@@ -242,7 +242,7 @@ function TeamLeaderboardTable({ teams, onSelectTeam }) {
                   <td className={`${tableTd} text-right tabular-nums text-zinc-500 dark:text-zinc-400`}>{t.tradeCount}</td>
                   <td
                     className={`${tableTd} text-right tabular-nums font-black ${
-                      t.totalPnl >= 0 ? 'text-violet-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                      t.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}
                   >
                     {fmtPnlStrict(t.totalPnl)}
@@ -251,7 +251,7 @@ function TeamLeaderboardTable({ teams, onSelectTeam }) {
                     <button
                       type="button"
                       onClick={() => onSelectTeam(t.teamId)}
-                      className="rounded-lg bg-violet-50 dark:bg-emerald-950/40 border border-violet-200 dark:border-emerald-500/30 px-3 py-1 text-xs font-bold text-violet-700 dark:text-emerald-400 transition hover:bg-violet-100 dark:hover:bg-emerald-900/50"
+                      className="rounded-lg bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-500/30 px-3 py-1 text-xs font-bold text-violet-700 dark:text-violet-400 transition hover:bg-violet-100 dark:hover:bg-violet-900/50"
                     >
                       View Team
                     </button>
@@ -473,7 +473,7 @@ export default function LeaderboardPage({ embedded = false }) {
                     <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-600 dark:text-zinc-400">
                       [{userTeam.teamTag}]
                     </span>
-                    <span className="rounded bg-violet-100 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-extrabold text-violet-800 dark:text-emerald-400 uppercase border border-violet-200/50 dark:border-emerald-500/30">
+                    <span className="rounded bg-violet-100 dark:bg-violet-950/60 px-2 py-0.5 text-[10px] font-extrabold text-violet-800 dark:text-violet-400 uppercase border border-violet-200/50 dark:border-violet-500/30">
                       {userTeam.role}
                     </span>
                   </div>
