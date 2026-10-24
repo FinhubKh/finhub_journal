@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LuChartPie,
-  LuKeyRound,
   LuLogOut,
   LuMenu,
   LuRefreshCw,
@@ -21,8 +20,6 @@ import {
   adminDeleteUser,
   adminFetchTradingAccounts,
   adminDeleteTradingAccount,
-  adminFetchSyncKeys,
-  adminRevokeSyncKey,
   adminFetchTeams,
   adminDeleteTeam,
   adminFetchAppLimits,
@@ -41,7 +38,6 @@ const NAV = [
   { id: 'users', label: 'Users', icon: LuUsers, group: 'People' },
   { id: 'teams', label: 'Teams', icon: LuUsersRound, group: 'People' },
   { id: 'accounts', label: 'Accounts', icon: LuWallet, group: 'Trading' },
-  { id: 'sync', label: 'Sync keys', icon: LuKeyRound, group: 'Trading' },
   { id: 'limits', label: 'Limits', icon: LuSlidersHorizontal, group: 'Trading' },
   { id: 'siac', label: 'SIAC rules', icon: LuShield, group: 'Eligibility' },
 ];
@@ -51,7 +47,6 @@ const PAGE_META = {
   users: { title: 'Users', subtitle: 'Roles and account access' },
   teams: { title: 'Teams', subtitle: 'Leaderboard teams across the platform' },
   accounts: { title: 'Trading accounts', subtitle: 'All linked broker / EA accounts' },
-  sync: { title: 'Sync keys', subtitle: 'Active MT5 / EA sync credentials' },
   limits: { title: 'Limits', subtitle: 'How many accounts and strategies each user can create' },
   siac: { title: 'SIAC rules', subtitle: 'Eligibility thresholds and labels' },
 };
@@ -194,7 +189,6 @@ export default function AdminPage() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [syncKeys, setSyncKeys] = useState([]);
   const [teams, setTeams] = useState([]);
   const [appLimits, setAppLimits] = useState(null);
   const [search, setSearch] = useState('');
@@ -218,18 +212,16 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, usersData, accountsData, keysData, teamsData, limitsData] = await Promise.all([
+      const [statsData, usersData, accountsData, teamsData, limitsData] = await Promise.all([
         adminPlatformStats(),
         adminListUsers(),
         adminFetchTradingAccounts(),
-        adminFetchSyncKeys(),
         adminFetchTeams().catch(() => []),
         adminFetchAppLimits().catch(() => null),
       ]);
       setStats(statsData);
       setUsers(usersData || []);
       setAccounts(accountsData || []);
-      setSyncKeys(keysData || []);
       setTeams(teamsData || []);
       setAppLimits(limitsData);
     } catch (e) {
@@ -261,13 +253,6 @@ export default function AdminPage() {
       || email.toLowerCase().includes(q);
   }), [accounts, q, userById]);
 
-  const filteredKeys = useMemo(() => syncKeys.filter((key) => {
-    if (!q) return true;
-    const email = userById[key.user_id]?.email || '';
-    const acct = accountById[key.trading_account_id]?.name || '';
-    return email.toLowerCase().includes(q) || acct.toLowerCase().includes(q);
-  }), [syncKeys, q, userById, accountById]);
-
   const filteredTeams = useMemo(() => teams.filter((team) => {
     if (!q) return true;
     return team.name?.toLowerCase().includes(q)
@@ -279,8 +264,7 @@ export default function AdminPage() {
     users: users.length,
     teams: teams.length,
     accounts: accounts.length,
-    sync: syncKeys.length,
-  }), [users.length, teams.length, accounts.length, syncKeys.length]);
+  }), [users.length, teams.length, accounts.length]);
 
   const limitOverrideCount = useMemo(
     () => users.filter((u) => u.max_trading_accounts_override != null || u.max_backtests_override != null).length,
@@ -288,7 +272,7 @@ export default function AdminPage() {
   );
 
   const page = PAGE_META[activeTab] || PAGE_META.overview;
-  const showSearch = ['users', 'accounts', 'sync', 'teams'].includes(activeTab);
+  const showSearch = ['users', 'accounts', 'teams'].includes(activeTab);
 
   async function handleDeleteUser(userRow) {
     const ok = await confirm({
@@ -323,25 +307,6 @@ export default function AdminPage() {
       await loadAll();
     } catch (e) {
       await alert({ title: 'Error', message: e.message || 'Could not delete account.' });
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handleRevokeKey(key) {
-    const ok = await confirm({
-      title: 'Revoke sync key?',
-      message: 'MT5 will stop syncing for this account until a new key is generated.',
-      confirmLabel: 'Revoke',
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusyId(key.id);
-    try {
-      await adminRevokeSyncKey(key.id);
-      await loadAll();
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not revoke key.' });
     } finally {
       setBusyId(null);
     }
@@ -506,7 +471,11 @@ export default function AdminPage() {
                   <div className="grid flex-1 content-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Users" value={stats.total_users} onClick={() => setActiveTab('users')} />
                     <StatCard label="Trading accounts" value={stats.total_accounts} onClick={() => setActiveTab('accounts')} />
-                    <StatCard label="Active sync keys" value={stats.active_sync_keys} onClick={() => setActiveTab('sync')} />
+                    <StatCard
+                      label="Investor-synced accounts"
+                      value={accounts.filter((a) => a.connection_status === 'investor').length}
+                      onClick={() => setActiveTab('accounts')}
+                    />
                     <StatCard label="Teams" value={teams.length} onClick={() => setActiveTab('teams')} />
                   </div>
                 )}
@@ -524,7 +493,6 @@ export default function AdminPage() {
                             <th className={tableTh}>Role</th>
                             <th className={tableTh}>Accounts</th>
                             <th className={tableTh}>Backtests</th>
-                            <th className={tableTh}>Keys</th>
                             <th className={`${tableTh} text-right`}>Actions</th>
                           </tr>
                         </thead>
@@ -563,7 +531,6 @@ export default function AdminPage() {
                                   fallback={appLimits?.maxBacktests}
                                 />
                               </td>
-                              <td className={tableTd}>{row.sync_key_count}</td>
                               <td className={`${tableTd} text-right`} onClick={(e) => e.stopPropagation()}>
                                 <div className="flex justify-end gap-1">
                                   <button
@@ -646,48 +613,6 @@ export default function AdminPage() {
                         </tbody>
                       </table>
                       {filteredAccounts.length === 0 && <p className={emptyState}>No accounts match your search.</p>}
-                    </div>
-                  </section>
-                )}
-
-                {activeTab === 'sync' && (
-                  <section className={`${card} flex min-h-0 flex-1 flex-col overflow-hidden`}>
-                    <div className={cardHd}>
-                      <h2 className={cardTitle}>EA sync keys ({filteredKeys.length})</h2>
-                    </div>
-                    <div className="min-h-0 flex-1 overflow-auto">
-                      <table className="w-full min-w-[700px] border-collapse text-left">
-                        <thead className="sticky top-0 z-10">
-                          <tr>
-                            <th className={tableTh}>User</th>
-                            <th className={tableTh}>Trading account</th>
-                            <th className={tableTh}>Created</th>
-                            <th className={tableTh}>Last synced</th>
-                            <th className={`${tableTh} text-right`}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                          {filteredKeys.map((key) => (
-                            <tr key={key.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50">
-                              <td className={tableTd}>{userById[key.user_id]?.email || key.user_id?.slice(0, 8)}</td>
-                              <td className={tableTd}>{accountById[key.trading_account_id]?.name || key.trading_account_id?.slice(0, 8)}</td>
-                              <td className={tableTd}>{key.created_at ? new Date(key.created_at).toLocaleString() : '—'}</td>
-                              <td className={tableTd}>{key.last_synced_at ? new Date(key.last_synced_at).toLocaleString() : '—'}</td>
-                              <td className={`${tableTd} text-right`}>
-                                <button
-                                  className={btnDanger}
-                                  type="button"
-                                  disabled={busyId === key.id}
-                                  onClick={() => handleRevokeKey(key)}
-                                >
-                                  Revoke
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {filteredKeys.length === 0 && <p className={emptyState}>No sync keys found.</p>}
                     </div>
                   </section>
                 )}

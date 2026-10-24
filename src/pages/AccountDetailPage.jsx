@@ -3,12 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   deleteTradingAccount,
-  generateAccountSyncKey,
   getAccountShareUrl,
-  listAccountSyncKeys,
   listInvestorCredentialsStatus,
   regenerateTradingAccountShareToken,
-  revokeAccountSyncKey,
   setTradingAccountPublic,
   updateTradingAccount,
 } from '../api';
@@ -16,15 +13,11 @@ import BackButton from '../components/common/BackButton';
 import InvestorSyncPanel from '../components/settings/InvestorSyncPanel';
 import RiskEligibilityPanel from '../components/settings/RiskEligibilityPanel';
 import SiacLogo from '../components/common/SiacLogo';
-import {
-  AccountFormModal,
-  SyncKeyModal,
-} from '../components/settings/TradingAccountsManager';
+import { AccountFormModal } from '../components/settings/TradingAccountsManager';
 import { useAppData } from '../context/AppDataContext';
 import { useDialog } from '../context/DialogContext';
-import { accountTypeLabel, pnlDenominationLabel, normalizePlatform, platformLabel, platformShort } from '../lib/accounts';
+import { accountTypeLabel, pnlDenominationLabel, platformLabel, platformShort } from '../lib/accounts';
 import { invalidateLeaderboardCache } from '../lib/leaderboardCache';
-import { formatSyncAgo, formatSyncExact } from '../lib/syncStatus';
 import {
   btnDanger, btnGhost, btnOutline, btnSm, card, cardBody, cardHd, cardTitle,
   dashboardPageWideFull, emptyState, sectionLabel,
@@ -83,22 +76,14 @@ export default function AccountDetailPage() {
 
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [revealedKey, setRevealedKey] = useState(null);
-  const [syncMeta, setSyncMeta] = useState(null);
   const [investorStatus, setInvestorStatus] = useState(null);
 
   const reloadSyncState = useCallback(async () => {
     if (!accountId) return;
     try {
-      const [keys, investors] = await Promise.all([
-        listAccountSyncKeys(),
-        listInvestorCredentialsStatus(),
-      ]);
-      const keyRow = keys.find((r) => r.trading_account_id === accountId) || null;
-      setSyncMeta(keyRow ? { id: keyRow.id, last_synced_at: keyRow.last_synced_at || null } : null);
+      const investors = await listInvestorCredentialsStatus();
       setInvestorStatus(investors.find((r) => r.trading_account_id === accountId) || null);
     } catch {
-      setSyncMeta(null);
       setInvestorStatus(null);
       toast.error('Could not load sync status — check your connection and try again.', { toastId: 'sync-status-error' });
     }
@@ -202,62 +187,10 @@ export default function AccountDetailPage() {
     }
   }
 
-  async function handleGenerateKey() {
-    const hasSyncKey = Boolean(syncMeta);
-    const plat = platformShort(account.platform);
-    const ok = await confirm({
-      title: `Generate sync key for "${account.name}"?`,
-      message: hasSyncKey
-        ? `The previous key for this account will stop working until you update ${plat}.`
-        : `Copy the key into the EA on this ${plat} terminal.`,
-      confirmLabel: 'Generate',
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      const key = await generateAccountSyncKey(account.id);
-      setRevealedKey(key);
-      await reloadSyncState();
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not generate sync key.' });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleShowKey() {
-    const plat = platformShort(account.platform);
-    await alert({
-      title: 'Key shown only once',
-      message: `For security, the sync key cannot be retrieved again. Generate a new key and update ${plat} if you lost it.`,
-    });
-  }
-
-  async function handleRevokeKey() {
-    const plat = platformShort(account.platform);
-    const ok = await confirm({
-      title: `Revoke sync key for "${account.name}"?`,
-      message: `${plat} will stop syncing for this account until you generate a new key.`,
-      confirmLabel: 'Revoke',
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await revokeAccountSyncKey(account.id);
-      await reloadSyncState();
-      toast.success('Sync key revoked');
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not revoke sync key.' });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
-      message: 'All synced trades for this account will be permanently deleted. Any MetaTrader sync key will also be revoked.',
+      message: 'All synced trades for this account will be permanently deleted, and its investor login will be removed.',
       confirmLabel: 'Remove account',
       destructive: true,
     });
@@ -290,9 +223,7 @@ export default function AccountDetailPage() {
     );
   }
 
-  const hasSyncKey = Boolean(syncMeta);
   const shareUrl = getAccountShareUrl(account);
-  const isMt4 = normalizePlatform(account.platform) === 'mt4';
   const plat = platformShort(account.platform);
   const platFull = platformLabel(account.platform);
 
@@ -348,63 +279,15 @@ export default function AccountDetailPage() {
               {platFull}
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-              {isMt4
-                ? 'Connect this MT4 account with an investor password. Closed trades sync through the cloud bridge — no EA install on your PC.'
-                : 'Connect this account with an EA sync key, an investor password, or both. Choose what fits how you trade.'}
+              Connect this account with its investor (read-only) password. Closed trades sync through the cloud bridge and stay up to date automatically — nothing to install on your PC.
             </p>
           </div>
         </div>
       </header>
 
-      <div className={`mb-6 grid gap-4 ${isMt4 ? '' : 'lg:grid-cols-2'}`}>
-        {isMt4 ? null : (
-          <Panel
-            eyebrow="Option A"
-            title="EA sync key"
-            badge={<StatusBadge ok={hasSyncKey} okLabel="Key active" idleLabel="No key" />}
-          >
-            <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Install the Finhub EA on MetaTrader 5 and paste a sync key. Best if you keep the terminal open locally.
-            </p>
-            {hasSyncKey ? (
-              <p
-                className={`mt-3 text-xs font-medium ${syncMeta?.last_synced_at ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}
-                title={formatSyncExact(syncMeta?.last_synced_at)}
-              >
-                {syncMeta?.last_synced_at
-                  ? `Last synced: ${formatSyncAgo(syncMeta.last_synced_at)}`
-                  : 'Not synced yet'}
-              </p>
-            ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
-              {hasSyncKey ? (
-                <>
-                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
-                    Key info
-                  </button>
-                  <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                    Regenerate
-                  </button>
-                  <button
-                    className={btnDanger}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void handleRevokeKey()}
-                  >
-                    Revoke
-                  </button>
-                </>
-              ) : (
-                <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                  Generate sync key
-                </button>
-              )}
-            </div>
-          </Panel>
-        )}
-
+      <div className="mb-6">
         <Panel
-          eyebrow={isMt4 ? 'Sync' : 'Option B'}
+          eyebrow="Sync"
           title="Investor password"
           badge={(
             <StatusBadge
@@ -415,7 +298,7 @@ export default function AccountDetailPage() {
           )}
         >
           <p className="mb-3 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Read-only {platFull} login. We pull closed trades for you — no EA install on your PC.
+            Read-only {platFull} login. We pull closed trades for you — nothing to install on your PC.
           </p>
           <div className="-mx-4 -mb-4 border-t border-zinc-100 dark:border-zinc-800 md:-mx-5 md:-mb-5">
             <InvestorSyncPanel
@@ -497,14 +380,6 @@ export default function AccountDetailPage() {
           tradingAccounts={tradingAccounts}
           onClose={() => setEditOpen(false)}
           onSaved={refreshAll}
-        />
-      ) : null}
-
-      {revealedKey ? (
-        <SyncKeyModal
-          account={account}
-          syncKey={revealedKey}
-          onClose={() => setRevealedKey(null)}
         />
       ) : null}
     </div>

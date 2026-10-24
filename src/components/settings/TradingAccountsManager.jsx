@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   insertTradingAccount, deleteTradingAccount, updateTradingAccount,
   recalculateTradesForDenomination,
-  listAccountSyncKeys, generateAccountSyncKey, revokeAccountSyncKey,
   setTradingAccountPublic, getAccountShareUrl, regenerateTradingAccountShareToken,
   listInvestorCredentialsStatus,
   connectAndVerifyInvestorCredentials,
@@ -20,7 +19,6 @@ import {
   accountTypeLabel,
   pnlDenominationLabel,
   platformLabel,
-  platformShort,
   normalizeSlug,
   normalizePnlDenomination,
   normalizePlatform,
@@ -28,7 +26,6 @@ import {
   riskTrackLabel,
 } from '../../lib/accounts';
 import { useAppData } from '../../context/AppDataContext';
-import { formatSyncAgo, formatSyncExact } from '../../lib/syncStatus';
 import {
   btnDanger, btnGhost, btnOutline, btnPrimary, btnSm, card, emptyState, input, label,
   msgError, msgSuccess, sectionLabel, select,
@@ -54,7 +51,6 @@ const EMPTY_FORM = {
   pnlDenomination: 'usd',
   platform: 'mt5',
   riskTrack: '',
-  syncMode: 'investor',
   brokerId: '',
   serverChoice: '',
   customServer: '',
@@ -115,16 +111,11 @@ function AccountFormFields({ form, setField }) {
           menuClassName="w-full"
           buttonClassName={formSelectBtn}
           value={form.platform || 'mt5'}
-          onChange={(v) => {
-            setField('platform', v);
-            if (v === 'mt4') setField('syncMode', 'investor');
-          }}
+          onChange={(v) => setField('platform', v)}
           options={PLATFORMS}
         />
         <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-          {normalizePlatform(form.platform) === 'mt4'
-            ? 'MT4 accounts use investor-password sync for now (EA sync coming later).'
-            : 'MT5 supports EA sync key or investor-password cloud sync.'}
+          Syncs with your read-only investor password — nothing to install.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -199,91 +190,14 @@ function CreateStepProgress({ steps, index }) {
   );
 }
 
-function SyncModeStep({ form, setField }) {
-  const isMt4 = normalizePlatform(form.platform) === 'mt4';
-  const selected = 'border-violet-400 bg-white ring-2 ring-violet-200 dark:bg-zinc-900 dark:ring-violet-900/50';
-  const idle = 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700';
-  if (isMt4) {
-    return (
-      <div className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3 dark:border-violet-900/40 dark:bg-violet-950/20">
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Investor password</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          MT4 accounts sync with the read-only investor password through the cloud bridge. EA sync for MT4 comes later.
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <label
-        className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-          form.syncMode === 'investor' ? selected : idle
-        }`}
-      >
-        <input
-          type="radio"
-          className="sr-only"
-          name="syncMode"
-          value="investor"
-          checked={form.syncMode === 'investor'}
-          onChange={() => setField('syncMode', 'investor')}
-        />
-        <p className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          Investor password
-          <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-            Recommended
-          </span>
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Read-only MetaTrader login. We pull closed trades and keep them synced — nothing to install, your PC can be off.
-        </p>
-      </label>
-      <label
-        className={`cursor-pointer rounded-xl border px-3 py-3 transition ${
-          form.syncMode === 'ea' ? selected : idle
-        }`}
-      >
-        <input
-          type="radio"
-          className="sr-only"
-          name="syncMode"
-          value="ea"
-          checked={form.syncMode === 'ea'}
-          onChange={() => setField('syncMode', 'ea')}
-        />
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">EA sync key</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Advanced: install the EA on your MT5 and paste a sync key. Only syncs while your MT5 stays open.
-        </p>
-      </label>
-    </div>
-  );
-}
-
-function createWizardSteps(syncMode, platform = 'mt5') {
+function createWizardSteps(platform = 'mt5') {
   const plat = platformLabel(platform);
-  const base = [
-    { id: 'basics', title: 'Account details', hint: 'Name this account and set platform / type / currency.' },
-    {
-      id: 'sync',
-      title: `How should we sync ${plat}?`,
-      hint: normalizePlatform(platform) === 'mt4'
-        ? 'MT4 uses investor-password cloud sync.'
-        : 'Investor password is the easiest — hands-off sync. Pick EA only if you keep MetaTrader running locally.',
-    },
-  ];
-  if (syncMode === 'investor' || normalizePlatform(platform) === 'mt4') {
-    return [
-      ...base,
-      { id: 'broker', title: 'Choose your broker', hint: 'Type or pick from popular brokers.' },
-      { id: 'server', title: `Select ${plat} server`, hint: 'Exact server name from the MetaTrader login box.' },
-      { id: 'credentials', title: 'Login & investor password', hint: 'Use the investor (read-only) password — not the master password.' },
-      { id: 'review', title: 'Review & create', hint: 'We’ll verify the investor login after creating the account.' },
-    ];
-  }
   return [
-    ...base,
-    { id: 'review', title: 'Review & create', hint: 'After creating, we’ll show an EA sync key to paste into MetaTrader.' },
+    { id: 'basics', title: 'Account details', hint: 'Name this account and set platform / type / currency.' },
+    { id: 'broker', title: 'Choose your broker', hint: 'Type or pick from popular brokers.' },
+    { id: 'server', title: `Select ${plat} server`, hint: 'Exact server name from the MetaTrader login box.' },
+    { id: 'credentials', title: 'Login & investor password', hint: 'Use the investor (read-only) password — not the master password.' },
+    { id: 'review', title: 'Review & create', hint: 'We’ll verify the investor login after creating the account.' },
   ];
 }
 
@@ -315,30 +229,22 @@ function ReviewStep({ form }) {
       </div>
       <div className={row}>
         <dt className={dt}>Sync</dt>
-        <dd className={dd}>
-          {normalizePlatform(form.platform) === 'mt4' || form.syncMode === 'investor'
-            ? 'Investor password'
-            : 'EA sync key'}
+        <dd className={dd}>Investor password</dd>
+      </div>
+      <div className={row}>
+        <dt className={dt}>Broker</dt>
+        <dd className={dd}>{form.brokerName || '—'}</dd>
+      </div>
+      <div className={row}>
+        <dt className={dt}>Server</dt>
+        <dd className={`max-w-[60%] truncate ${dd}`} title={form.brokerServer}>
+          {form.brokerServer || '—'}
         </dd>
       </div>
-      {normalizePlatform(form.platform) === 'mt4' || form.syncMode === 'investor' ? (
-        <>
-          <div className={row}>
-            <dt className={dt}>Broker</dt>
-            <dd className={dd}>{form.brokerName || '—'}</dd>
-          </div>
-          <div className={row}>
-            <dt className={dt}>Server</dt>
-            <dd className={`max-w-[60%] truncate ${dd}`} title={form.brokerServer}>
-              {form.brokerServer || '—'}
-            </dd>
-          </div>
-          <div className={row}>
-            <dt className={dt}>Login</dt>
-            <dd className={dd}>{form.mt5Login || '—'}</dd>
-          </div>
-        </>
-      ) : null}
+      <div className={row}>
+        <dt className={dt}>Login</dt>
+        <dd className={dd}>{form.mt5Login || '—'}</dd>
+      </div>
     </dl>
   );
 }
@@ -350,12 +256,9 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
   const [form, setForm] = useState(() => (isEdit ? accountToForm(account) : EMPTY_FORM));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [createdSyncKey, setCreatedSyncKey] = useState(null);
-  const [createdAccount, setCreatedAccount] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
 
-  const effectiveSyncMode = normalizePlatform(form.platform) === 'mt4' ? 'investor' : form.syncMode;
-  const steps = isEdit ? [] : createWizardSteps(effectiveSyncMode, form.platform);
+  const steps = isEdit ? [] : createWizardSteps(form.platform);
   const step = steps[stepIndex] || null;
 
   useEffect(() => {
@@ -369,12 +272,6 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
       document.removeEventListener('keydown', onKey);
     };
   }, [busy, onClose]);
-
-  // Keep step index in range when sync mode changes step list length
-  useEffect(() => {
-    if (isEdit) return;
-    setStepIndex((i) => Math.min(i, createWizardSteps(effectiveSyncMode, form.platform).length - 1));
-  }, [form.syncMode, form.platform, isEdit, effectiveSyncMode]);
 
   function setField(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -395,10 +292,6 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
     const plat = platformLabel(form.platform);
     if (id === 'basics') {
       if (!form.name.trim()) return 'Account name is required.';
-      return null;
-    }
-    if (id === 'sync') {
-      if (!effectiveSyncMode) return `Choose how to sync ${plat}.`;
       return null;
     }
     if (id === 'broker') {
@@ -457,7 +350,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
       return;
     }
 
-    if (!isEdit && effectiveSyncMode === 'investor') {
+    if (!isEdit) {
       if (!form.brokerId) {
         setMsg({ type: 'error', text: 'Choose your broker first.' });
         return;
@@ -523,55 +416,35 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
           risk_track: normalizeRiskTrack(form.riskTrack),
           color,
           is_default: tradingAccounts.length === 0,
-          connection_status: effectiveSyncMode === 'investor' ? 'investor' : 'ea',
-          broker: effectiveSyncMode === 'investor'
-            ? (form.brokerName || form.brokerServer).trim() || null
-            : null,
+          connection_status: 'investor',
+          broker: (form.brokerName || form.brokerServer).trim() || null,
         });
         const row = Array.isArray(created) ? created[0] : created;
         if (!row?.id) throw new Error('Account was created but no id was returned.');
         await refreshAccountRiskEligibility([row.id]).catch(() => {});
 
-        if (effectiveSyncMode === 'investor') {
-          try {
-            await connectAndVerifyInvestorCredentials({
-              tradingAccountId: row.id,
-              brokerServer: form.brokerServer.trim(),
-              login: form.mt5Login.trim(),
-              investorPassword: form.investorPassword,
-            });
-            toast.success('Account created — investor password verified');
-          } catch (verifyErr) {
-            toast.warn(
-              verifyErr.message
-                || 'Account created, but investor login failed. Reconnect credentials on the account page.',
-            );
-          }
-          await onSaved();
-          onClose();
-        } else {
-          const key = await generateAccountSyncKey(row.id);
-          setCreatedAccount(row);
-          setCreatedSyncKey(key);
-          await onSaved();
-          toast.success('Account created — copy your EA sync key');
+        try {
+          await connectAndVerifyInvestorCredentials({
+            tradingAccountId: row.id,
+            brokerServer: form.brokerServer.trim(),
+            login: form.mt5Login.trim(),
+            investorPassword: form.investorPassword,
+          });
+          toast.success('Account created — investor password verified');
+        } catch (verifyErr) {
+          toast.warn(
+            verifyErr.message
+              || 'Account created, but investor login failed. Reconnect credentials on the account page.',
+          );
         }
+        await onSaved();
+        onClose();
       }
     } catch (err) {
       setMsg({ type: 'error', text: err.message || `Could not ${isEdit ? 'save' : 'add'} account.` });
     } finally {
       setBusy(false);
     }
-  }
-
-  if (createdSyncKey && createdAccount) {
-    return (
-      <SyncKeyModal
-        account={createdAccount}
-        syncKey={createdSyncKey}
-        onClose={onClose}
-      />
-    );
   }
 
   const isLastCreateStep = !isEdit && step?.id === 'review';
@@ -620,16 +493,11 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                       menuClassName="w-full"
                       buttonClassName={formSelectBtn}
                       value={form.platform || 'mt5'}
-                      onChange={(v) => {
-                        setField('platform', v);
-                        if (v === 'mt4') setField('syncMode', 'investor');
-                      }}
+                      onChange={(v) => setField('platform', v)}
                       options={PLATFORMS}
                     />
                     <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                      {normalizePlatform(form.platform) === 'mt4'
-                        ? 'MT4 accounts use investor-password sync for now (EA sync coming later).'
-                        : 'MT5 supports EA sync key or investor-password cloud sync.'}
+                      Syncs with your read-only investor password — nothing to install, your PC can be off.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -675,7 +543,6 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                   </div>
                 </div>
               ) : null}
-              {step?.id === 'sync' ? <SyncModeStep form={form} setField={setField} /> : null}
               {step?.id === 'broker' ? (
                 <BrokerServerFields
                   mode="broker"
@@ -705,10 +572,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
                       menuClassName="w-full"
                       buttonClassName={formSelectBtn}
                       value={form.platform || 'mt5'}
-                      onChange={(v) => {
-                        setField('platform', v);
-                        if (v === 'mt4') setField('syncMode', 'investor');
-                      }}
+                      onChange={(v) => setField('platform', v)}
                       options={PLATFORMS}
                     />
                   </div>
@@ -762,7 +626,7 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
               ) : (
                 <button className={btnPrimary} type="submit" disabled={busy}>
                   {busy
-                    ? (!isEdit && form.syncMode === 'investor' ? 'Verifying...' : 'Saving...')
+                    ? (isEdit ? 'Saving...' : 'Verifying...')
                     : isEdit ? 'Save changes' : 'Create account'}
                 </button>
               )}
@@ -774,71 +638,11 @@ export function AccountFormModal({ mode, account, tradingAccounts, onClose, onSa
   );
 }
 
-export function SyncKeyModal({ account, syncKey, onClose }) {
-  const plat = platformShort(account?.platform);
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    function onKey(e) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
-
-  async function copyKey() {
-    try {
-      await navigator.clipboard.writeText(syncKey);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[210] flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-[2px]"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className={`${card} w-full max-w-md shadow-xl`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sync-key-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-          <h2 id="sync-key-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            {plat} sync key — {account.name}
-          </h2>
-          <button className={btnGhost} type="button" onClick={onClose}>Close</button>
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Paste this key into the EA <strong className="font-medium text-zinc-700 dark:text-zinc-300">Sync Key</strong> field on this {plat} account only.
-          </p>
-          <div className="mt-3 break-all rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-mono text-xs text-zinc-800 select-all dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
-            {syncKey}
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button className={btnOutline} type="button" onClick={copyKey}>Copy</button>
-            <button className={btnPrimary} type="button" onClick={onClose}>Done</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit, onSetDefault, onUpdated, onKeysChanged, onInvestorChanged }) {
+function AccountCard({ account, investorStatus, onEdit, onSetDefault, onUpdated, onInvestorChanged }) {
   const isMt4 = normalizePlatform(account.platform) === 'mt4';
-  const plat = platformShort(account.platform);
   const siacStatus = resolveSiacStatus(account);
   const { alert, confirm } = useDialog();
   const [busy, setBusy] = useState(false);
-  const [revealedKey, setRevealedKey] = useState(null);
   const shareUrl = getAccountShareUrl(account);
 
   async function handlePublishToggle() {
@@ -847,7 +651,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
       const ok = await confirm({
         title: `Publish "${account.name}"?`,
         message:
-          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session). Journal notes and MetaTrader sync keys stay private. The account also becomes eligible for the public leaderboard.',
+          'Anyone with the link can view: account name, type, stats, equity curve, and trade history (date, symbol, side, result, R, PnL, session). Journal notes and your investor login stay private. The account also becomes eligible for the public leaderboard.',
         confirmLabel: 'Publish',
       });
       if (!ok) return;
@@ -921,57 +725,10 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
     }
   }
 
-  async function handleGenerateKey() {
-    const ok = await confirm({
-      title: `Generate sync key for "${account.name}"?`,
-      message: hasSyncKey
-        ? `The previous key for this account will stop working until you update ${plat}.`
-        : `Copy the key into the EA on this ${plat} terminal.`,
-      confirmLabel: 'Generate',
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      const key = await generateAccountSyncKey(account.id);
-      setRevealedKey(key);
-      await onKeysChanged();
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not generate sync key.' });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleShowKey() {
-    await alert({
-      title: 'Key shown only once',
-      message: `For security, the sync key cannot be retrieved again. Generate a new key and update ${plat} if you lost it.`,
-    });
-  }
-
-  async function handleRevokeKey() {
-    const ok = await confirm({
-      title: `Revoke sync key for "${account.name}"?`,
-      message: `${plat} will stop syncing for this account until you generate a new key.`,
-      confirmLabel: 'Revoke',
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await revokeAccountSyncKey(account.id);
-      await onKeysChanged();
-    } catch (e) {
-      await alert({ title: 'Error', message: e.message || 'Could not revoke sync key.' });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleRemove() {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
-      message: 'All synced trades for this account will be permanently deleted. Any MetaTrader sync key for this account will also be revoked.',
+      message: 'All synced trades for this account will be permanently deleted, and its investor login will be removed.',
       confirmLabel: 'Remove account',
       destructive: true,
     });
@@ -1014,7 +771,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
           </button>
         </div>
 
-        <div className={`grid gap-px border-t border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800 ${isMt4 ? '' : 'sm:grid-cols-2'}`}>
+        <div className="border-t border-zinc-100 dark:border-zinc-800">
           <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className={sectionLabel}>Sharing</p>
@@ -1041,52 +798,6 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
               ) : null}
             </div>
           </div>
-
-          {isMt4 ? null : (
-            <div className="bg-white px-4 py-4 dark:bg-zinc-900 md:px-5">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className={sectionLabel}>{plat} sync</p>
-                {hasSyncKey ? <Badge tone="success">Connected</Badge> : <Badge tone="muted">No key</Badge>}
-              </div>
-              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                {hasSyncKey
-                  ? 'A sync key is active for this account. Show it to reconnect the EA if needed.'
-                  : 'Generate a key and paste it into the EA Sync Key field on this terminal.'}
-              </p>
-              {hasSyncKey ? (
-                <p
-                  className={`mt-2 text-xs font-medium ${lastSyncedAt ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-400'}`}
-                  title={formatSyncExact(lastSyncedAt)}
-                >
-                  {lastSyncedAt ? `Last synced: ${formatSyncAgo(lastSyncedAt)}` : 'Not synced yet'}
-                </p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {hasSyncKey ? (
-                  <>
-                    <button className={btnSm} type="button" disabled={busy} onClick={() => void handleShowKey()}>
-                      Key info
-                    </button>
-                    <button className={btnGhost} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                      Regenerate
-                    </button>
-                    <button
-                      className={btnDanger}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void handleRevokeKey()}
-                    >
-                      Revoke
-                    </button>
-                  </>
-                ) : (
-                  <button className={btnSm} type="button" disabled={busy} onClick={() => void handleGenerateKey()}>
-                    Generate key
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         <InvestorSyncPanel account={account} status={investorStatus} onChanged={onInvestorChanged} />
@@ -1106,14 +817,6 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
           </button>
         </div>
       </article>
-
-      {revealedKey ? (
-        <SyncKeyModal
-          account={account}
-          syncKey={revealedKey}
-          onClose={() => setRevealedKey(null)}
-        />
-      ) : null}
     </>
   );
 }
@@ -1121,24 +824,7 @@ function AccountCard({ account, hasSyncKey, lastSyncedAt, investorStatus, onEdit
 export default function TradingAccountsManager({ tradingAccounts, onUpdated, onSetDefault }) {
   const { alert } = useDialog();
   const [modal, setModal] = useState(null);
-  const [syncKeyByAccount, setSyncKeyByAccount] = useState({});
   const [investorByAccount, setInvestorByAccount] = useState({});
-
-  async function refreshSyncKeys() {
-    try {
-      const rows = await listAccountSyncKeys();
-      const map = {};
-      for (const row of rows) {
-        map[row.trading_account_id] = {
-          id: row.id,
-          last_synced_at: row.last_synced_at || null,
-        };
-      }
-      setSyncKeyByAccount(map);
-    } catch {
-      setSyncKeyByAccount({});
-    }
-  }
 
   async function refreshInvestorStatus() {
     try {
@@ -1155,13 +841,8 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
   }
 
   useEffect(() => {
-    refreshSyncKeys();
     refreshInvestorStatus();
   }, [tradingAccounts.length]);
-
-  async function handleKeysChanged() {
-    await refreshSyncKeys();
-  }
 
   async function handleInvestorChanged() {
     await refreshInvestorStatus();
@@ -1188,7 +869,7 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-zinc-500">
           {tradingAccounts.length === 0
-            ? 'Add an account and choose EA sync or investor password.'
+            ? 'Add an account with your MetaTrader investor (read-only) password.'
             : `${tradingAccounts.length} of ${limits.maxTradingAccounts} accounts · sync, share, and set your default`}
         </p>
         <button
@@ -1214,13 +895,10 @@ export default function TradingAccountsManager({ tradingAccounts, onUpdated, onS
             <AccountCard
               key={account.id}
               account={account}
-              hasSyncKey={Boolean(syncKeyByAccount[account.id])}
-              lastSyncedAt={syncKeyByAccount[account.id]?.last_synced_at}
               investorStatus={investorByAccount[account.id] || null}
               onEdit={(acc) => setModal({ mode: 'edit', account: acc })}
               onSetDefault={onSetDefault}
               onUpdated={onUpdated}
-              onKeysChanged={handleKeysChanged}
               onInvestorChanged={handleInvestorChanged}
             />
           ))}

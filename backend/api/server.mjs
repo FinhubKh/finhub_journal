@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * FinhubKH EA sync API — custom endpoint for MT4/5.
- * Supabase keys stay server-side; EA only sends x-sync-key + trades.
+ * FinhubKH local API — investor-bridge, investor-credential and AI routes for dev.
+ * Supabase service keys stay server-side.
  *
  * Usage: npm run api:dev
  */
 import { createServer } from 'http';
 import { loadEnv } from './load-env.mjs';
-import { handleEaSync } from './sync-handler.mjs';
 import {
   handlePerformanceInsights,
   handlePerformanceReport,
@@ -33,7 +32,7 @@ const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = env.VITE_SUPABASE_ANON_KEY;
 const sealionApiKey = (env.SEALION_API_KEY || '').trim();
 const sealionModel = (env.SEALION_MODEL || '').trim() || undefined;
-const port = Number(env.EA_API_PORT || 8787);
+const port = Number(env.API_PORT || env.EA_API_PORT || 8787);
 const encryptionKey = env.INVESTOR_CRED_ENCRYPTION_KEY;
 const bridgeUrl = (env.MT5_BRIDGE_URL || '').replace(/\/$/, '');
 const bridgeServiceToken = env.BRIDGE_SERVICE_TOKEN;
@@ -64,24 +63,6 @@ const server = createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/health') {
     sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  if (req.method === 'POST' && url.pathname === '/v1/ea/sync') {
-    const body = await readBody(req);
-    if (!body) {
-      sendJson(res, 400, { error: 'Invalid JSON body' });
-      return;
-    }
-    const result = await handleEaSync({
-      syncKey: req.headers['x-sync-key'],
-      trades: body.trades,
-      cashflows: body.cashflows,
-      accountMeta: body.account_meta,
-      supabaseUrl,
-      serviceKey,
-    });
-    sendJson(res, result.status, result.body);
     return;
   }
 
@@ -183,6 +164,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`FinhubKH EA API listening on http://localhost:${port}`);
-  console.log(`Sync endpoint: http://localhost:${port}/v1/ea/sync`);
+  console.log(`FinhubKH API listening on http://localhost:${port}`);
 });

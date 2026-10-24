@@ -255,7 +255,6 @@ export function AdminUserDetailDrawer({
   const profile = data?.profile;
   const summary = data?.summary || {};
   const accounts = data?.accounts || [];
-  const syncKeys = data?.sync_keys || [];
   const teams = data?.teams || [];
 
   return (
@@ -289,7 +288,6 @@ export function AdminUserDetailDrawer({
               { label: 'Role', value: profile.role || '—' },
               { label: 'Joined', value: fmtDate(profile.created_at) },
               { label: 'Accounts', value: summary.account_count ?? accounts.length },
-              { label: 'Sync keys', value: summary.sync_key_count ?? syncKeys.length },
               { label: 'Trades', value: summary.trade_count ?? 0 },
               { label: 'Total PnL', value: fmtMoney(summary.total_pnl) },
             ]}
@@ -350,27 +348,6 @@ export function AdminUserDetailDrawer({
             )}
           </Section>
 
-          <Section title={`Sync keys (${syncKeys.length})`}>
-            {syncKeys.length === 0 ? (
-              <p className="text-sm text-zinc-500">No active sync keys.</p>
-            ) : (
-              <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-                {syncKeys.map((key) => (
-                  <li key={key.id} className="flex items-center justify-between gap-3 px-3.5 py-3 text-sm">
-                    <div>
-                      <div className="font-medium text-zinc-900 dark:text-zinc-100">{key.account_name || 'Account'}</div>
-                      <div className="text-xs text-zinc-500">Created {fmtDate(key.created_at)}</div>
-                    </div>
-                    <div className="text-right text-xs text-zinc-500">
-                      Last sync<br />
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">{fmtDate(key.last_synced_at)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
           <Section title={`Teams (${teams.length})`}>
             {teams.length === 0 ? (
               <p className="text-sm text-zinc-500">Not on any team.</p>
@@ -426,7 +403,6 @@ export function AdminAccountDetailDrawer({
   const account = data?.account;
   const owner = data?.owner;
   const stats = data?.stats || {};
-  const syncKey = data?.sync_key;
   const trades = data?.trades || data?.recent_trades || [];
 
   return (
@@ -506,19 +482,6 @@ export function AdminAccountDetailDrawer({
                 { label: 'Checked', value: fmtDate(account.risk_checked_at) },
               ]}
             />
-          </Section>
-
-          <Section title="Sync">
-            {syncKey ? (
-              <StatGrid
-                items={[
-                  { label: 'Key created', value: fmtDate(syncKey.created_at) },
-                  { label: 'Last synced', value: fmtDate(syncKey.last_synced_at) },
-                ]}
-              />
-            ) : (
-              <p className="text-sm text-zinc-500">No sync key on this account.</p>
-            )}
           </Section>
 
           <Section title={`All trades (${trades.length})`}>

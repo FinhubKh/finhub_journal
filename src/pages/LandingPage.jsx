@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { EA_SYNC_ENDPOINT } from '../api/env';
 import { btnPrimary, btnPrimaryLg, btnOutline, pageShell } from '../lib/ui';
 import { ScrollReveal } from '../components/common/ScrollReveal';
 import LeaderboardPreview from '../components/leaderboard/LeaderboardPreview';
@@ -91,51 +90,40 @@ const FEATURE_SECTIONS = [
 
 const STEPS = [
   { n: '01', title: 'Create your account', desc: 'Sign up free and set your display name and checklist steps.' },
-  { n: '02', title: 'Log or sync trades', desc: 'Add trades manually or connect the MT5 EA to import closed history automatically.' },
+  { n: '02', title: 'Log or sync trades', desc: 'Add trades manually or connect MT4 / MT5 with your read-only investor password to import closed history automatically.' },
   { n: '03', title: 'Review and improve', desc: 'Use overview, calendar, and breakdown reports to refine your edge every week.' },
 ];
 
 const INSTALL_STEPS = [
   {
     n: '01',
-    title: 'Download the EA',
-    desc: 'Download FinhubJournal_TradeSync.ex5 below. One file — no compile step needed.',
+    title: 'Create your free account',
+    desc: 'Sign up in under a minute — no card, no download.',
   },
   {
     n: '02',
-    title: 'Create accounts & sync keys',
-    desc: 'Sign up, add trading accounts under Accounts, and generate a sync key for each MT5 account.',
+    title: 'Add your trading account',
+    desc: 'Under Accounts, choose MT4 or MT5, pick your broker and server, and name the account.',
   },
   {
     n: '03',
-    title: 'Copy into MetaTrader',
-    desc: 'Place FinhubJournal_TradeSync.ex5 in your MT5 Experts folder (File → Open Data Folder → MQL5 → Experts).',
+    title: 'Enter your investor password',
+    desc: 'Use the read-only investor password from your broker (not the master password). We encrypt it before storing it.',
   },
   {
     n: '04',
-    title: 'Allow WebRequest in MT5',
-    desc: 'Tools → Options → Expert Advisors → tick “Allow WebRequest for listed URL” and add https://journal.finhubkh.com and https://finhubjournal.vercel.app.',
-  },
-  {
-    n: '05',
-    title: 'Attach & paste the account sync key',
-    desc: 'Drag the EA onto any chart. Paste the sync key for that journal account into the EA — one key per MT5 terminal.',
-  },
-  {
-    n: '06',
-    title: 'Start MT5 — trades sync automatically',
-    desc: 'The EA syncs on attach and every few minutes while it stays on a chart. Check the Experts tab for a success message.',
+    title: 'Trades sync automatically',
+    desc: 'Your full closed-trade history imports on the first sync, then stays up to date every few hours — even with your PC off.',
   },
 ];
-
-const EA_DOWNLOAD_URL = '/FinhubJournal_TradeSync.ex5';
 
 const FAQS = [
   { q: 'Is FinhubKH Journal free?', a: 'Yes. Create an account and start journaling at no cost. Your data is private to your account.' },
   { q: 'What is SIAC?', a: 'SIAC is the Securities Investors Association of Cambodia — an association focused on securities trading education (including forex and digital assets), member representation, and collaboration with regulators such as SERC. Learn more at siac.org.kh.' },
   { q: 'What is SIAC Eligibility in the journal?', a: 'FinhubKH Journal auto-checks Master or EA capital-protection rules from your trade history — history length, daily and overall loss, drawdown, risk per trade, plus streak control (Master) or a performance report (EA). Status shows Eligible, Open items, or Building history.' },
-  { q: 'How does MT5 sync work?', a: 'Generate a sync key per trading account in Settings, paste it into the FinhubKH EA on that MT5 terminal, and closed trades import on startup.' },
-  { q: 'Can I use multiple accounts?', a: 'Yes. Each journal account has its own sync key. Use a different key on each MT5 terminal and filter the journal by account.' },
+  { q: 'How does MetaTrader sync work?', a: 'Add your MT4 or MT5 account and enter its investor (read-only) password. We import your full closed-trade history, then keep it updated automatically every few hours — nothing to install, and your PC can be off.' },
+  { q: 'Is the investor password safe to share?', a: 'The investor password is read-only by design: it can view history but can never place, modify or close trades or withdraw funds. We encrypt it before storing it, and you can disconnect it anytime.' },
+  { q: 'Can I use multiple accounts?', a: 'Yes. Add each MT4 or MT5 account with its own investor password and filter the journal by account.' },
   { q: 'Is my data shared publicly?', a: 'By default, no — trades and stats are private. If you publish a trading account in Settings, anyone with the share link can view that account’s stats and trade history (notes stay private), and it may appear on the public leaderboard. You can unpublish or regenerate the link anytime.' },
 ];
 
@@ -593,18 +581,18 @@ export default function LandingPage() {
       <section id="install" className="border-y border-zinc-100 bg-white py-20 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto max-w-6xl px-5 sm:px-8">
           <ScrollReveal className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">MT5 setup</p>
+            <p className="text-sm font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">MT4 &amp; MT5 sync</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-              Install the FinhubKH sync EA
+              Connect with your investor password
             </h2>
             <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-400">
-              Free, read-only sync — the EA only reads closed trade history and never places or modifies trades.
+              Free, read-only sync — nothing to install. An investor password can view history but can never place or modify trades.
             </p>
           </ScrollReveal>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {INSTALL_STEPS.map((s, i) => (
-              <ScrollReveal key={s.n} delay={(i % 3) * 90} direction="scale">
+              <ScrollReveal key={s.n} delay={(i % 4) * 90} direction="scale">
                 <article className="h-full rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6 transition duration-300 hover:border-violet-200 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-violet-800">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white">
                     {s.n}
@@ -616,64 +604,17 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <ScrollReveal delay={100} className="mt-10 flex justify-center">
-            <a
-              href={EA_DOWNLOAD_URL}
-              download="FinhubJournal_TradeSync.ex5"
-              className={`${btnPrimaryLg} gap-2`}
-            >
-              Download FinhubJournal_TradeSync.ex5
-            </a>
-          </ScrollReveal>
-
-          <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            <ScrollReveal direction="left">
-              <div className="h-full rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">EA file</h3>
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  One compiled file — copy into your MT5 Experts folder:
-                </p>
-                <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-mono text-sm font-semibold text-violet-900 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
-                  FinhubJournal_TradeSync.ex5
-                </div>
-                <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
-                  The sync API URL is built in. No compile step and no extra config files.
-                </p>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal direction="right" delay={100}>
-              <div className="h-full rounded-2xl border border-violet-200 bg-violet-50/60 p-6 dark:border-violet-900/40 dark:bg-violet-950/30">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">Allow WebRequest URL</h3>
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  Add both URLs in MT5 under Tools → Options → Expert Advisors:
-                </p>
-                <div className="mt-4 space-y-2">
-                  {['https://journal.finhubkh.com', 'https://finhubjournal.vercel.app'].map((url) => (
-                    <div key={url} className="break-all rounded-xl border border-violet-200 bg-white px-4 py-3 font-mono text-sm text-violet-900 select-all dark:border-violet-900/50 dark:bg-zinc-950 dark:text-violet-200">
-                      {url}
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
-                  Sync endpoint: <span className="font-mono text-zinc-700 dark:text-zinc-300">{EA_SYNC_ENDPOINT}</span>
-                </p>
-              </div>
-            </ScrollReveal>
-          </div>
-
           <ScrollReveal delay={80} className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {isAuthenticated ? (
               <Link
-                to={isAdmin ? '/admin' : '/dashboard'}
-                state={{ tab: 'setup' }}
+                to={isAdmin ? '/admin' : '/dashboard/accounts?add=1'}
                 className={btnPrimaryLg}
               >
-                Open MT5 setup
+                {isAdmin ? 'Open Admin' : 'Connect MetaTrader'}
               </Link>
             ) : (
               <Link to="/login?mode=signup" className={btnPrimaryLg}>
-                Sign up to get your Sync Key
+                Sign up free
               </Link>
             )}
             <a href="#faq" className={`${btnOutline} px-8 py-3.5 text-[15px]`}>

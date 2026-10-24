@@ -27,7 +27,7 @@ const STEPS = [
   {
     n: 4,
     title: 'Sync your closed trades',
-    desc: 'Save credentials, then use Sync Now. Closed trades pull into your journal — no EA install required for investor sync.',
+    desc: 'Save credentials and your first sync imports your full history. After that, closed trades sync automatically — nothing to install.',
     tip: 'You’re done when trades appear in the journal. Sync again anytime for a fresh pull.',
     action: 'done',
   },

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Deploy Supabase edge functions (EA sync, journal embeddings).
+ * Deploy Supabase edge functions (journal embeddings).
  * Usage: npm run functions:deploy
  */
 import { readFileSync, existsSync } from 'fs';
@@ -35,7 +35,7 @@ if (!projectRef) {
 
 console.log(`Deploying to project: ${projectRef}\n`);
 
-const functions = ['sync-trades', 'embed'];
+const functions = ['embed'];
 
 for (const fn of functions) {
   console.log(`Deploying ${fn}...`);

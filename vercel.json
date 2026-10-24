@@ -4,7 +4,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/v1/ea/sync", "destination": "/api/v1/ea/sync" },
     { "source": "/v1/bridge/sync", "destination": "/api/v1/mt5-bridge?route=bridge-sync" },
     { "source": "/v1/investor-credentials", "destination": "/api/v1/mt5-bridge?route=investor-credentials" },
     { "source": "/v1/investor-sync", "destination": "/api/v1/mt5-bridge?route=investor-sync" },
@@ -21,9 +20,6 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/v1/ea/sync.js": {
-      "maxDuration": 30
-    },
     "api/v1/mt5-bridge.js": {
       "maxDuration": 30
     },

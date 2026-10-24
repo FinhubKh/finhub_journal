@@ -63,20 +63,6 @@ export async function adminDeleteTradingAccount(id) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-export async function adminFetchSyncKeys() {
-  return restGetAll(
-    'sync_keys?select=id,user_id,trading_account_id,created_at,last_synced_at&order=created_at.desc',
-  );
-}
-
-export async function adminRevokeSyncKey(id) {
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys?id=eq.${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(getToken()),
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
 export async function adminFetchTeams() {
   return restGetAll(
     'teams?select=id,name,tag,created_by,created_at&order=created_at.desc',

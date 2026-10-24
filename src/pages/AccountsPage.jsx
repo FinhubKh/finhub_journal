@@ -165,7 +165,7 @@ export default function AccountsPage() {
   async function handleDelete(account) {
     const ok = await confirm({
       title: `Remove "${account.name}"?`,
-      message: 'All synced trades for this account will be permanently deleted. Any MetaTrader sync key for this account will also be revoked.',
+      message: 'All synced trades for this account will be permanently deleted, and its investor login will be removed.',
       confirmLabel: 'Remove account',
       destructive: true,
     });
@@ -208,7 +208,7 @@ export default function AccountsPage() {
           </div>
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">No trading accounts yet</h3>
           <p className="mx-auto mt-2 mb-8 max-w-sm text-sm text-zinc-500 text-center">
-            Create an account, then connect MetaTrader with an EA sync key or an investor password to start journaling.
+            Create an account and connect MetaTrader with its investor (read-only) password to start journaling.
           </p>
           <button
             type="button"

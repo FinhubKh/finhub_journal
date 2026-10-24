@@ -321,57 +321,6 @@ export async function deleteStep(id) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-// ── MT4/5 SYNC KEY (per trading account) ──
-async function generateRandomKey() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-export async function listAccountSyncKeys() {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?select=trading_account_id,id,last_synced_at&user_id=eq.${getUserId()}`,
-    { headers: authHeaders(getToken()) },
-  );
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-/** Creates a new sync key. Raw key is returned once and is not stored in the database. */
-export async function generateAccountSyncKey(accountId) {
-  const rawKey = await generateRandomKey();
-  const keyHash = await sha256Hex(rawKey);
-  await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}`,
-    { method: 'DELETE', headers: authHeaders(getToken()) },
-  );
-  const res = await authFetch(`${SUPABASE_URL}/rest/v1/sync_keys`, {
-    method: 'POST',
-    headers: { ...authHeaders(getToken()), Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      user_id: getUserId(),
-      trading_account_id: accountId,
-      key_hash: keyHash,
-    }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return rawKey;
-}
-
-export async function revokeAccountSyncKey(accountId) {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}`,
-    { method: 'DELETE', headers: authHeaders(getToken()) },
-  );
-  if (!res.ok) throw new Error(await res.text());
-}
-
 export * from './compounding';
 export * from './share';
 export * from './investorSync';
