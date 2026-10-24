@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, authHeaders, getToken, getUserId, authFetch } from './auth';
+import { SUPABASE_URL, authHeaders, getToken, getUserId, authFetch } from './auth';
 import { deleteAllTradeImages } from './tradeImages';
 import { limitErrorMessage } from '../lib/limits';
 
@@ -219,15 +219,6 @@ export async function fetchAllTrades() {
   );
 }
 
-export async function fetchTradesByMonth(year, month) {
-  const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const to = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
-  return fetchPaginated(
-    `${SUPABASE_URL}/rest/v1/trades?select=${TRADE_SELECT}&user_id=eq.${getUserId()}&date=gte.${from}&date=lte.${to}&order=date.asc`,
-  );
-}
-
 // ── DAILY PNL ──
 export async function fetchDailyPnlByYear(year) {
   const from = `${year}-01-01`;
@@ -350,17 +341,6 @@ export async function listAccountSyncKeys() {
   );
   if (!res.ok) throw new Error(await res.text());
   return res.json();
-}
-
-/** Returns whether a sync key exists for the account (never returns the raw key). */
-export async function hasAccountSyncKey(accountId) {
-  const res = await authFetch(
-    `${SUPABASE_URL}/rest/v1/sync_keys?select=id&trading_account_id=eq.${accountId}&user_id=eq.${getUserId()}&limit=1`,
-    { headers: authHeaders(getToken()) },
-  );
-  if (!res.ok) return false;
-  const rows = await res.json();
-  return Boolean(rows[0]?.id);
 }
 
 /** Creates a new sync key. Raw key is returned once and is not stored in the database. */

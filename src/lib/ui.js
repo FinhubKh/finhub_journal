@@ -52,15 +52,10 @@ export const cardTitle = 'text-sm font-semibold text-zinc-900 dark:text-zinc-100
 
 export const cardBody = 'p-4 md:p-5';
 
-export const dashboardPage = 'w-full min-w-0 px-4 pb-8 pt-4 md:px-6 md:pt-6';
-
 export const dashboardPageWide = 'w-full min-w-0 px-4 pb-8 pt-4 md:px-6 md:pt-6';
 
 export const dashboardPageWideFull =
   'flex h-full min-h-0 w-full min-w-0 flex-col px-3 pb-3 pt-3 md:px-5 md:pb-4 md:pt-4';
-
-export const dashboardPageFull =
-  'flex h-full min-h-0 w-full min-w-0 flex-col px-4 pb-6 pt-4 md:px-6 md:pt-6';
 
 export const pillToggle =
   'inline-flex gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-1';

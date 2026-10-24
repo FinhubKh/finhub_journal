@@ -8,7 +8,6 @@ const PRESETS = {
     name: 'Spreadsheet Loss-Buffer Plan (10 → 40 Losses Buffer)',
     capital: '100',
     timeHorizon: '20',
-    timeUnit: 'weeks',
     tiers: [
       { id: '1', from: 1, to: 4, lossCushion: 10, rr: 6 },
       { id: '2', from: 5, to: 8, lossCushion: 20, rr: 6 },
@@ -20,7 +19,6 @@ const PRESETS = {
     name: 'Conservative Buffer (20 → 50 Losses Buffer)',
     capital: '1000',
     timeHorizon: '52',
-    timeUnit: 'weeks',
     tiers: [
       { id: '1', from: 1, to: 12, lossCushion: 20, rr: 3 },
       { id: '2', from: 13, to: 26, lossCushion: 30, rr: 3 },
@@ -31,7 +29,6 @@ const PRESETS = {
     name: 'Ultra Conservative (50 → 100 Losses Buffer)',
     capital: '10000',
     timeHorizon: '52',
-    timeUnit: 'weeks',
     tiers: [
       { id: '1', from: 1, to: 12, lossCushion: 50, rr: 2.5 },
       { id: '2', from: 13, to: 26, lossCushion: 75, rr: 2.5 },
@@ -49,7 +46,6 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
   // --- Inputs State ---
   const [capital, setCapital] = useState(PRESETS.spreadsheet.capital);
   const [timeHorizon, setTimeHorizon] = useState(PRESETS.spreadsheet.timeHorizon);
-  const [timeUnit, setTimeUnit] = useState(PRESETS.spreadsheet.timeUnit);
   const [frequency, setFrequency] = useState('week'); // 'week' | 'month'
 
   // Risk Tiers Array (lossCushion = max consecutive losses to blow account)
@@ -67,7 +63,6 @@ export default function GrowthScheduleSimulator({ onCreatePlanFromSimulation }) 
     if (!p) return;
     setCapital(p.capital);
     setTimeHorizon(p.timeHorizon);
-    setTimeUnit(p.timeUnit);
     setTiers(p.tiers.map((t) => ({ ...t })));
     setCustomRiskOverrides({});
   };

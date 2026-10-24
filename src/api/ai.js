@@ -24,24 +24,6 @@ async function parseAiResponse(res) {
   return body;
 }
 
-export async function generateChecklistWithAi(prompt) {
-  const res = await authFetch(`${AI_API_BASE}/v1/ai/checklist`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify({ prompt }),
-  });
-
-  const body = await parseAiResponse(res);
-  const steps = Array.isArray(body?.steps) ? body.steps : [];
-  if (steps.length === 0) {
-    throw new Error('No checklist steps were generated');
-  }
-  return steps;
-}
-
 function performancePayload({ accountId, from, to, language, extra = {} }) {
   return {
     account_id: accountId,
@@ -50,34 +32,6 @@ function performancePayload({ accountId, from, to, language, extra = {} }) {
     language,
     ...extra,
   };
-}
-
-export async function fetchAiPerformanceInsights({ accountId, from, to, language }) {
-  const res = await authFetch(`${AI_API_BASE}/v1/ai/performance/insights`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify(performancePayload({ accountId, from, to, language })),
-  });
-  const body = await parseAiResponse(res);
-  return {
-    insights: Array.isArray(body?.insights) ? body.insights : [],
-    summary: body?.summary || null,
-  };
-}
-
-export async function generateAiPerformanceReport({ accountId, from, to, language }) {
-  const res = await authFetch(`${AI_API_BASE}/v1/ai/performance/report`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify(performancePayload({ accountId, from, to, language })),
-  });
-  return parseAiResponse(res);
 }
 
 /** Single request: insights + report in one SEA-LION call. */

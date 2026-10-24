@@ -45,10 +45,6 @@ export async function adminListUsers() {
   return rpc('admin_list_users');
 }
 
-export async function adminSetUserRole(userId, role) {
-  return rpc('admin_set_user_role', { target_user_id: userId, new_role: role });
-}
-
 export async function adminDeleteUser(userId) {
   return rpc('admin_delete_user', { target_user_id: userId });
 }
@@ -107,5 +103,4 @@ export async function adminGetAccountDetail(accountId) {
   return rpc('admin_get_account_detail', { target_account_id: accountId });
 }
 
-export { fetchSiacRuleConfig, adminUpdateSiacRuleConfig } from './siac';
 export { adminFetchAppLimits, adminUpdateAppLimits, adminSetUserLimits } from './limits';

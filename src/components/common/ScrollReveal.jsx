@@ -57,21 +57,3 @@ export function ScrollReveal({
     </Tag>
   );
 }
-
-export function ScrollStagger({ children, className = '', direction = 'up', baseDelay = 0, stagger = 90 }) {
-  const items = Array.isArray(children) ? children : [children];
-
-  return (
-    <div className={className}>
-      {items.map((child, index) => (
-        <ScrollReveal
-          key={child?.key ?? index}
-          direction={direction}
-          delay={baseDelay + index * stagger}
-        >
-          {child}
-        </ScrollReveal>
-      ))}
-    </div>
-  );
-}

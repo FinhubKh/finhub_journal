@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { fmtPnlStrict, capitalize } from '../../lib/format';
-import { card, cardBody, cardHd, cardTitle, emptyState, pillBtn, pillToggle } from '../../lib/ui';
+import { card, cardHd, emptyState, pillBtn, pillToggle } from '../../lib/ui';
 
 const LIGHT_PIE_COLORS = ['#7c3aed', '#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe', '#f5f3ff'];
 const DARK_PIE_COLORS = ['#4ade80', '#22d3ee', '#60a5fa', '#a78bfa', '#fbbf24', '#fb923c', '#f472b6', '#5eead4'];

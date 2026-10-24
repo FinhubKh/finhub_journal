@@ -12,7 +12,7 @@
  *    job (bad investor credentials, broker server unreachable, etc.) so the
  *    failure is recorded instead of silently vanishing.
  */
-import { readJsonBody } from './ai-checklist-handler.mjs';
+import { readJsonBody } from './api-shared.mjs';
 import { supabaseHeaders, upsertSyncedTrades, upsertSyncedCashflows } from './trade-sync-shared.mjs';
 import { timingSafeTokenEqual } from './crypto-helper.mjs';
 

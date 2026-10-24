@@ -28,11 +28,6 @@ export function aggregateTradesByDate(trades) {
   return map;
 }
 
-export function getDaySummary(trades, date) {
-  const map = aggregateTradesByDate(trades);
-  return map[date] ?? null;
-}
-
 export function getMonthSummaryFromTrades(trades, year, month) {
   const start = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month + 1, 0).getDate();

@@ -12,7 +12,7 @@ import {
 import { formulaVarOptions, validateFormula } from '../../lib/siacFormula';
 import CustomDropdown from '../common/CustomDropdown';
 import {
-  btnDanger, btnGhost, btnOutline, btnPrimary, card, cardHd, cardTitle,
+  btnDanger, btnGhost, btnOutline, btnPrimary, card,
   emptyState, input, label, msgError, select, tableTd, tableTh,
 } from '../../lib/ui';
 

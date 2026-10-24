@@ -6,7 +6,7 @@
  * GET  /v1/investor-verify   — poll job result; delete creds only on a
  *                              confirmed bad login, not on bridge hiccups
  */
-import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
+import { verifySupabaseUser, readJsonBody } from './api-shared.mjs';
 import { encryptSecret } from './crypto-helper.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 

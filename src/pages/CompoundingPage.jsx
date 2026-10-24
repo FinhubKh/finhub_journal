@@ -12,11 +12,9 @@ import { formatMoney } from '../lib/compounding/formatMoney';
 import { tradesNeededToTarget } from '../lib/compounding/projection';
 import { accountToConfig } from '../lib/compounding/account';
 import {
-  btnDanger,
   btnPrimary,
   btnSecondary,
   card,
-  cardBody,
   dashboardPageWide,
   emptyState,
   input,
@@ -26,16 +24,6 @@ import CustomDropdown from '../components/common/CustomDropdown';
 import CompoundingAccountView from '../components/compounding/CompoundingAccountView';
 import { ModalActions, PlanModalShell } from '../components/compounding/CompoundingUI';
 import GrowthScheduleSimulator from '../components/compounding/GrowthScheduleSimulator';
-import { pillBtn, pillToggle } from '../lib/ui';
-
-const EMPTY_FORM = {
-  name: '',
-  startingBalance: String(DEFAULT_CONFIG.startingBalance),
-  targetBalance: String(DEFAULT_CONFIG.targetBalance),
-  targetProfitPercent: String(DEFAULT_CONFIG.targetProfitPercent),
-  riskPercent: String(DEFAULT_CONFIG.riskPercent),
-  tradingAccountId: '',
-};
 
 function PlanCard({ account, linkedName, onOpen, onDelete }) {
   const config = accountToConfig(account);
@@ -43,8 +31,6 @@ function PlanCard({ account, linkedName, onOpen, onDelete }) {
 
   const startVal = Number(account.startingBalance) || 100;
   const targetVal = Number(account.targetBalance) || 1000;
-  const multiple = startVal > 0 ? targetVal / startVal : 1;
-  const percentGain = startVal > 0 ? ((targetVal - startVal) / startVal) * 100 : 0;
 
   return (
     <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-xs transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900/90 dark:hover:border-violet-500/40">

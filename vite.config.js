@@ -1,13 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { marketDevApiPlugin } from './vite-market-api.mjs'
 import { aiDevApiPlugin } from './vite-ai-api.mjs'
 import { bridgeDevApiPlugin } from './vite-bridge-api.mjs'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), marketDevApiPlugin(), aiDevApiPlugin(), bridgeDevApiPlugin()],
+  plugins: [react(), tailwindcss(), aiDevApiPlugin(), bridgeDevApiPlugin()],
   build: {
     rollupOptions: {
       output: {

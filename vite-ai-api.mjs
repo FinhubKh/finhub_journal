@@ -1,5 +1,4 @@
 import { loadEnv } from './backend/api/load-env.mjs';
-import { handleAiChecklistRequest } from './backend/api/ai-checklist-handler.mjs';
 import {
   handlePerformanceInsights,
   handlePerformanceReport,
@@ -34,9 +33,7 @@ export function aiDevApiPlugin() {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = (req.url || '').split('?')[0];
-        const isChecklist = pathname === '/v1/ai/checklist';
-        const isPerf = pathname.startsWith('/v1/ai/performance/');
-        if (!isChecklist && !isPerf) return next();
+        if (!pathname.startsWith('/v1/ai/performance/')) return next();
 
         const env = loadEnv();
         const deps = performanceDeps(env);
@@ -47,21 +44,6 @@ export function aiDevApiPlugin() {
         }
 
         try {
-          if (isChecklist) {
-            if (req.method !== 'POST') {
-              sendJson(res, 405, { error: 'Method not allowed' });
-              return;
-            }
-            const result = await handleAiChecklistRequest(req, {
-              supabaseUrl: deps.supabaseUrl,
-              anonKey: deps.anonKey,
-              sealionApiKey: deps.sealionApiKey,
-              model: deps.model,
-            });
-            sendJson(res, result.status, result.body);
-            return;
-          }
-
           let result;
           if (pathname === '/v1/ai/performance/insights' && req.method === 'POST') {
             result = await handlePerformanceInsights(req, deps);

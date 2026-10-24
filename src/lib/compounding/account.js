@@ -23,7 +23,3 @@ export function accountToConfig(account) {
     pointValuePerLot: Number(account.pointValuePerLot ?? DEFAULT_CONFIG.pointValuePerLot),
   };
 }
-
-export function formatAccountSummary(account) {
-  return `${account.targetProfitPercent}% per win · grow to target`;
-}

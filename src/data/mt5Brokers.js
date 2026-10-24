@@ -650,10 +650,6 @@ export function brokerSelectOptions({ includePlaceholder = false } = {}) {
   return opts;
 }
 
-export function brokerLogoSrc(brokerId) {
-  return getMt5Broker(brokerId)?.logo || '';
-}
-
 function serversForPlatform(broker, platform = 'mt5') {
   const isMt4 = String(platform || 'mt5').toLowerCase() === 'mt4';
   // Explicit empty array means "no known nodes for this platform" → custom only.

@@ -3,7 +3,7 @@
  * Loads user trades with their JWT (RLS), builds a stats summary, then advises.
  */
 
-import { verifySupabaseUser, readJsonBody, DEFAULT_MODEL } from './ai-checklist-handler.mjs';
+import { verifySupabaseUser, readJsonBody, DEFAULT_MODEL } from './api-shared.mjs';
 import {
   buildPerformanceSummary,
   buildAdvisorBrief,

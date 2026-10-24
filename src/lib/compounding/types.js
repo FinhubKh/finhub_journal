@@ -15,8 +15,3 @@ export const LOT_SIZE_METHODS = [
   { value: 'fixed_risk_points', label: 'Fixed risk (points)' },
   { value: 'percent_of_balance', label: '% of balance (estimate)' },
 ];
-
-export const PL_SOURCES = [
-  { value: 'calculated', label: 'Calculated (% steps)' },
-  { value: 'calendar', label: 'Calendar day P&L' },
-];

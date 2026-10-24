@@ -636,10 +636,3 @@ export function evaluateRiskEligibility({
 
   return { status, eligible, track, failedRules: failed, metrics, rules };
 }
-
-export function riskBadgeLabel(track, eligible) {
-  if (!eligible) return null;
-  if (track === 'master') return 'Master';
-  if (track === 'ea') return 'EA Safe';
-  return null;
-}

@@ -9,7 +9,7 @@
  * sync path (bridge-sync-handler.mjs) — it's how a user's investor password
  * gets into the investor_credentials table in the first place.
  */
-import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
+import { verifySupabaseUser, readJsonBody } from './api-shared.mjs';
 import { encryptSecret } from './crypto-helper.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 

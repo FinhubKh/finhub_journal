@@ -186,13 +186,6 @@ async function deleteBacktestDaily(backtestId) {
   if (!res.ok) throw await restError(res, 'Could not clear backtest daily rows.');
 }
 
-function truncateHtml(sourceHtml) {
-  const s = String(sourceHtml || '').trim();
-  if (!s) return null;
-  // Avoid blowing up row size; MT5 reports can be huge.
-  return s.length > 50_000 ? `${s.slice(0, 50_000)}…` : s;
-}
-
 export async function saveBacktestUpload(backtestId, { currency, reportMeta, dailyRows, sourceHtml }) {
   const uid = getUserId();
   // Replace daily rows so the UI always matches the latest uploaded report.

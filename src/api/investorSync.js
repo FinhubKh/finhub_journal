@@ -36,23 +36,6 @@ function sleep(ms) {
   });
 }
 
-export async function saveInvestorCredentials({ tradingAccountId, brokerServer, login, investorPassword }) {
-  const res = await authFetch(`${API_BASE}/v1/investor-credentials`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify({
-      trading_account_id: tradingAccountId,
-      broker_server: brokerServer,
-      login,
-      investor_password: investorPassword,
-    }),
-  });
-  return parseJson(res);
-}
-
 /** Save credentials and enqueue an MT5 login-only verify job. */
 export async function connectInvestorCredentials({ tradingAccountId, brokerServer, login, investorPassword }) {
   const res = await authFetch(`${API_BASE}/v1/investor-connect`, {

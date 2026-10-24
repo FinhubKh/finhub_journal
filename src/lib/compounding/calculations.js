@@ -10,35 +10,6 @@ export function computeRiskAmount(balance, config) {
   return roundMoney(balance * (config.riskPercent / 100));
 }
 
-export function computeTargetProfit(balance, config) {
-  return roundMoney(balance * (config.targetProfitPercent / 100));
-}
-
-export function computeRewardFromRisk(riskAmount, config) {
-  return roundMoney(riskAmount * config.riskRewardRatio);
-}
-
-export function calculateLotSize(balance, config) {
-  const riskAmount = computeRiskAmount(balance, config);
-
-  switch (config.lotSizeMethod) {
-    case 'fixed_risk_pips': {
-      if (!config.stopLossPips || config.stopLossPips <= 0) return 0;
-      const pipValue = config.pipValuePerLot || 10;
-      return roundLots(riskAmount / (config.stopLossPips * pipValue));
-    }
-    case 'fixed_risk_points': {
-      if (!config.stopLossPoints || config.stopLossPoints <= 0) return 0;
-      const pointValue = config.pointValuePerLot || 1;
-      return roundLots(riskAmount / (config.stopLossPoints * pointValue));
-    }
-    case 'percent_of_balance':
-      return roundLots((balance * config.riskPercent) / 100 / 100);
-    default:
-      return 0;
-  }
-}
-
 export function getActiveTierForStep(stepIndex, config) {
   if (!config) return null;
   const tiers = config.riskTiers || config.tiers;

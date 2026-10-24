@@ -1,5 +1,5 @@
 // backend/api/investor-sync-handler.mjs
-import { verifySupabaseUser, readJsonBody } from './ai-checklist-handler.mjs';
+import { verifySupabaseUser, readJsonBody } from './api-shared.mjs';
 import { supabaseHeaders } from './trade-sync-shared.mjs';
 
 const BRIDGE_OFFLINE_MSG =

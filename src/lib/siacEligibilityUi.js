@@ -10,14 +10,6 @@ import {
 
 export const RULE_COPY = { ...DEFAULT_SIAC_CONFIG.rule_labels };
 
-export function ruleLabel(id, config) {
-  const labels = config?.rule_labels || RULE_COPY;
-  if (labels[id]) return labels[id];
-  const custom = (config?.custom_rules || []).find((row) => row.id === id);
-  if (custom?.label) return custom.label;
-  return RULE_COPY[id] || id;
-}
-
 export const SIAC_STATUS_STYLES = {
   eligible: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
   not_eligible: 'bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-800/80 dark:text-zinc-300 dark:ring-zinc-700',

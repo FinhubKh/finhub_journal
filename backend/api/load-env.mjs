@@ -25,5 +25,3 @@ export function loadEnv() {
   }
   return env;
 }
-
-export const projectRoot = root;

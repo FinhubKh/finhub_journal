@@ -1,4 +1,4 @@
-import { toUsdPnl, normalizePnlDenomination } from './format';
+import { normalizePnlDenomination } from './format';
 
 export { normalizePnlDenomination };
 
@@ -66,17 +66,6 @@ export function tradePnlDenomination(trade, resolveTradeAccountFn) {
   return normalizePnlDenomination(account?.pnl_denomination);
 }
 
-/** Normalize trade PnL to USD so portfolio aggregates stay comparable across denominations. */
-export function tradesNormalizedToUsd(trades, resolveAccount) {
-  if (!Array.isArray(trades) || trades.length === 0) return trades || [];
-  return trades.map((t) => {
-    const account = typeof resolveAccount === 'function' ? resolveAccount(t) : null;
-    const denom = normalizePnlDenomination(account?.pnl_denomination);
-    if (denom !== 'cent') return t;
-    return { ...t, pnl_usd: toUsdPnl(t.pnl_usd, denom) };
-  });
-}
-
 export const ACCOUNT_COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#dc2626'];
 
 export function normalizeSlug(name) {
@@ -124,61 +113,6 @@ export function tradeMatchesAccount(trade, accountId, lookups) {
     || trade.account.trim().toLowerCase() === account.name.trim().toLowerCase();
 }
 
-export function filterTradesForView(allTrades, tradingAccounts, viewMode, activeAccountId) {
-  const lookups = buildAccountLookups(tradingAccounts);
-
-  if (viewMode === 'account' && activeAccountId) {
-    return allTrades.filter((t) => tradeMatchesAccount(t, activeAccountId, lookups));
-  }
-
-  return allTrades;
-}
-
-export function groupTradesByAccount(allTrades, tradingAccounts) {
-  const lookups = buildAccountLookups(tradingAccounts);
-  const groups = new Map();
-
-  tradingAccounts.forEach((a) => {
-    groups.set(a.id, { account: a, trades: [] });
-  });
-
-  const untagged = [];
-  allTrades.forEach((t) => {
-    const acc = resolveTradeAccount(t, lookups);
-    if (acc && groups.has(acc.id)) {
-      groups.get(acc.id).trades.push(t);
-    } else {
-      untagged.push(t);
-    }
-  });
-
-  const rows = [...groups.values()].filter((g) => g.trades.length > 0);
-  if (untagged.length > 0) {
-    rows.push({
-      account: { id: '__untagged', name: 'Untagged', account_type: 'live', color: '#a1a1aa' },
-      trades: untagged,
-    });
-  }
-  return rows.sort((a, b) => {
-    const pnlA = a.trades.reduce((s, t) => s + toUsdPnl(t.pnl_usd || 0, a.account?.pnl_denomination), 0);
-    const pnlB = b.trades.reduce((s, t) => s + toUsdPnl(t.pnl_usd || 0, b.account?.pnl_denomination), 0);
-    return pnlB - pnlA;
-  });
-}
-
-export function legacyAccountNames(tradingAccounts, allTrades) {
-  const names = new Set(tradingAccounts.map((a) => a.name));
-  allTrades.forEach((t) => {
-    if (t.account) names.add(t.account);
-  });
-  return [...names].sort();
-}
-
 export function selectableTradingAccounts(tradingAccounts) {
   return tradingAccounts;
-}
-
-/** @deprecated use selectableTradingAccounts */
-export function connectedTradingAccounts(tradingAccounts) {
-  return selectableTradingAccounts(tradingAccounts);
 }

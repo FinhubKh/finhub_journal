@@ -8,8 +8,6 @@
 import { createServer } from 'http';
 import { loadEnv } from './load-env.mjs';
 import { handleEaSync } from './sync-handler.mjs';
-import { fetchEconomicCalendar, fetchMarketNews } from './market-handler.mjs';
-import { handleAiChecklistRequest } from './ai-checklist-handler.mjs';
 import {
   handlePerformanceInsights,
   handlePerformanceReport,
@@ -66,26 +64,6 @@ const server = createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/health') {
     sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/v1/market/economic-calendar') {
-    try {
-      const data = await fetchEconomicCalendar();
-      sendJson(res, 200, data, { 'Cache-Control': 'public, max-age=300' });
-    } catch (err) {
-      sendJson(res, 502, { error: err.message || 'Failed to load economic calendar' });
-    }
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/v1/market/news') {
-    try {
-      const data = await fetchMarketNews(url.searchParams.get('limit'));
-      sendJson(res, 200, data, { 'Cache-Control': 'public, max-age=300' });
-    } catch (err) {
-      sendJson(res, 502, { error: err.message || 'Failed to load market news' });
-    }
     return;
   }
 
@@ -150,23 +128,6 @@ const server = createServer(async (req, res) => {
     req.body = body || {};
     const result = await handleTriggerInvestorSync(req, {
       supabaseUrl, anonKey, serviceKey, bridgeUrl, bridgeServiceToken,
-    });
-    sendJson(res, result.status, result.body);
-    return;
-  }
-
-  if (req.method === 'POST' && url.pathname === '/v1/ai/checklist') {
-    if (!anonKey) {
-      sendJson(res, 500, { error: 'Supabase anon key is not configured' });
-      return;
-    }
-    const body = await readBody(req);
-    req.body = body || {};
-    const result = await handleAiChecklistRequest(req, {
-      supabaseUrl,
-      anonKey,
-      sealionApiKey,
-      model: sealionModel,
     });
     sendJson(res, result.status, result.body);
     return;
